@@ -73,9 +73,13 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
+        {/* Using local PNG asset so logo appears on web and native. */}
         <Image
-          source={require('../Images/Iowa_State_Cyclones_logo.svg.png')}
+          source={require('../Images/Iowa_State_Cyclones_logo.png')}
           style={styles.logo}
+          resizeMode="contain"
+          accessible
+          accessibilityLabel="Iowa State logo"
         />
         <Text style={styles.title}>Iowa State</Text>
         <Text style={styles.subtitle}>Instructor Dashboard</Text>
@@ -208,24 +212,30 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingVertical: 20,
+    justifyContent: 'flex-start',
+    paddingTop: 56,
+    paddingBottom: 20,
   },
   header: {
     alignItems: 'center',
-    width: 100,
-    height: 100,
-    marginBottom: 12,
-    resizeMode: 'contain'
+    width: '100%',
+    paddingTop: 12,
+    paddingBottom: 12,
+    marginBottom: 26,
+    zIndex: 2,
+    backgroundColor: 'transparent',
+  },
   logo: {
-    fontSize: 64,
-    marginBottom: 12,
+    width: 140,
+    height: 140,
+    marginBottom: 8,
+    resizeMode: 'contain',
   },
   title: {
-    fontSize:C8102E
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#1e3a8a',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   subtitle: {
     fontSize: 16,
@@ -268,7 +278,7 @@ const styles = StyleSheet.create({
     color: '#C8102E',
   },
   label: {
-    fontSize:C8102E
+    fontSize: 14,
     fontWeight: '600',
     color: '#1e3a8a',
     marginBottom: 8,

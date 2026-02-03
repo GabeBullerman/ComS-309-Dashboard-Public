@@ -19,7 +19,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ userEmail, onLogout }) => {
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
         </View>
-        <Text style={styles.userEmail}>{userEmail}</Text>
+        <Text style={styles.userEmail}>User: {userEmail}</Text>
       </View>
 
       <View style={styles.content}>
