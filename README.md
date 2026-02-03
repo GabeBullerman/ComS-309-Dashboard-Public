@@ -1,3 +1,4 @@
+<<<<<<< README.md
 # Instructor Dashboard - Frontend
 
 ## Project Structure
@@ -24,7 +25,7 @@
 
 ### 1. Initialize Git Repository
 ```bash
-cd "c:\Users\gabeb\Desktop\4020C Project"
+cd "c:/project-destination"
 git init
 git config user.name "Your Name"
 git config user.email "your.email@example.com"
@@ -119,3 +120,25 @@ Tech Stack
 3. Build student management UI
 4. Add assignment tracking features
 5. Integrate with backend API (when ready)
+=======
+# ug_mk_4
+
+
+
+## Getting started
+
+To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+
+Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+
+## Add your files
+
+* [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
+* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+
+```
+cd existing_repo
+git remote add origin https://git.las.iastate.edu/SeniorDesignComS/2026spr/402c/ug_mk_4.git
+git branch -M main
+git push -uf origin main
+```
