@@ -1,0 +1,30 @@
+{
+  "expo": {
+    "name": "Instructor Dashboard",
+    "slug": "instructor-dashboard",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1e3a8a"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTabletMode": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1e3a8a"
+      }
+    },
+    "web": {
+      "favicon": "./src/Images/Iowa_State_Cyclones_logo.svg.png"
+    }
+  }
+}
