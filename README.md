@@ -35,6 +35,9 @@ git config user.email "your.email@example.com"
 ```bash
 cd frontend
 npm install
+npx expo install react-native-gesture-handler react-native-reanimated
+npm install @react-navigation/native @react-navigation/drawer
+npm install @react-native-picker/picker
 ```
 
 ### 3. Install Backend Dependencies
