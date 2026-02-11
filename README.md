@@ -38,6 +38,8 @@ npm install
 npx expo install react-native-gesture-handler react-native-reanimated
 npm install @react-navigation/native @react-navigation/drawer
 npm install @react-native-picker/picker
+npx expo install nativewind
+npm install --save-dev tailwindcss
 ```
 
 ### 3. Install Backend Dependencies

@@ -8,6 +8,7 @@ import LoginRegisterPage from './src/components/LoginRegisterPage';
 import LandingPage from './src/components/LandingPage';
 import TAHome from './src/screens/TAHome';
 import GroupsSkeleton from './src/screens/GroupsSkeleton';
+import TeamsScreen from './src/screens/TeamsScreen';
 import AssignmentsSkeleton from './src/screens/AssignmentsSkeleton';
 
 export default function App() {
@@ -72,7 +73,7 @@ export default function App() {
         ) : (
           // Main TA flow
           <>
-            <Stack.Screen
+            {/* <Stack.Screen
               name="TAHome"
               options={({ navigation }) => ({
                 title: 'TA Dashboard',
@@ -89,9 +90,9 @@ export default function App() {
                 ),
               })}
             >
-              {(props) => <TAHome {...props} />}
-            </Stack.Screen>
-            <Stack.Screen name="Groups" component={GroupsSkeleton} options={{ title: 'Groups' }} />
+              {(props) => <TeamsScreen {...props} />}
+            </Stack.Screen> */}
+            <Stack.Screen name="Teams" component={TeamsScreen} options={{ title: 'Teams' }} />
             <Stack.Screen name="Assignments" component={AssignmentsSkeleton} options={{ title: 'Assignments' }} />
             <Stack.Screen name="Landing" options={{ title: 'Landing' }}>
               {(props) => <LandingPage {...props} userEmail={userEmail} onLogout={handleLogout} />}
