@@ -15,7 +15,10 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "react-jsx",
+    "jsx": "react-native",
+    "types": [
+      "nativewind/types"
+    ],
     "strict": true,
     "noEmit": true,
     "forceConsistentCasingInFileNames": true,
@@ -26,7 +29,12 @@
       ]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "global.d.ts"],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "global.d.ts",
+    "nativewind-env.d.ts"
+  ],
   "references": [
     {
       "path": "./tsconfig.node.json"

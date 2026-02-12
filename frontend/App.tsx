@@ -1,3 +1,5 @@
+import "nativewind/global.css";
+import { Platform } from "react-native";
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,9 +9,12 @@ import { TouchableOpacity, Text } from 'react-native';
 import LoginRegisterPage from './src/components/LoginRegisterPage';
 import LandingPage from './src/components/LandingPage';
 import TAHome from './src/screens/TAHome';
-import GroupsSkeleton from './src/screens/GroupsSkeleton';
 import TeamsScreen from './src/screens/TeamsScreen';
 import AssignmentsSkeleton from './src/screens/AssignmentsSkeleton';
+
+if (Platform.OS === "web") {
+  import("./nativewind/output.css"); // Use the built file
+}
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);

@@ -38,7 +38,9 @@ npm install
 npx expo install react-native-gesture-handler react-native-reanimated
 npm install @react-navigation/native @react-navigation/drawer
 npm install @react-native-picker/picker
-npx expo install nativewind
+npm install nativewind react-native-safe-area-context
+npm install --dev tailwindcss@^3.4.17 prettier-plugin-tailwindcss@^0.5.11 babel-preset-expo
+npm install react-native-worklets
 npm install --save-dev tailwindcss
 ```
 
