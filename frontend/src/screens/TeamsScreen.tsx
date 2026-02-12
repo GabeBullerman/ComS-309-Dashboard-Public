@@ -14,8 +14,6 @@ interface Team {
   name: string;
   project: string;
   members: number;
-  lastActive: string;
-  semester: string;
   status: Status;
   avatars: string[];
 }
@@ -25,8 +23,6 @@ const TEAMS: Team[] = [
     name: "Team Cyclone",
     project: "IoT Smart Home System",
     members: 4,
-    lastActive: "2 hours ago",
-    semester: "Spring 2026",
     status: "Active",
     avatars: ["AJ", "EC", "MB", "+1"],
   },
@@ -34,8 +30,6 @@ const TEAMS: Team[] = [
     name: "Cardinal Engineers",
     project: "Machine Learning Optimization",
     members: 3,
-    lastActive: "1 day ago",
-    semester: "Spring 2026",
     status: "Active",
     avatars: ["DW", "JM", "RT"],
   },
@@ -43,8 +37,6 @@ const TEAMS: Team[] = [
     name: "Gold Rush",
     project: "Sustainable Energy Dashboard",
     members: 5,
-    lastActive: "3 days ago",
-    semester: "Spring 2026",
     status: "Pending",
     avatars: ["AW", "CA", "NT", "+2"],
   },
@@ -52,8 +44,6 @@ const TEAMS: Team[] = [
     name: "Innovators United",
     project: "Campus Navigation App",
     members: 4,
-    lastActive: "1 week ago",
-    semester: "Fall 2025",
     status: "Completed",
     avatars: ["DH", "OM", "MT", "+1"],
   },
@@ -82,16 +72,12 @@ export default function ClassTeamsScreen() {
           <TouchableOpacity
             key={item}
             className={`rounded-lg px-4 py-3 mb-2 ${
-              item === "Teams"
-                ? "bg-yellow-400"
-                : ""
+              item === "Teams" ? "bg-yellow-400" : ""
             }`}
           >
             <Text
               className={`font-medium ${
-                item === "Teams"
-                  ? "text-yellow-900"
-                  : "text-white"
+                item === "Teams" ? "text-yellow-900" : "text-white"
               }`}
             >
               {item}
@@ -149,14 +135,6 @@ export default function ClassTeamsScreen() {
               <InfoRow
                 icon="people-outline"
                 text={`${team.members} members`}
-              />
-              <InfoRow
-                icon="time-outline"
-                text={`Last active: ${team.lastActive}`}
-              />
-              <InfoRow
-                icon="calendar-outline"
-                text={team.semester}
               />
 
               <View className="flex-row mt-3">
