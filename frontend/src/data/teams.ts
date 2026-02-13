@@ -7,7 +7,6 @@ export interface Team {
   name: string;
   description: string;
   memberCount: number;
-  lastActive: string;
   semester: string;
   status: 'Good' | 'Moderate' | 'Poor';
   members: TeamMember[];
@@ -19,7 +18,6 @@ export const teamsData: Team[] = [
     name: 'Team Cyclone',
     description: 'IoT Smart Home System',
     memberCount: 4,
-    lastActive: '2 hours ago',
     semester: 'Spring 2026',
     status: 'Good',
     members: [
@@ -33,7 +31,6 @@ export const teamsData: Team[] = [
     name: 'Cardinal Engineers',
     description: 'Machine Learning Optimization',
     memberCount: 3,
-    lastActive: '1 day ago',
     semester: 'Spring 2026',
     status: 'Good',
     members: [
@@ -46,7 +43,6 @@ export const teamsData: Team[] = [
     name: 'Gold Rush',
     description: 'Sustainable Energy Dashboard',
     memberCount: 5,
-    lastActive: '3 days ago',
     semester: 'Spring 2026',
     status: 'Moderate',
     members: [
@@ -60,7 +56,6 @@ export const teamsData: Team[] = [
     name: 'Red Storm',
     description: 'Agricultural Data Analytics',
     memberCount: 2,
-    lastActive: '5 hours ago',
     semester: 'Spring 2026',
     status: 'Good',
     members: [
@@ -72,7 +67,6 @@ export const teamsData: Team[] = [
     name: 'Innovators United',
     description: 'Campus Navigation App',
     memberCount: 4,
-    lastActive: '1 week ago',
     semester: 'Fall 2025',
     status: 'Poor',
     members: [
@@ -86,7 +80,6 @@ export const teamsData: Team[] = [
     name: 'Code Crafters',
     description: 'Blockchain Voting System',
     memberCount: 3,
-    lastActive: '4 hours ago',
     semester: 'Spring 2026',
     status: 'Good',
     members: [

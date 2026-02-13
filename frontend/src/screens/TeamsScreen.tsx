@@ -39,40 +39,6 @@ const [searchQuery, setSearchQuery] = useState<string>('');
 
   return (
     <View className="flex-row flex-1 bg-gray-50">
-      {/* Sidebar */}
-      <View className="w-60 bg-red-700 p-5">
-        <Text className="text-white text-lg font-bold">
-          Class Dashboard
-        </Text>
-        <Text className="text-yellow-200 mb-6">
-          Iowa State University
-        </Text>
-
-        {[
-          "Dashboard",
-          "Teams",
-          "Courses",
-          "Analytics",
-          "Assignments",
-          "Settings",
-        ].map((item) => (
-          <TouchableOpacity
-            key={item}
-            className={`rounded-lg px-4 py-3 mb-2 ${
-              item === "Teams" ? "bg-yellow-400" : ""
-            }`}
-          >
-            <Text
-              className={`font-medium ${
-                item === "Teams" ? "text-yellow-900" : "text-white"
-              }`}
-            >
-              {item}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       {/* Main Content */}
       <View className="flex-1 p-6">
         <Text className="text-2xl font-bold">

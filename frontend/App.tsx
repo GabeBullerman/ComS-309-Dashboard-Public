@@ -5,16 +5,20 @@ import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { TouchableOpacity, Text } from 'react-native';
 import LoginRegisterPage from './src/components/LoginRegisterPage';
 import LandingPage from './src/components/LandingPage';
-import TAHome from './src/screens/TAHome';
-import TeamsScreen from './src/screens/TeamsScreen';
 import AssignmentsSkeleton from './src/screens/AssignmentsSkeleton';
+
+import TAManager from "./src/screens/TAManager";
+import TeamsScreen from './src/screens/TeamsScreen';
+import CoursesScreen from "./src/screens/Courses";
+import SidebarLayout from "./src/components/SidebarLayout";
 
 if (Platform.OS === "web") {
   import("./nativewind/output.css"); // Use the built file
 }
+
+const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -63,8 +67,6 @@ export default function App() {
     }
   };
 
-  const Stack = createNativeStackNavigator();
-
   return (
     <NavigationContainer>
       <Stack.Navigator>
@@ -76,36 +78,18 @@ export default function App() {
             {(props) => <LoginRegisterPage {...props} onLogin={handleLogin} />}
           </Stack.Screen>
         ) : (
-          // Main TA flow
           <>
-            {/* <Stack.Screen
-              name="TAHome"
-              options={({ navigation }) => ({
-                title: 'TA Dashboard',
-                headerTitleAlign: 'center',
-                headerStyle: { backgroundColor: '#C8102E' },
-                headerTintColor: '#fff',
-                headerLeft: () => (
-                  <Text style={{ color: '#fff', fontWeight: '600', marginLeft: 4 }}>User: {userEmail}</Text>
-                ),
-                headerRight: () => (
-                  <TouchableOpacity onPress={handleLogout} style={{ paddingHorizontal: 8 }}>
-                    <Text style={{ color: '#fff', fontWeight: '600' }}>Logout</Text>
-                  </TouchableOpacity>
-                ),
-              })}
-            >
-              {(props) => <TeamsScreen {...props} />}
-            </Stack.Screen> */}
-            <Stack.Screen name="Teams" component={TeamsScreen} options={{ title: 'Teams' }} />
-            <Stack.Screen name="Assignments" component={AssignmentsSkeleton} options={{ title: 'Assignments' }} />
-            <Stack.Screen name="Landing" options={{ title: 'Landing' }}>
+            <Stack.Screen name="Dashboard" component={SidebarLayout} options={{ headerShown: false }} />
+            <Stack.Screen name="Teams" component={TeamsScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Assignments" component={AssignmentsSkeleton} options={{ headerShown: false }} />
+            <Stack.Screen name="TAManager" component={TAManager} options={{ headerShown: false }} />
+            <Stack.Screen name="Courses" component={CoursesScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Landing" options={{ headerShown: false }}>
               {(props) => <LandingPage {...props} userEmail={userEmail} onLogout={handleLogout} />}
             </Stack.Screen>
           </>
         )}
       </Stack.Navigator>
-      <StatusBar style="auto" />
     </NavigationContainer>
   );
 }
