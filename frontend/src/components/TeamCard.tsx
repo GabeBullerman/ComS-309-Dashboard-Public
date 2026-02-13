@@ -1,0 +1,93 @@
+import React from 'react';
+import { View, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+
+export interface TeamCardProps {
+  name: string;
+  description: string;
+  memberCount: number;
+  status: 'Good' | 'Moderate' | 'Poor';
+  members: Array<{ initials: string; color: string }>;
+  extraMembers?: number;
+}
+
+export const TeamCard: React.FC<TeamCardProps> = ({
+  name,
+  description,
+  memberCount,
+  status,
+  members,
+  extraMembers,
+}) => {
+  const statusColors: Record<
+    TeamCardProps['status'],
+    string
+  > = {
+    Good: 'bg-green-100 text-green-700',
+    Moderate: 'bg-yellow-100 text-yellow-700',
+    Poor: 'bg-red-100 text-red-700',
+  };
+
+  return (
+    <View className="bg-white rounded-xl border border-gray-200 p-6 mb-4 shadow-sm">
+      {/* Header */}
+      <View className="flex-row items-start justify-between mb-2">
+        <Text className="text-lg font-semibold text-gray-900 flex-1 pr-2">
+          {name}
+        </Text>
+
+        <View
+          className={`px-3 py-1 rounded-full ${statusColors[status].split(' ')[0]}`}
+        >
+          <Text
+            className={`text-xs font-medium ${statusColors[status].split(' ')[1]}`}
+          >
+            {status}
+          </Text>
+        </View>
+      </View>
+
+      {/* Description */}
+      <Text className="text-sm text-gray-600 mb-4">
+        {description}
+      </Text>
+
+      {/* Info Rows */}
+      <View className="space-y-2 mb-6">
+        <View className="flex-row items-center mb-2">
+          <Ionicons
+            name="people-outline"
+            size={16}
+            color="#DC2626"
+            style={{ marginRight: 8 }}
+          />
+          <Text className="text-sm text-gray-600">
+            {memberCount} members
+          </Text>
+        </View>
+      </View>
+
+      {/* Member Avatars */}
+      <View className="flex-row items-center">
+        {members.map((member, index) => (
+          <View
+            key={index}
+            className={`w-10 h-10 rounded-full items-center justify-center mr-2 ${member.color}`}
+          >
+            <Text className="text-sm font-semibold text-white">
+              {member.initials}
+            </Text>
+          </View>
+        ))}
+
+        {extraMembers && extraMembers > 0 && (
+          <View className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center">
+            <Text className="text-sm font-medium text-gray-600">
+              +{extraMembers}
+            </Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};

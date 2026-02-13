@@ -24,7 +24,8 @@
       }
     },
     "web": {
-      "favicon": "./src/Images/Iowa_State_Cyclones_logo.svg.png"
+      "favicon": "./src/Images/Iowa_State_Cyclones_logo.png",
+      "bundler": "metro"
     }
   }
 }
