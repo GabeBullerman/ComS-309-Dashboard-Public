@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import DashboardScreen from "../screens/Dashboard";
 import TeamsScreen from "../screens/TeamsScreen";
@@ -40,6 +40,11 @@ export default function SidebarLayout() {
       {/* Sidebar */}
       <View className="w-60 bg-red-700 p-5">
         <View className="p-4 border-b border-white/10">
+          {/* <Image
+            source={require('../Images/Iowa_State_Cyclones_logo.png')}
+            className="h-1 mb-3"
+            resizeMode="contain"
+          /> */}
           <Text className="text-white text-lg font-bold">
             Class Dashboard
           </Text>

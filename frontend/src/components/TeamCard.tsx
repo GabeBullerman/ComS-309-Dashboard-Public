@@ -62,7 +62,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({name, description, memberCoun
       <View className="space-y-2">
         <View className="flex-row items-center mb-2">
           <Ionicons
-            name="people-outline"
+            name="person-sharp"
             size={16}
             color="#64f0cd"
             style={{ marginRight: 8 }}
@@ -77,9 +77,9 @@ export const TeamCard: React.FC<TeamCardProps> = ({name, description, memberCoun
       <View className="space-y-2 mb-3">
         <View className="flex-row items-center mb-2">
           <Ionicons
-            name="people-outline"
+            name="book"
             size={16}
-            color="#a164f0"
+            color="#C8102E"
             style={{ marginRight: 8 }}
           />
           <Text className="text-sm text-gray-600">
