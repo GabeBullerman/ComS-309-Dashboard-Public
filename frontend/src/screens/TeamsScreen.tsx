@@ -1,55 +1,42 @@
-import React from "react";
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TextInput,
   TouchableOpacity,
+  FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { teamsData } from '../data/teams';
+import { TeamCard } from '../components/TeamCard';
 
-type Status = "Active" | "Pending" | "Completed";
-
-interface Team {
-  name: string;
-  project: string;
-  members: number;
-  status: Status;
-  avatars: string[];
-}
-
-const TEAMS: Team[] = [
-  {
-    name: "Team Cyclone",
-    project: "IoT Smart Home System",
-    members: 4,
-    status: "Active",
-    avatars: ["AJ", "EC", "MB", "+1"],
-  },
-  {
-    name: "Cardinal Engineers",
-    project: "Machine Learning Optimization",
-    members: 3,
-    status: "Active",
-    avatars: ["DW", "JM", "RT"],
-  },
-  {
-    name: "Gold Rush",
-    project: "Sustainable Energy Dashboard",
-    members: 5,
-    status: "Pending",
-    avatars: ["AW", "CA", "NT", "+2"],
-  },
-  {
-    name: "Innovators United",
-    project: "Campus Navigation App",
-    members: 4,
-    status: "Completed",
-    avatars: ["DH", "OM", "MT", "+1"],
-  },
-];
+type StatusFilter = 'All' | 'Good' | 'Moderate' | 'Poor';
+type SemesterFilter = 'All' | 'Spring 2026' | 'Fall 2025';
 
 export default function ClassTeamsScreen() {
+
+const [searchQuery, setSearchQuery] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
+  const [semesterFilter, setSemesterFilter] =
+    useState<SemesterFilter>('All');
+
+  const filteredTeams = useMemo(() => {
+    return teamsData.filter((team) => {
+      const matchesSearch =
+        team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        team.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesStatus =
+        statusFilter === 'All' || team.status === statusFilter;
+
+      const matchesSemester =
+        semesterFilter === 'All' || team.semester === semesterFilter;
+
+      return matchesSearch && matchesStatus && matchesSemester;
+    });
+  }, [searchQuery, statusFilter, semesterFilter]);
+
+
   return (
     <View className="flex-row flex-1 bg-gray-50">
       {/* Sidebar */}
@@ -57,7 +44,7 @@ export default function ClassTeamsScreen() {
         <Text className="text-white text-lg font-bold">
           Class Dashboard
         </Text>
-        <Text className="text-red-200 mb-6">
+        <Text className="text-yellow-200 mb-6">
           Iowa State University
         </Text>
 
@@ -99,88 +86,92 @@ export default function ClassTeamsScreen() {
         <View className="flex-row items-center bg-white rounded-lg px-3 py-2 mb-3">
           <Ionicons name="search" size={18} color="#9CA3AF" />
           <TextInput
-            placeholder="Search teams, projects, or members..."
-            className="ml-2 flex-1 text-sm"
+          placeholder="Search teams, projects, or members..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg"
           />
         </View>
 
-        {/* Filters */}
-        <View className="flex-row space-x-6 mb-4">
-          <Text className="text-gray-700">Status: All</Text>
-          <Text className="text-gray-700">Semester: All</Text>
+      {/* Filters */}
+      <View className="mb-4">
+        <Text className="text-sm text-gray-600 mb-2">Status</Text>
+        <View className="flex-row flex-wrap gap-2">
+          {(['All', 'Good', 'Moderate', 'Poor'] as StatusFilter[]).map(
+            (status) => (
+              <TouchableOpacity
+                key={status}
+                onPress={() => setStatusFilter(status)}
+                className={`px-3 py-2 rounded-md ${
+                  statusFilter === status
+                    ? 'bg-[#C8102E]'
+                    : 'bg-gray-200'
+                }`}
+              >
+                <Text
+                  className={`text-sm ${
+                    statusFilter === status
+                      ? 'text-white'
+                      : 'text-gray-800'
+                  }`}
+                >
+                  {status}
+                </Text>
+              </TouchableOpacity>
+            )
+          )}
         </View>
 
-        <Text className="text-gray-500 mb-4">
-          Showing {TEAMS.length} of {TEAMS.length} teams
-        </Text>
-
-        {/* Cards */}
-        <ScrollView contentContainerClassName="flex-row flex-wrap gap-4">
-          {TEAMS.map((team) => (
-            <View
-              key={team.name}
-              className="w-80 bg-white rounded-xl p-4"
-            >
-              <View className="flex-row justify-between items-center mb-1">
-                <Text className="font-bold text-base">
-                  {team.name}
+        <Text className="text-sm text-gray-600 mb-2">Semester</Text>
+        <View className="flex-row flex-wrap gap-2">
+          {(['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map(
+            (semester) => (
+              <TouchableOpacity
+                key={semester}
+                onPress={() => setSemesterFilter(semester)}
+                className={`px-3 py-2 rounded-md ${
+                  semesterFilter === semester
+                    ? 'bg-[#C8102E]'
+                    : 'bg-gray-200'
+                }`}
+              >
+                <Text
+                  className={`text-sm ${
+                    semesterFilter === semester
+                      ? 'text-white'
+                      : 'text-gray-800'
+                  }`}
+                >
+                  {semester}
                 </Text>
-                <StatusBadge status={team.status} />
-              </View>
-
-              <Text className="text-gray-500 mb-3">
-                {team.project}
-              </Text>
-
-              <InfoRow
-                icon="people-outline"
-                text={`${team.members} members`}
-              />
-
-              <View className="flex-row mt-3">
-                {team.avatars.map((a) => (
-                  <View
-                    key={a}
-                    className="w-8 h-8 rounded-full bg-yellow-400 items-center justify-center mr-2"
-                  >
-                    <Text className="text-xs font-bold text-yellow-900">
-                      {a}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          ))}
-        </ScrollView>
+              </TouchableOpacity>
+            )
+          )}
+        </View>
       </View>
-    </View>
-  );
-}
 
-function InfoRow({ icon, text }: { icon: any; text: string }) {
-  return (
-    <View className="flex-row items-center mb-1">
-      <Ionicons name={icon} size={14} color="#6B7280" />
-      <Text className="ml-2 text-sm text-gray-700">
-        {text}
+      <Text className="text-gray-500 mb-4">
+        Showing {filteredTeams.length} of {teamsData.length} teams
       </Text>
-    </View>
-  );
-}
 
-function StatusBadge({ status }: { status: Status }) {
-  const styles =
-    status === "Active"
-      ? "bg-emerald-100 text-emerald-700"
-      : status === "Pending"
-      ? "bg-yellow-100 text-yellow-700"
-      : "bg-blue-100 text-blue-700";
-
-  return (
-    <View className={`px-3 py-1 rounded-full ${styles}`}>
-      <Text className="text-xs font-semibold">
-        {status}
-      </Text>
+        {/* Teams List */}
+        <FlatList
+          data={filteredTeams}
+          keyExtractor={(_, index) => index.toString()}
+          numColumns={4}
+          columnWrapperStyle={{ gap: 8 }}   // spacing between columns
+          contentContainerStyle={{
+            paddingBottom: 40,
+            gap: 8,                          // spacing between rows
+          }}
+          renderItem={({ item }) => (
+            <View style={{ width: '24.5%' }}>
+              <TeamCard {...item} />
+            </View>
+          )}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
     </View>
   );
 }
