@@ -15,16 +15,23 @@ type SemesterFilter = 'All' | 'Spring 2026' | 'Fall 2025';
 
 export default function ClassTeamsScreen() {
 
-const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
-  const [semesterFilter, setSemesterFilter] =
-    useState<SemesterFilter>('All');
+  const [semesterFilter, setSemesterFilter] = useState<SemesterFilter>('All');
+  const [user, setUser] = useState({ name: 'John Smith', role: 'Instructor' });
 
   const filteredTeams = useMemo(() => {
     return teamsData.filter((team) => {
       const matchesSearch =
         team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        team.description.toLowerCase().includes(searchQuery.toLowerCase());
+        team.section.toString().includes(searchQuery) ||
+        team.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        team.members.some((member) =>
+          member.initials.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          member.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+
+      const matchesTA = user.name.toLowerCase() === team.ta.toLowerCase();
 
       const matchesStatus =
         statusFilter === 'All' || team.status === statusFilter;
@@ -32,8 +39,8 @@ const [searchQuery, setSearchQuery] = useState<string>('');
       const matchesSemester =
         semesterFilter === 'All' || team.semester === semesterFilter;
 
-      return matchesSearch && matchesStatus && matchesSemester;
-    });
+      return matchesSearch && matchesTA && matchesStatus && matchesSemester;
+    }).sort((a, b) => a.section - b.section);
   }, [searchQuery, statusFilter, semesterFilter]);
 
 
@@ -49,19 +56,19 @@ const [searchQuery, setSearchQuery] = useState<string>('');
         </Text>
 
         {/* Search */}
-        <View className="flex-row items-center bg-white rounded-lg px-3 py-2 mb-3">
-          <Ionicons name="search" size={18} color="#9CA3AF" />
+        <View className="flex-row items-center bg-white rounded-lg px-4 py-2 mb-3">
+          <Ionicons name="search" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
           <TextInput
-          placeholder="Search teams, projects, or members..."
+          placeholder="Search teams, projects, section, or members..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg"
+          className="w-full pl-3 pr-4 py-3 bg-white border border-gray-300 rounded-lg"
           />
         </View>
 
       {/* Filters */}
-      <View className="mb-4">
-        <Text className="text-sm text-gray-600 mb-2">Status</Text>
+      <View className="flex-row mb-4">
+        <Text className="text-sm text-gray-600 mb-2 mr-2 my-2">Status</Text>
         <View className="flex-row flex-wrap gap-2">
           {(['All', 'Good', 'Moderate', 'Poor'] as StatusFilter[]).map(
             (status) => (
@@ -88,7 +95,7 @@ const [searchQuery, setSearchQuery] = useState<string>('');
           )}
         </View>
 
-        <Text className="text-sm text-gray-600 mb-2">Semester</Text>
+        <Text className="text-sm text-gray-600 mb-2 mx-2 my-2">Semester</Text>
         <View className="flex-row flex-wrap gap-2">
           {(['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map(
             (semester) => (
