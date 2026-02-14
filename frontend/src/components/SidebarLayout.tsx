@@ -14,7 +14,7 @@ export default function SidebarLayout({ userRole }: { userRole: UserRole }) {
 
   // Placeholder user info
   const name = "John Smith";
-  const role = "Instructor";
+  const role = userRole;
 
   // Generate initials for user
   const initials = name

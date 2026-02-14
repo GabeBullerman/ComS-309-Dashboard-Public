@@ -36,6 +36,7 @@ export default function App() {
         if (email) {
           setUserEmail(email);
           setIsLoggedIn(true);
+          setUserRole(getCurrentUserRole());
         }
       } catch (e) {
         console.warn('Failed to load stored user email', e);
