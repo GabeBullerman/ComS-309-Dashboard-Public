@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+
+target/
+*.log
+.classpath
+.project
+.settings/
+.idea/
+*.iml
+.DS_Store
+*~
+*.swp
