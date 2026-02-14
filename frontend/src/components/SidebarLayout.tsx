@@ -4,13 +4,17 @@ import TeamsScreen from "../screens/TeamsScreen";
 import CoursesScreen from "../screens/Courses";
 import TAManager from "../screens/TAManager";
 import { useState } from "react";
+import { UserRole, getUserPermissions } from "../utils/auth";
 
-export default function SidebarLayout() {
+export default function SidebarLayout({ userRole, onLogout }: { userRole: UserRole; onLogout: () => void }) {
   const [activeScreen, setActiveScreen] = useState("Teams");
+
+  // Get permissions based on role
+  const permissions = getUserPermissions(userRole);
 
   // Placeholder user info
   const name = "John Smith";
-  const role = "Instructor";
+  const role = userRole;
 
   // Generate initials for user
   const initials = name
@@ -22,11 +26,13 @@ export default function SidebarLayout() {
   const renderScreen = () => {
     switch (activeScreen) {
       case "Teams":
-        return <TeamsScreen />;
+        return <TeamsScreen userRole={userRole} />;
       case "Courses":
         return <CoursesScreen />;
       case "TAManager":
         return <TAManager />;
+      default:
+        return <TeamsScreen userRole={userRole} />;
     }
   };
 
@@ -51,8 +57,8 @@ export default function SidebarLayout() {
 
         {[
           "Teams",
-          "Courses",
-          "TAManager",
+          ...(permissions.canAccessCourses ? ["Courses"] : []),
+          ...(permissions.canAccessTAManager ? ["TAManager"] : []),
         ].map((item) => (
           <TouchableOpacity
             key={item}
@@ -93,6 +99,16 @@ export default function SidebarLayout() {
               </Text>
             </View>
           </View>
+
+          {/* Logout Button */}
+          <TouchableOpacity
+            onPress={onLogout}
+            className="mt-4 px-4 py-2 bg-red-600 rounded-lg"
+          >
+            <Text className="text-white text-sm font-medium text-center">
+              Logout
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 
