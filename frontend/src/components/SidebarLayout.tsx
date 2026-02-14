@@ -1,6 +1,5 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import DashboardScreen from "../screens/Dashboard";
 import TeamsScreen from "../screens/TeamsScreen";
 import CoursesScreen from "../screens/Courses";
 import TAManager from "../screens/TAManager";
@@ -22,16 +21,12 @@ export default function SidebarLayout() {
 
   const renderScreen = () => {
     switch (activeScreen) {
-      case "Dashboard":
-        return <DashboardScreen />;
       case "Teams":
         return <TeamsScreen />;
       case "Courses":
         return <CoursesScreen />;
       case "TAManager":
         return <TAManager />;
-      default:
-        return <DashboardScreen />;
     }
   };
 
@@ -40,16 +35,21 @@ export default function SidebarLayout() {
       {/* Sidebar */}
       <View className="w-60 bg-red-700 p-5">
         <View className="p-4 border-b border-white/10">
-          <Text className="text-white text-lg font-bold">
+          <Image
+            source={require("../Images/Iowa_State_Cyclones_logo.png")}
+            style={{ width: 80, height: 80, transform: [{ scale: 1.2 }], alignSelf: 'center' }}
+            resizeMode="contain"
+          />
+
+          <Text className="text-white text-lg font-bold text-center mt-1">
             Class Dashboard
           </Text>
-          <Text className="text-yellow-200 mb-6">
+          <Text className="text-yellow-200 mb-6 text-center">
             Iowa State University
           </Text>
         </View>
 
         {[
-          "Dashboard",
           "Teams",
           "Courses",
           "TAManager",
