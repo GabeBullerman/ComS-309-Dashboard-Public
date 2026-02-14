@@ -6,7 +6,7 @@ import TAManager from "../screens/TAManager";
 import { useState } from "react";
 import { UserRole, getUserPermissions } from "../utils/auth";
 
-export default function SidebarLayout({ userRole }: { userRole: UserRole }) {
+export default function SidebarLayout({ userRole, onLogout }: { userRole: UserRole; onLogout: () => void }) {
   const [activeScreen, setActiveScreen] = useState("Teams");
 
   // Get permissions based on role
@@ -99,6 +99,16 @@ export default function SidebarLayout({ userRole }: { userRole: UserRole }) {
               </Text>
             </View>
           </View>
+
+          {/* Logout Button */}
+          <TouchableOpacity
+            onPress={onLogout}
+            className="mt-4 px-4 py-2 bg-red-600 rounded-lg"
+          >
+            <Text className="text-white text-sm font-medium text-center">
+              Logout
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 

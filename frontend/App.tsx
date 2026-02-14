@@ -84,7 +84,7 @@ export default function App() {
         ) : (
           <>
             <Stack.Screen name="Dashboard" options={{ headerShown: false }}>
-              {(props) => <SidebarLayout {...props} userRole={userRole} />}
+              {(props) => <SidebarLayout {...props} userRole={userRole} onLogout={handleLogout} />}
             </Stack.Screen>
             <Stack.Screen name="Teams" component={TeamsScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Assignments" component={AssignmentsSkeleton} options={{ headerShown: false }} />
