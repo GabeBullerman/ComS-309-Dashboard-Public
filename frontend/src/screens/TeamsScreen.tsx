@@ -5,6 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
+  Modal,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { teamsData } from '../data/teams';
@@ -19,6 +20,8 @@ export default function ClassTeamsScreen() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
   const [semesterFilter, setSemesterFilter] = useState<SemesterFilter>('All');
   const [user, setUser] = useState({ name: 'John Smith', role: 'Instructor' });
+  const [selectedTeam, setSelectedTeam] = useState<typeof teamsData[0] | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const filteredTeams = useMemo(() => {
     return teamsData.filter((team) => {
@@ -139,12 +142,53 @@ export default function ClassTeamsScreen() {
           }}
           renderItem={({ item }) => (
             <View style={{ width: '24.5%' }}>
-              <TeamCard {...item} />
+              <TeamCard {...item} onPress={() => {  
+                setSelectedTeam(item);
+                setModalVisible(true);
+              }}/>
             </View>
           )}
           showsVerticalScrollIndicator={false}
         />
       </View>
+
+      {/*Overlay on team card click*/}
+      <Modal
+      visible={modalVisible}
+      animationType="fade"
+      transparent
+      onRequestClose={() => setModalVisible(false)}
+    >
+      <View className="flex-1 bg-black/40 justify-center items-center px-6">
+        <View className="bg-white w-full max-w-2xl rounded-xl p-6 shadow-lg">
+
+          {/* Header */}
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-xl font-bold">
+              {selectedTeam?.name}
+            </Text>
+
+            <TouchableOpacity onPress={() => setModalVisible(false)}>
+              <Ionicons name="close" size={24} color="#111827" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Description */}
+          <Text className="text-gray-600 mb-4">
+            {selectedTeam?.description}
+          </Text>
+
+          {/* Details */}
+          <View className="space-y-2">
+            <Text>Section: {selectedTeam?.section}</Text>
+            <Text>Status: {selectedTeam?.status}</Text>
+            <Text>TA: {selectedTeam?.ta}</Text>
+            <Text>Members: {selectedTeam?.members.map((member) => member.name).join(', ')}</Text>
+          </View>
+
+        </View>
+      </View>
+    </Modal>
     </View>
   );
 }

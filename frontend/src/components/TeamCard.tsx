@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export interface TeamCardProps {
@@ -10,9 +10,10 @@ export interface TeamCardProps {
   section: number;
   status: 'Good' | 'Moderate' | 'Poor';
   members: Array<{ initials: string; color: string }>;
+  onPress?: () => void;
 }
 
-export const TeamCard: React.FC<TeamCardProps> = ({name, description, memberCount, ta, section, status, members,}) => {
+export const TeamCard: React.FC<TeamCardProps> = ({name, description, memberCount, ta, section, status, members, onPress,}) => {
   const statusColors: Record<TeamCardProps['status'],string> = {
     Good: 'bg-green-100 text-green-700',
     Moderate: 'bg-yellow-100 text-yellow-700',
@@ -20,6 +21,17 @@ export const TeamCard: React.FC<TeamCardProps> = ({name, description, memberCoun
   };
 
   return (
+    <Pressable
+    onPress={onPress}
+    className=""
+    android_ripple={{ color: '#e5e7eb' }}
+    style={({ pressed }) => [
+      {
+        opacity: pressed ? 0.9 : 1,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
+      },
+    ]}
+    >
     <View className="bg-white rounded-xl border border-gray-200 p-6 mb-4 shadow-sm">
       {/* Header */}
       <View className="flex-row items-start justify-between mb-2">
@@ -47,9 +59,9 @@ export const TeamCard: React.FC<TeamCardProps> = ({name, description, memberCoun
       <View className="space-y-2">
         <View className="flex-row items-center mb-2">
           <Ionicons
-            name="people-outline"
+            name="people"
             size={16}
-            color="#d2f064"
+            color="#F1BE48"
             style={{ marginRight: 8 }}
           />
           <Text className="text-sm text-gray-600">
@@ -102,5 +114,6 @@ export const TeamCard: React.FC<TeamCardProps> = ({name, description, memberCoun
         ))}
       </View>
     </View>
+    </Pressable>
   );
 };

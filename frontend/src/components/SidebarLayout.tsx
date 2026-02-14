@@ -54,7 +54,7 @@ export default function SidebarLayout() {
         </View>
 
         {[
-          "Dashboard",
+          "Assignments",
           "Teams",
           "Courses",
           "TAManager",
