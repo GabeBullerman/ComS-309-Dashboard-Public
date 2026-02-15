@@ -12,6 +12,7 @@ import TAManager from "./src/screens/TAManager";
 import TeamsScreen from './src/screens/TeamsScreen';
 import CoursesScreen from "./src/screens/Courses";
 import SidebarLayout from "./src/components/SidebarLayout";
+import { getCurrentUserRole, UserRole } from './src/utils/auth';
 
 if (Platform.OS === "web") {
   import("./nativewind/output.css"); // Use the built file
@@ -22,6 +23,7 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const [userRole, setUserRole] = useState<UserRole>('Student');
 
   useEffect(() => {
     // Only auto-login during development to avoid accidental persistence in production
@@ -33,6 +35,7 @@ export default function App() {
         if (email) {
           setUserEmail(email);
           setIsLoggedIn(true);
+          setUserRole(getCurrentUserRole());
         }
       } catch (e) {
         console.warn('Failed to load stored user email', e);
@@ -44,6 +47,7 @@ export default function App() {
 
   const handleLogin = async (email: string) => {
     setUserEmail(email);
+    setUserRole(getCurrentUserRole()); // Get role from auth utils
     setIsLoggedIn(true);
 
     if (!__DEV__) return;
@@ -78,7 +82,9 @@ export default function App() {
           </Stack.Screen>
         ) : (
           <>
-            <Stack.Screen name="Dashboard" component={SidebarLayout} options={{ headerShown: false }} />
+            <Stack.Screen name="Dashboard" options={{ headerShown: false }}>
+              {(props) => <SidebarLayout {...props} userRole={userRole} onLogout={handleLogout} />}
+            </Stack.Screen>
             <Stack.Screen name="Teams" component={TeamsScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Assignments" component={AssignmentsSkeleton} options={{ headerShown: false }} />
             <Stack.Screen name="TAManager" component={TAManager} options={{ headerShown: false }} />

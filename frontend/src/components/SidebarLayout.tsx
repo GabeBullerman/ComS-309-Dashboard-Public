@@ -1,17 +1,20 @@
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import DashboardScreen from "../screens/Dashboard";
 import TeamsScreen from "../screens/TeamsScreen";
 import CoursesScreen from "../screens/Courses";
 import TAManager from "../screens/TAManager";
 import { useState } from "react";
+import { UserRole, getUserPermissions } from "../utils/auth";
 
-export default function SidebarLayout() {
+export default function SidebarLayout({ userRole, onLogout }: { userRole: UserRole; onLogout: () => void }) {
   const [activeScreen, setActiveScreen] = useState("Teams");
+
+  // Get permissions based on role
+  const permissions = getUserPermissions(userRole);
 
   // Placeholder user info
   const name = "John Smith";
-  const role = "Instructor";
+  const role = userRole;
 
   // Generate initials for user
   const initials = name
@@ -22,16 +25,14 @@ export default function SidebarLayout() {
 
   const renderScreen = () => {
     switch (activeScreen) {
-      case "Dashboard":
-        return <DashboardScreen />;
       case "Teams":
-        return <TeamsScreen />;
+        return <TeamsScreen userRole={userRole} />;
       case "Courses":
         return <CoursesScreen />;
       case "TAManager":
         return <TAManager />;
       default:
-        return <DashboardScreen />;
+        return <TeamsScreen userRole={userRole} />;
     }
   };
 
@@ -40,24 +41,24 @@ export default function SidebarLayout() {
       {/* Sidebar */}
       <View className="w-60 bg-red-700 p-5">
         <View className="p-4 border-b border-white/10">
-          {/* <Image
-            source={require('../Images/Iowa_State_Cyclones_logo.png')}
-            className="h-1 mb-3"
+          <Image
+            source={require("../Images/Iowa_State_Cyclones_logo.png")}
+            style={{ width: 80, height: 80, transform: [{ scale: 1.2 }], alignSelf: 'center' }}
             resizeMode="contain"
-          /> */}
-          <Text className="text-white text-lg font-bold">
+          />
+
+          <Text className="text-white text-lg font-bold text-center mt-1">
             Class Dashboard
           </Text>
-          <Text className="text-yellow-200 mb-6">
+          <Text className="text-yellow-200 mb-6 text-center">
             Iowa State University
           </Text>
         </View>
 
         {[
-          "Assignments",
           "Teams",
-          "Courses",
-          "TAManager",
+          ...(permissions.canAccessCourses ? ["Courses"] : []),
+          ...(permissions.canAccessTAManager ? ["TAManager"] : []),
         ].map((item) => (
           <TouchableOpacity
             key={item}
@@ -98,6 +99,16 @@ export default function SidebarLayout() {
               </Text>
             </View>
           </View>
+
+          {/* Logout Button */}
+          <TouchableOpacity
+            onPress={onLogout}
+            className="mt-4 px-4 py-2 bg-red-600 rounded-lg"
+          >
+            <Text className="text-white text-sm font-medium text-center">
+              Logout
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
 

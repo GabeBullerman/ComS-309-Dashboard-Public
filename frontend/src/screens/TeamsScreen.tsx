@@ -10,11 +10,13 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { teamsData } from '../data/teams';
 import { TeamCard } from '../components/TeamCard';
+import { UserRole, getUserPermissions } from '../utils/auth';
 
 type StatusFilter = 'All' | 'Good' | 'Moderate' | 'Poor';
 type SemesterFilter = 'All' | 'Spring 2026' | 'Fall 2025';
 
-export default function ClassTeamsScreen() {
+export default function ClassTeamsScreen({ userRole }: { userRole: UserRole }) {
+  const permissions = getUserPermissions(userRole);
 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
@@ -42,9 +44,15 @@ export default function ClassTeamsScreen() {
       const matchesSemester =
         semesterFilter === 'All' || team.semester === semesterFilter;
 
-      return matchesSearch && matchesTA && matchesStatus && matchesSemester;
-    }).sort((a, b) => a.section - b.section);
-  }, [searchQuery, statusFilter, semesterFilter]);
+      // Role-based filtering
+      const matchesRole =
+        userRole === 'Student'
+          ? team.name === permissions.assignedTeam // Students only see their team
+          : permissions.canViewPastSemesters || team.semester === 'Spring 2026'; // Others can see past if allowed
+
+      return matchesSearch && matchesStatus && matchesSemester && matchesRole;
+    });
+  }, [searchQuery, statusFilter, semesterFilter, userRole, permissions]);
 
 
   return (
@@ -98,32 +106,36 @@ export default function ClassTeamsScreen() {
           )}
         </View>
 
-        <Text className="text-sm text-gray-600 mb-2 mx-2 my-2">Semester</Text>
-        <View className="flex-row flex-wrap gap-2">
-          {(['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map(
-            (semester) => (
-              <TouchableOpacity
-                key={semester}
-                onPress={() => setSemesterFilter(semester)}
-                className={`px-3 py-2 rounded-md ${
-                  semesterFilter === semester
-                    ? 'bg-[#C8102E]'
-                    : 'bg-gray-200'
-                }`}
-              >
-                <Text
-                  className={`text-sm ${
-                    semesterFilter === semester
-                      ? 'text-white'
-                      : 'text-gray-800'
-                  }`}
-                >
-                  {semester}
-                </Text>
-              </TouchableOpacity>
-            )
-          )}
-        </View>
+        {permissions.canViewPastSemesters && (
+          <>
+            <Text className="text-sm text-gray-600 mb-2">Semester</Text>
+            <View className="flex-row flex-wrap gap-2">
+              {(['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map(
+                (semester) => (
+                  <TouchableOpacity
+                    key={semester}
+                    onPress={() => setSemesterFilter(semester)}
+                    className={`px-3 py-2 rounded-md ${
+                      semesterFilter === semester
+                        ? 'bg-[#C8102E]'
+                        : 'bg-gray-200'
+                    }`}
+                  >
+                    <Text
+                      className={`text-sm ${
+                        semesterFilter === semester
+                          ? 'text-white'
+                          : 'text-gray-800'
+                      }`}
+                    >
+                      {semester}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              )}
+            </View>
+          </>
+        )}
       </View>
 
       <Text className="text-gray-500 mb-4">
