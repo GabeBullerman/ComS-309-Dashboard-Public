@@ -50,8 +50,8 @@ export default function ClassTeamsScreen({ userRole }: { userRole: UserRole }) {
           ? team.name === permissions.assignedTeam // Students only see their team
           : permissions.canViewPastSemesters || team.semester === 'Spring 2026'; // Others can see past if allowed
 
-      return matchesSearch && matchesStatus && matchesSemester && matchesRole;
-    });
+      return matchesSearch && matchesTA && matchesStatus && matchesSemester && matchesRole;
+    }).sort((a, b) => a.section - b.section);
   }, [searchQuery, statusFilter, semesterFilter, userRole, permissions]);
 
 
@@ -108,7 +108,7 @@ export default function ClassTeamsScreen({ userRole }: { userRole: UserRole }) {
 
         {permissions.canViewPastSemesters && (
           <>
-            <Text className="text-sm text-gray-600 mb-2">Semester</Text>
+            <Text className="text-sm text-gray-600 mx-2 my-2 mb-2">Semester</Text>
             <View className="flex-row flex-wrap gap-2">
               {(['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map(
                 (semester) => (
