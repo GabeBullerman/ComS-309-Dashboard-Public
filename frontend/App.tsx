@@ -1,7 +1,6 @@
 import "nativewind/global.css";
 import { Platform } from "react-native";
 import React, { useState, useEffect } from 'react';
-import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
