@@ -6,8 +6,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginRegisterPage from './src/components/LoginRegisterPage';
 import LandingPage from './src/components/LandingPage';
-import AssignmentsSkeleton from './src/screens/AssignmentsSkeleton';
-
 import TAManager from "./src/screens/TAManager";
 import TeamsScreen from './src/screens/TeamsScreen';
 import CoursesScreen from "./src/screens/Courses";
@@ -86,7 +84,6 @@ export default function App() {
               {(props) => <SidebarLayout {...props} userRole={userRole} onLogout={handleLogout} />}
             </Stack.Screen>
             <Stack.Screen name="Teams" component={TeamsScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Assignments" component={AssignmentsSkeleton} options={{ headerShown: false }} />
             <Stack.Screen name="TAManager" component={TAManager} options={{ headerShown: false }} />
             <Stack.Screen name="Courses" component={CoursesScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Landing" options={{ headerShown: false }}>

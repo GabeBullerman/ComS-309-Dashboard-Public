@@ -3,6 +3,8 @@ import { useNavigation } from "@react-navigation/native";
 import TeamsScreen from "../screens/TeamsScreen";
 import CoursesScreen from "../screens/Courses";
 import TAManager from "../screens/TAManager";
+import TaskAssignmentScreen from "../screens/TaskAssignmentScreen";
+import AssignmentsScreen from "../screens/AssignmentsScreen";
 import { useState } from "react";
 import { UserRole, getUserPermissions } from "../utils/auth";
 
@@ -29,8 +31,12 @@ export default function SidebarLayout({ userRole, onLogout }: { userRole: UserRo
         return <TeamsScreen userRole={userRole} />;
       case "Courses":
         return <CoursesScreen />;
-      case "TAManager":
+      case "Assign Tasks":
+        return <TaskAssignmentScreen />;
+      case "TA Manager":
         return <TAManager />;
+      case "Tasks":
+        return <AssignmentsScreen />;
       default:
         return <TeamsScreen userRole={userRole} />;
     }
@@ -58,7 +64,9 @@ export default function SidebarLayout({ userRole, onLogout }: { userRole: UserRo
         {[
           "Teams",
           ...(permissions.canAccessCourses ? ["Courses"] : []),
-          ...(permissions.canAccessTAManager ? ["TAManager"] : []),
+          ...(permissions.canAccessTAManager ? ["Assign Tasks"] : []),
+          ...(permissions.canManageTAs ? ["TA Manager"] : []),
+          ...(permissions.canAccessTasks ? ["Tasks"] : []),
         ].map((item) => (
           <TouchableOpacity
             key={item}
