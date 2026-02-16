@@ -1,151 +1,200 @@
-<<<<<<< README.md
-# Instructor Dashboard - Frontend
+# Class Dashboard
+
+A mobile application for managing class activities, teams, assignments, and TA management with role-based access for students, teaching assistants, and instructors at Iowa State University.
 
 ## Project Structure
 
 ```
-4020C Project/
-├── frontend/              # React Native/Expo TypeScript app
+4020C-Project/
+├── Backend/                    # Spring Boot Java backend
+│   ├── docker-compose.yml      # Docker configuration for database
+│   ├── pom.xml                 # Maven configuration
+│   ├── mvnw                    # Maven wrapper
+│   └── src/
+│       ├── main/
+│       │   ├── java/
+│       │   │   └── edu/iastate/dashboard309/
+│       │   │       ├── DashboardApplication.java
+│       │   │       ├── controller/    # REST API controllers
+│       │   │       │   ├── PermissionController.java
+│       │   │       │   ├── RoleController.java
+│       │   │       │   ├── TaskController.java
+│       │   │       │   ├── TaskFileController.java
+│       │   │       │   ├── TeamController.java
+│       │   │       └── UserController.java
+│       │   │       ├── dto/          # Data transfer objects
+│       │   │       ├── model/        # JPA entities
+│       │   │       ├── repository/   # JPA repositories
+│       │   │       └── service/      # Business logic services
+│       │   └── resources/
+│       │       ├── application.yml   # Application configuration
+│       │       └── db/migration/     # Database migrations
+│       └── test/                     # Unit tests
+├── Documents/                 # Project documentation
+├── frontend/                  # React Native/Expo frontend
 │   ├── src/
-│   │   └── components/
-│   │       └── LandingPage.tsx
-│   ├── App.tsx
-│   ├── app.json
-│   ├── package.json
-│   └── tsconfig.json
-├── .gitignore
+│   │   ├── components/        # Reusable UI components
+│   │   │   ├── FilterBar.tsx
+│   │   │   ├── LandingPage.tsx
+│   │   │   ├── LoginRegisterPage.tsx
+│   │   │   ├── SidebarLayout.tsx
+│   │   │   └── TeamCard.tsx
+│   │   ├── data/              # Mock data
+│   │   ├── Images/            # Static images
+│   │   ├── screens/           # Screen components
+│   │   │   ├── AssignmentsScreen.tsx
+│   │   │   ├── Courses.tsx
+│   │   │   ├── TAHome.tsx
+│   │   │   ├── TAManager.tsx
+│   │   │   ├── TaskAssignmentScreen.tsx
+│   │   │   └── TeamsScreen.tsx
+│   │   ├── types/             # TypeScript type definitions
+│   │   └── utils/             # Utility functions
+│   │       └── auth.ts
+│   ├── App.tsx                # Main app component
+│   ├── app.json               # Expo configuration
+│   ├── package.json           # Node.js dependencies
+│   └── tsconfig.json          # TypeScript configuration
 └── README.md
 ```
-
-## Installation & Setup Commands
-
-### Prerequisites
-- Node.js 18+ and npm/yarn
-- Git
-
-### 1. Initialize Git Repository
-```bash
-cd "c:/project-destination"
-git init
-git config user.name "Your Name"
-git config user.email "your.email@example.com"
-```
-
-### 2. Install Frontend Dependencies
-```bash
-cd frontend
-npm install
-npx expo install react-native-gesture-handler react-native-reanimated
-npm install @react-navigation/native @react-navigation/drawer
-npm install @react-native-picker/picker
-npm install nativewind react-native-safe-area-context
-npm install --dev tailwindcss@^3.4.17 prettier-plugin-tailwindcss@^0.5.11 babel-preset-expo
-npm install react-native-worklets
-npm install --save-dev tailwindcss
-```
-
-### 3. Install Backend Dependencies
-```bash
-cd ..\backend
-npm install
-```
-backend
-npm run dev
-```
-```bash
-cd frontend
-npm run web
-```
-App will be available on `http://localhost:8081`
-
-### Or run on specific platforms:
-```bash
-# iOS (macOS only)
-npm run ios
-
-# Android
-npm run android
-
-# Web
-npm run web
-
-# Start Expo CLI
-npm start
-```bash
-npm run lint          # Run ESLint
-npm run type-check    # Type checking
-```
-
-### Backend
-```bash
-npm run build         # Compile TypeScript
-npm run dev           # Run with hot reload
-npm run lint          # Run ESLint
-npm run type-check    # Type checking
-```
-
-## Git Workflow
-
-```bash
-# Initial commit
-```bash
-
-Currently available:
-- `GET /api` - Welcome message
-- `GET /api/health` - Health check
 
 ## Tech Stack
 
 **Frontend:**
 - React Native / Expo
 - TypeScript
-- Axios (HTTP client)
+- NativeWind (Tailwind CSS for React Native)
+- React Navigation
+- AsyncStorage for local persistence
 
 **Backend:**
-- Node.js
-- Express.js
-- TypeScript
-- CORS enabled
+- Java 17+
+- Spring Boot
+- Spring Data JPA
+- PostgreSQL
+- Maven
+- Docker & Docker Compose
 
-## Next Steps
+## Prerequisites
 
-1. Set up database (MongoDB, PostgreSQL, etc.)
-2. Add authentication (JWT, OAuth, etc.)
-3. Create course management endpoints
-4. Build student management UI
-5. Add assignment tracking features
-Tech Stack
+- Node.js 18+ and npm
+- Java 17+
+- Maven 3.6+
+- Docker and Docker Compose
+- Git
 
-- React Native / Expo
-- TypeScript
-- Axios (HTTP client)
+## Installation & Setup
 
-## Next Steps
-
-1. Expand landing page with navigation
-2. Create course management screens
-3. Build student management UI
-4. Add assignment tracking features
-5. Integrate with backend API (when ready)
-=======
-# ug_mk_4
-
-
-
-## Getting started
-
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-* [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
+### 1. Clone the Repository
+```bash
+git clone https://git.las.iastate.edu/SeniorDesignComS/2026spr/402c/ug_mk_4.git
+cd 4020C-Project
 ```
-cd existing_repo
-git remote add origin https://git.las.iastate.edu/SeniorDesignComS/2026spr/402c/ug_mk_4.git
-git branch -M main
-git push -uf origin main
+
+### 2. Backend Setup
+```bash
+cd Backend
+
+# Install dependencies
+./mvnw install
+
+# Start the database and backend services
+docker-compose up -d
 ```
+
+The backend will be available at `http://localhost:8080`
+
+### 3. Frontend Setup
+```bash
+cd ../frontend
+
+# Install dependencies
+npm install
+
+# Install additional Expo packages
+npx expo install react-native-gesture-handler react-native-reanimated
+```
+
+## Running the Application
+
+### Backend
+```bash
+cd Backend
+./mvnw spring-boot:run
+```
+
+### Frontend
+```bash
+cd frontend
+
+# Web version (recommended for development)
+npm run web
+
+# Or run on specific platforms:
+npm run ios      # iOS (macOS only)
+npm run android  # Android
+npm start        # Start Expo CLI
+```
+
+The frontend will be available at `http://localhost:8081` (web) or via Expo Go app on mobile.
+
+## Available Scripts
+
+### Frontend
+```bash
+npm run web          # Run on web
+npm run ios          # Run on iOS simulator
+npm run android      # Run on Android emulator
+npm run lint         # Run ESLint
+npm run type-check   # Type checking
+```
+
+### Backend
+```bash
+./mvnw clean         # Clean build
+./mvnw compile       # Compile
+./mvnw test          # Run tests
+./mvnw spring-boot:run  # Run application
+```
+
+## API Endpoints
+
+The backend provides RESTful APIs for:
+
+- **Users**: `/api/users` - User management
+- **Teams**: `/api/teams` - Team management
+- **Tasks**: `/api/tasks` - Task/assignment management
+- **Permissions**: `/api/permissions` - Permission management
+- **Roles**: `/api/roles` - Role management
+- **Task Files**: `/api/task-files` - File attachments for tasks
+
+## Features
+
+- **Role-based Access Control**: Different permissions for Students, TAs, Head TAs, and Instructors
+- **Team Management**: View and manage class teams
+- **Task Management**: Create, assign, and track assignments
+- **TA Management**: Invite and manage teaching assistants (Instructor only)
+- **Course Management**: View course information
+- **Responsive Design**: Works on web, iOS, and Android
+
+## Development
+
+### Adding New Features
+1. For frontend changes: Edit files in `frontend/src/`
+2. For backend changes: Edit files in `Backend/src/main/java/`
+3. Run type checking: `npm run type-check` (frontend) or `./mvnw compile` (backend)
+4. Test changes: Run the respective application
+
+### Database
+The application uses PostgreSQL with Flyway migrations. Database schema is defined in `Backend/src/main/resources/db/migration/`.
+
+## Contributing
+
+1. Create a feature branch from `main`
+2. Make your changes
+3. Run tests and type checking
+4. Submit a merge request
+
+## License
+
+This project is part of Iowa State University's Senior Design program.
