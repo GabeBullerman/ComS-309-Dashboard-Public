@@ -6,6 +6,8 @@ export interface UserPermissions {
   canViewAllTeams: boolean;
   canAccessTAManager: boolean;
   canAccessCourses: boolean;
+  canAccessTasks: boolean;
+  canManageTAs: boolean; // For instructors to invite/manage TAs
   assignedTeam?: string; // For students
 }
 
@@ -25,7 +27,9 @@ export const getUserPermissions = (role: UserRole): UserPermissions => {
         canViewAllTeams: false,
         canAccessTAManager: false,
         canAccessCourses: false,
-        assignedTeam: 'Team Cyclone', // Mock assigned team
+        canAccessTasks: true,
+        canManageTAs: false,
+        assignedTeam: 'Gold Rush', // Mock assigned team
       };
     case 'TA':
       return {
@@ -33,6 +37,8 @@ export const getUserPermissions = (role: UserRole): UserPermissions => {
         canViewAllTeams: true,
         canAccessTAManager: false,
         canAccessCourses: true,
+        canAccessTasks: true,
+        canManageTAs: false,
       };
     case 'Instructor':
       return {
@@ -40,6 +46,8 @@ export const getUserPermissions = (role: UserRole): UserPermissions => {
         canViewAllTeams: true,
         canAccessTAManager: true,
         canAccessCourses: true,
+        canAccessTasks: false,
+        canManageTAs: true,
       };
     case 'Head TA':
       return {
@@ -47,6 +55,8 @@ export const getUserPermissions = (role: UserRole): UserPermissions => {
         canViewAllTeams: true,
         canAccessTAManager: true,
         canAccessCourses: true,
+        canAccessTasks: false,
+        canManageTAs: false,
       };
     default:
       return {
@@ -54,6 +64,8 @@ export const getUserPermissions = (role: UserRole): UserPermissions => {
         canViewAllTeams: false,
         canAccessTAManager: false,
         canAccessCourses: false,
+        canAccessTasks: false,
+        canManageTAs: false,
       };
   }
 };
