@@ -5,201 +5,215 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
+  Alert,
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-type TaskStatus = 'Assigned' | 'In Progress' | 'Completed';
-
-interface Task {
+interface TA {
   id: string;
-  title: string;
-  description: string;
-  assignedTo: string;
-  dueDate: string;
-  status: TaskStatus;
+  name: string;
+  email: string;
+  role: 'TA' | 'Head TA';
+  courses: string[];
 }
 
-const TA_LIST = ['John Smith', 'Alice Brown', 'Michael Lee'];
+const mockTAs: TA[] = [
+  { id: '1', name: 'John Smith', email: 'john.smith@iastate.edu', role: 'Head TA', courses: ['CS 309', 'CS 319'] },
+  { id: '2', name: 'Alice Brown', email: 'alice.brown@iastate.edu', role: 'TA', courses: ['CS 309'] },
+  { id: '3', name: 'Michael Lee', email: 'michael.lee@iastate.edu', role: 'TA', courses: ['CS 319'] },
+];
+
+const COURSES = ['CS 309', 'CS 319', 'CS 229'];
 
 export default function TAManagerScreen() {
-  const [selectedTA, setSelectedTA] = useState<string>(TA_LIST[0]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-
-  const [newTask, setNewTask] = useState({
-    title: '',
-    description: '',
-    assignedTo: TA_LIST[0],
-    dueDate: '',
+  const [tas, setTAs] = useState<TA[]>(mockTAs);
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [inviteForm, setInviteForm] = useState({
+    name: '',
+    email: '',
+    role: 'TA' as 'TA' | 'Head TA',
+    courses: [] as string[],
   });
 
-  const handleCreateTask = () => {
-    if (!newTask.title) return;
+  const handleInviteTA = () => {
+    if (!inviteForm.name || !inviteForm.email) {
+      Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
 
-    const task: Task = {
+    const newTA: TA = {
       id: Date.now().toString(),
-      ...newTask,
-      status: 'Assigned',
+      ...inviteForm,
     };
 
-    setTasks((prev) => [...prev, task]);
-
-    setNewTask({
-      title: '',
-      description: '',
-      assignedTo: selectedTA,
-      dueDate: '',
-    });
+    setTAs(prev => [...prev, newTA]);
+    setInviteForm({ name: '', email: '', role: 'TA', courses: [] });
+    setShowInviteForm(false);
+    Alert.alert('Success', 'TA invitation sent successfully!');
   };
 
-  const filteredTasks = tasks.filter(
-    (task) => task.assignedTo === selectedTA
-  );
-
-  const statusColors: Record<TaskStatus, string> = {
-    Assigned: 'bg-yellow-100 text-yellow-700',
-    'In Progress': 'bg-blue-100 text-blue-700',
-    Completed: 'bg-green-100 text-green-700',
+  const handleRemoveTA = (taId: string) => {
+    Alert.alert(
+      'Remove TA',
+      'Are you sure you want to remove this TA?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => setTAs(prev => prev.filter(ta => ta.id !== taId))
+        },
+      ]
+    );
   };
 
-  return (
-    <View className="flex-1 bg-gray-50 p-6">
-      {/* Header */}
-      <Text className="text-2xl font-bold">TA Manager</Text>
-      <Text className="text-gray-500 mb-6">
-        Create and assign tasks to teaching assistants
-      </Text>
+  const handleUpdateRole = (taId: string, newRole: 'TA' | 'Head TA') => {
+    setTAs(prev => prev.map(ta =>
+      ta.id === taId ? { ...ta, role: newRole } : ta
+    ));
+  };
 
-      <View className="flex-row gap-6 flex-1">
+  const toggleCourse = (course: string) => {
+    setInviteForm(prev => ({
+      ...prev,
+      courses: prev.courses.includes(course)
+        ? prev.courses.filter(c => c !== course)
+        : [...prev.courses, course]
+    }));
+  };
 
-        {/* LEFT: Create Task Panel */}
-        <View className="w-1/3 bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <Text className="text-lg font-semibold mb-4">
-            Create Task
-          </Text>
-
-          <TextInput
-            placeholder="Task Title"
-            value={newTask.title}
-            onChangeText={(text) =>
-              setNewTask({ ...newTask, title: text })
-            }
-            className="border border-gray-300 rounded-lg px-3 py-2 mb-3"
-          />
-
-          <TextInput
-            placeholder="Description"
-            multiline
-            value={newTask.description}
-            onChangeText={(text) =>
-              setNewTask({ ...newTask, description: text })
-            }
-            className="border border-gray-300 rounded-lg px-3 py-2 mb-3"
-          />
-
-          <TextInput
-            placeholder="Due Date"
-            value={newTask.dueDate}
-            onChangeText={(text) =>
-              setNewTask({ ...newTask, dueDate: text })
-            }
-            className="border border-gray-300 rounded-lg px-3 py-2 mb-4"
-          />
-
+  const renderTAItem = ({ item }: { item: TA }) => (
+    <View className="bg-white p-4 rounded-lg mb-3 border border-gray-200">
+      <View className="flex-row justify-between items-start mb-2">
+        <View className="flex-1">
+          <Text className="text-lg font-semibold text-gray-800">{item.name}</Text>
+          <Text className="text-gray-600">{item.email}</Text>
+        </View>
+        <View className="flex-row items-center">
           <TouchableOpacity
-            onPress={handleCreateTask}
-            className="bg-[#C8102E] py-3 rounded-lg items-center"
+            onPress={() => handleUpdateRole(item.id, item.role === 'TA' ? 'Head TA' : 'TA')}
+            className={`px-3 py-1 rounded-full mr-2 ${
+              item.role === 'Head TA' ? 'bg-yellow-100' : 'bg-blue-100'
+            }`}
           >
-            <Text className="text-white font-semibold">
-              Create Task
+            <Text className={`text-xs font-medium ${
+              item.role === 'Head TA' ? 'text-yellow-800' : 'text-blue-800'
+            }`}>
+              {item.role}
             </Text>
           </TouchableOpacity>
-        </View>
-
-        {/* RIGHT: Scrollable Task Menu */}
-        <View className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-
-          {/* TA Tabs */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ alignItems: 'baseline' }}
-            className="border-b border-gray-200 px-4 py-3"
+          <TouchableOpacity
+            onPress={() => handleRemoveTA(item.id)}
+            className="p-1"
           >
-            {TA_LIST.map((ta) => (
+            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View className="flex-row flex-wrap">
+        {item.courses.map(course => (
+          <View key={course} className="bg-gray-100 px-2 py-1 rounded mr-2 mb-1">
+            <Text className="text-xs text-gray-700">{course}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
+  return (
+    <ScrollView className="flex-1 bg-gray-50 p-4">
+      <View className="flex-row justify-between items-center mb-6">
+        <Text className="text-2xl font-bold text-gray-800">TA Management</Text>
+        <TouchableOpacity
+          onPress={() => setShowInviteForm(!showInviteForm)}
+          className="bg-red-700 px-4 py-2 rounded-lg flex-row items-center"
+        >
+          <Ionicons name="person-add" size={16} color="white" />
+          <Text className="text-white font-medium ml-2">
+            {showInviteForm ? 'Cancel' : 'Invite TA'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {showInviteForm && (
+        <View className="bg-white p-4 rounded-lg mb-6 border border-gray-200">
+          <Text className="text-lg font-semibold mb-4">Invite New TA</Text>
+
+          <TextInput
+            placeholder="Full Name"
+            value={inviteForm.name}
+            onChangeText={(text) => setInviteForm(prev => ({ ...prev, name: text }))}
+            className="border border-gray-300 rounded-lg px-3 py-2 mb-3"
+          />
+
+          <TextInput
+            placeholder="Email Address"
+            value={inviteForm.email}
+            onChangeText={(text) => setInviteForm(prev => ({ ...prev, email: text }))}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            className="border border-gray-300 rounded-lg px-3 py-2 mb-3"
+          />
+
+          <Text className="text-sm font-medium mb-2">Role:</Text>
+          <View className="flex-row mb-3">
+            {(['TA', 'Head TA'] as const).map(role => (
               <TouchableOpacity
-                key={ta}
-                onPress={() => {
-                  setSelectedTA(ta);
-                  setNewTask({ ...newTask, assignedTo: ta });
-                }}
-                className={`px-4 py-2 rounded-md mr-2 ${
-                  selectedTA === ta
-                    ? 'bg-[#C8102E]'
-                    : 'bg-gray-200'
+                key={role}
+                onPress={() => setInviteForm(prev => ({ ...prev, role }))}
+                className={`px-4 py-2 rounded-lg mr-2 ${
+                  inviteForm.role === role ? 'bg-red-700' : 'bg-gray-200'
                 }`}
               >
-                <Text
-                  className={`text-sm ${
-                    selectedTA === ta
-                      ? 'text-white'
-                      : 'text-gray-800'
-                  }`}
-                >
-                  {ta}
+                <Text className={`font-medium ${
+                  inviteForm.role === role ? 'text-white' : 'text-gray-700'
+                }`}>
+                  {role}
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
 
-          {/* Task List */}
-          <FlatList
-            data={filteredTasks}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ padding: 16, gap: 12 }}
-            renderItem={({ item }) => (
-              <View className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <View className="flex-row justify-between mb-2">
-                  <Text className="font-semibold text-gray-900">
-                    {item.title}
-                  </Text>
-
-                  <View
-                    className={`px-3 py-1 rounded-full ${
-                      statusColors[item.status].split(' ')[0]
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-medium ${
-                        statusColors[item.status].split(' ')[1]
-                      }`}
-                    >
-                      {item.status}
-                    </Text>
-                  </View>
-                </View>
-
-                <Text className="text-gray-600 mb-3">
-                  {item.description}
+          <Text className="text-sm font-medium mb-2">Assign to Courses:</Text>
+          <View className="flex-row flex-wrap mb-4">
+            {COURSES.map(course => (
+              <TouchableOpacity
+                key={course}
+                onPress={() => toggleCourse(course)}
+                className={`px-3 py-1 rounded-full mr-2 mb-2 ${
+                  inviteForm.courses.includes(course) ? 'bg-red-700' : 'bg-gray-200'
+                }`}
+              >
+                <Text className={`text-xs ${
+                  inviteForm.courses.includes(course) ? 'text-white' : 'text-gray-700'
+                }`}>
+                  {course}
                 </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-                <View className="flex-row items-center">
-                  <Ionicons
-                    name="calendar"
-                    size={14}
-                    color="#F1BE48"
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text className="text-sm text-gray-600">
-                    Due: {item.dueDate || 'No due date'}
-                  </Text>
-                </View>
-              </View>
-            )}
-            showsVerticalScrollIndicator={true}
-          />
+          <TouchableOpacity
+            onPress={handleInviteTA}
+            className="bg-red-700 px-4 py-2 rounded-lg"
+          >
+            <Text className="text-white font-medium text-center">Send Invitation</Text>
+          </TouchableOpacity>
         </View>
-      </View>
-    </View>
+      )}
+
+      <Text className="text-lg font-semibold mb-3">Current TAs ({tas.length})</Text>
+      <FlatList
+        data={tas}
+        keyExtractor={(item) => item.id}
+        renderItem={renderTAItem}
+        scrollEnabled={false}
+        ListEmptyComponent={
+          <Text className="text-center text-gray-500 py-8">No TAs assigned yet</Text>
+        }
+      />
+    </ScrollView>
   );
 }

@@ -7,7 +7,7 @@ const mockTasks = [
   { id: 't3', title: 'Create Team', due: '2026-02-15', status: 'Completed' },
 ];
 
-const TasksScreen: React.FC = () => {
+const AssignmentsScreen: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('All');
 
   // Sort tasks by status priority (In Progress > Not Started > Completed), then by due date
@@ -204,4 +204,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default TasksScreen;
+export default AssignmentsScreen;

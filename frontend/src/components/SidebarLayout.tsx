@@ -3,8 +3,8 @@ import { useNavigation } from "@react-navigation/native";
 import TeamsScreen from "../screens/TeamsScreen";
 import CoursesScreen from "../screens/Courses";
 import TAManager from "../screens/TAManager";
-import TAManagement from "../screens/TAManagement";
-import TasksScreen from "../screens/TasksScreen";
+import TaskAssignmentScreen from "../screens/TaskAssignmentScreen";
+import AssignmentsScreen from "../screens/AssignmentsScreen";
 import { useState } from "react";
 import { UserRole, getUserPermissions } from "../utils/auth";
 
@@ -32,11 +32,11 @@ export default function SidebarLayout({ userRole, onLogout }: { userRole: UserRo
       case "Courses":
         return <CoursesScreen />;
       case "Assign Tasks":
-        return <TAManager />;
+        return <TaskAssignmentScreen />;
       case "TA Manager":
-        return <TAManagement />;
+        return <TAManager />;
       case "Tasks":
-        return <TasksScreen />;
+        return <AssignmentsScreen />;
       default:
         return <TeamsScreen userRole={userRole} />;
     }
