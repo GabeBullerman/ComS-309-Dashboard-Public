@@ -17,7 +17,7 @@ import jakarta.persistence.Table;
 public class Team {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
+    @Column(name = "id", nullable = false)
     private Long id;
 
     @Column(name = "name", nullable = false)
@@ -80,6 +80,10 @@ public class Team {
 
     public void addStudent(User student){
         students.add(student);
+    }
+
+    public void removeStudent(User student){
+        students.remove(student);
     }
 
     public Integer getStatus() {
