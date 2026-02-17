@@ -63,10 +63,12 @@ public class Role {
 
     public void addPermission(Permission p){
         permissions.add(p);
+        p.getRoles().add(this);
     }
 
     public void removePermission(Permission p){
         permissions.remove(p);
+        p.getRoles().remove(this);
     }
 
     // TODO: Create get and set for permissions

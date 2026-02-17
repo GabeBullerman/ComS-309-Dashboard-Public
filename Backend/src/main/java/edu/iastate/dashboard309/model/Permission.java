@@ -40,5 +40,9 @@ public class Permission {
         this.name = name;
     }
 
+    public List<Role> getRoles(){
+        return roles;
+    }
+
     // Potentially create get and set for roles
 }

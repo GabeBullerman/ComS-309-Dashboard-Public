@@ -1,5 +1,6 @@
 package edu.iastate.dashboard309.service;
 
+import java.util.HashSet;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -9,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import edu.iastate.dashboard309.dto.PermissionRequest;
 import edu.iastate.dashboard309.model.Permission;
+import edu.iastate.dashboard309.model.Role;
 import edu.iastate.dashboard309.repository.PermissionRepository;
 
 @Service
@@ -40,5 +42,17 @@ public class PermissionService {
         return permissions.stream()
             .map(p -> p.getName())
             .toList();
+    }
+
+    @Transactional
+    public void deletePermission(Long id){
+        Permission permission = permissionRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Permission not found"));
+
+        for (Role role : new HashSet<>(permission.getRoles())) {
+            role.removePermission(permission);
+        }
+
+        permissionRepository.delete(permission);
     }
 }
