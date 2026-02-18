@@ -27,7 +27,8 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         // TODO: Change to handle multiple roles. Only takes the first role of the user at the moment.
-        return new UserRequest(user.getId(), user.getName(), user.getNetid(), user.getPassword(), user.getRole().get(0).getRoleName());
+        String roleName = user.getRole().isEmpty() ? "UNASSIGNED" : user.getRole().get(0).getRoleName();
+        return new UserRequest(user.getId(), user.getName(), user.getNetid(), user.getPassword(), roleName);
     }
     
     @Transactional 
