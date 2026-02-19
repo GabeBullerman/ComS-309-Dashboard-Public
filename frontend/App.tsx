@@ -10,13 +10,27 @@ import TAManager from "./src/screens/TAManager";
 import TeamsScreen from './src/screens/TeamsScreen';
 import CoursesScreen from "./src/screens/Courses";
 import SidebarLayout from "./src/components/SidebarLayout";
+import TeamDetailScreen from "./src/screens/TeamDetail";
 import { getCurrentUserRole, UserRole } from './src/utils/auth';
+import { Team } from "@/data/teams";
 
 if (Platform.OS === "web") {
   import("./nativewind/output.css"); // Use the built file
 }
 
-const Stack = createNativeStackNavigator();
+// This is how you pass screen props to the screen since navigation doesn't support it directly
+export type RootStackParamList = {
+  Home: undefined;
+  TeamDetail: { team: Team };
+  Teams: {userRole: UserRole; onLogout: () => void};
+  TAManager: undefined;
+  Courses: undefined;
+  Landing: { userEmail: string; onLogout: () => void };
+  Login: { onLogin: (email: string) => void };
+  SidebarLayout: { userRole: UserRole; onLogout: () => void };
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -80,11 +94,9 @@ export default function App() {
           </Stack.Screen>
         ) : (
           <>
-            <Stack.Screen name="Dashboard" options={{ headerShown: false }}>
-              {(props) => <SidebarLayout {...props} userRole={userRole} onLogout={handleLogout} />}
-            </Stack.Screen>
-            <Stack.Screen name="Teams" component={TeamsScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="SidebarLayout" component={SidebarLayout} options={{ headerShown: false }} initialParams={{ userRole, onLogout: handleLogout }} />
             <Stack.Screen name="TAManager" component={TAManager} options={{ headerShown: false }} />
+            <Stack.Screen name="TeamDetail" component={TeamDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Courses" component={CoursesScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Landing" options={{ headerShown: false }}>
               {(props) => <LandingPage {...props} userEmail={userEmail} onLogout={handleLogout} />}
