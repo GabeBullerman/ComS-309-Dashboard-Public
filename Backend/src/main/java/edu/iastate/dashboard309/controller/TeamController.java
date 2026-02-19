@@ -52,29 +52,36 @@ public class TeamController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Team create(@Valid @RequestBody TeamRequest request) {
-        if (request.ta() != null && !userRepository.existsByNetid(request.ta().netid())) {
+    public TeamRequest create(@Valid @RequestBody TeamRequest request) {
+        if (request.taNetid() != null && !userRepository.existsByNetid(request.taNetid())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TA does not exist");
         }
         Team team = new Team();
         applyRequest(team, request);
-        return teamRepository.save(team);
+        teamRepository.save(team);
+        return teamService.getTeamById(team.getId());
     }
 
     @PutMapping("/{id}")
-    public Team update(@PathVariable Long id, @Valid @RequestBody TeamRequest request) {
-        if (request.ta() != null && !userRepository.existsByNetid(request.ta().netid())) {
+    public TeamRequest update(@PathVariable Long id, @Valid @RequestBody TeamRequest request) {
+        if (request.taNetid() != null && !userRepository.existsByNetid(request.taNetid())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TA does not exist");
         }
         Team team = teamRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
         applyRequest(team, request);
-        return teamRepository.save(team);
+        teamRepository.save(team);
+        return teamService.getTeamById(team.getId());
     }
 
-    @PutMapping("/{id}/{studentId}")
+    @PutMapping("/{id}/add/{studentId}")
     public void addStudent(@PathVariable Long id, @PathVariable Long studentId){
         teamService.addStudentToTeam(id, studentId);
+    }
+
+    @PutMapping("/{id}/remove/{studentId}")
+    public void removeStudent(@PathVariable Long id, @PathVariable Long studentId){
+        teamService.removeStudentFromTeam(id, studentId);
     }
 
     @DeleteMapping("/{id}")
@@ -87,10 +94,10 @@ public class TeamController {
     }
 
     private void applyRequest(Team team, TeamRequest request) {
-        if (request.ta() != null && !userRepository.existsByNetid(request.ta().netid())) {
+        if (request.taNetid() != null && !userRepository.existsByNetid(request.taNetid())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TA does not exist");
         }
-        User ta = userRepository.findByNetid(request.ta().netid())
+        User ta = userRepository.findByNetid(request.taNetid())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "TA not found"));
         team.setName(request.name());
         team.setSection(request.section());

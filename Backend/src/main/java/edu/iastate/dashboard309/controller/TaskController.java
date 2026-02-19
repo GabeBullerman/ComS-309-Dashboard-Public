@@ -5,6 +5,7 @@ import edu.iastate.dashboard309.model.Task;
 import edu.iastate.dashboard309.model.User;
 import edu.iastate.dashboard309.repository.TaskRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
+import edu.iastate.dashboard309.service.TaskService;
 import jakarta.validation.Valid;
 import java.util.List;
 
@@ -16,7 +17,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -26,48 +26,58 @@ import org.springframework.web.server.ResponseStatusException;
 public class TaskController {
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final TaskService taskService;
 
-    public TaskController(TaskRepository taskRepository, UserRepository userRepository) {
+    public TaskController(TaskRepository taskRepository, UserRepository userRepository, TaskService taskService) {
         this.taskRepository = taskRepository;
         this.userRepository = userRepository;
+        this.taskService = taskService;
     }
 
     @GetMapping
-    public List<Task> list(@RequestParam(required = false) String taNetid) {
-        User ta = userRepository.findByNetid(taNetid)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "TA not found"));
-        if (taNetid == null || taNetid.isBlank()) {
-            return taskRepository.findAll();
-        }
-        return taskRepository.findByAssignedTo(ta);
+    public List<TaskRequest> list(){
+        return taskService.getAllTasks();
+    }
+    
+    @GetMapping("/assigned-to/{netid}")
+    public List<TaskRequest> getAssignedTo(@PathVariable String netid) {
+        return taskService.getTaskByAssignedToNetid(netid);
+    }
+
+    @GetMapping("/assigned-by/{netid}")
+    public List<TaskRequest> getAssignedBy(@PathVariable String netid) {
+        return taskService.getTaskByAssignedByNetid(netid);
     }
 
     @GetMapping("/{id}")
-    public Task get(@PathVariable Long id) {
-        return taskRepository.findById(id)
+    public TaskRequest get(@PathVariable Long id) {
+        taskRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
+        return taskService.getTaskById(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Task create(@Valid @RequestBody TaskRequest request) {
-        if (!userRepository.existsByNetid(request.taNetid())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TA does not exist");
+    public TaskRequest create(@Valid @RequestBody TaskRequest request) {
+        if (!userRepository.existsByNetid(request.assignedToNetid()) || !userRepository.existsByNetid(request.assignedByNetid())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TA does not exist");
         }
         Task task = new Task();
         applyRequest(task, request);
-        return taskRepository.save(task);
+        taskRepository.save(task);
+        return taskService.getTaskById(task.getId());
     }
 
     @PutMapping("/{id}")
-    public Task update(@PathVariable Long id, @Valid @RequestBody TaskRequest request) {
-        if (!userRepository.existsByNetid(request.taNetid())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TA does not exist");
+    public TaskRequest update(@PathVariable Long id, @Valid @RequestBody TaskRequest request) {
+        if (!userRepository.existsByNetid(request.assignedToNetid()) || !userRepository.existsByNetid(request.assignedByNetid())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TA does not exist");
         }
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
         applyRequest(task, request);
-        return taskRepository.save(task);
+        taskRepository.save(task);
+        return taskService.getTaskById(task.getId());
     }
 
     @DeleteMapping("/{id}")
@@ -80,10 +90,14 @@ public class TaskController {
     }
 
     private void applyRequest(Task task, TaskRequest request) {
-        User ta = userRepository.findByNetid(request.taNetid())
+        User assignedTo = userRepository.findByNetid(request.assignedToNetid())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "TA not found"));
+        User assignedBy = userRepository.findByNetid(request.assignedByNetid())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "TA not found"));
         task.setTitle(request.title());
         task.setDescription(request.description());
-        task.setAssignedTo(ta);
+        task.setDueDate(request.dueDate());
+        task.setAssignedTo(assignedTo);
+        task.setAssignedBy(assignedBy);
     }
 }

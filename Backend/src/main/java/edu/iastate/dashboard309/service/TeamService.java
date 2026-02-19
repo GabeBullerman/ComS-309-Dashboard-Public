@@ -40,7 +40,7 @@ public class TeamService {
             .map(u -> userService.getUserById(u.getId()))
             .toList();
         
-        return new TeamRequest(team.getName(), team.getSection(), ta, students, team.getStatus(), team.getTaNotes(), team.getGitlab());
+        return new TeamRequest(team.getId(), team.getName(), team.getSection(), ta.netid(), students, team.getStatus(), team.getTaNotes(), team.getGitlab());
     }
 
     @Transactional
@@ -71,5 +71,15 @@ public class TeamService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
         team.addStudent(student);
         student.setTeam(team);
+    }
+
+    @Transactional
+    public void removeStudentFromTeam(Long teamId, Long studentId){
+        Team team = teamRepository.findById(teamId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+        User student = userRepository.findById(studentId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
+        team.removeStudent(student);
+        student.setTeam(null);
     }
 }

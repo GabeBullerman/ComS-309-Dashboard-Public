@@ -3,6 +3,7 @@ package edu.iastate.dashboard309.controller;
 import edu.iastate.dashboard309.dto.PermissionRequest;
 import edu.iastate.dashboard309.model.Permission;
 import edu.iastate.dashboard309.repository.PermissionRepository;
+import edu.iastate.dashboard309.service.PermissionService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -21,35 +22,37 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/permissions")
 public class PermissionController {
     private final PermissionRepository permissionRepository;
+    private final PermissionService permissionService;
 
-    public PermissionController(PermissionRepository permissionRepository) {
+    public PermissionController(PermissionRepository permissionRepository, PermissionService permissionService) {
         this.permissionRepository = permissionRepository;
+        this.permissionService = permissionService;
     }
 
     @GetMapping
-    public List<Permission> list() {
-        return permissionRepository.findAll();
+    public List<PermissionRequest> list() {
+        return permissionService.getAllPermissions();
     }
 
     @GetMapping("/{id}")
-    public Permission get(@PathVariable Long id) {
-        return permissionRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Permission not found"));
+    public PermissionRequest get(@PathVariable Long id) {
+        return permissionService.getPermissionById(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Permission create(@Valid @RequestBody PermissionRequest request) {
+    public PermissionRequest create(@Valid @RequestBody PermissionRequest request) {
         if (permissionRepository.existsByName(request.name())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Permission already exists");
         }
         Permission permission = new Permission();
         permission.setName(request.name());
-        return permissionRepository.save(permission);
+        permissionRepository.save(permission);
+        return permissionService.getPermissionById(permission.getId());
     }
 
     @PutMapping("/{id}")
-    public Permission update(@PathVariable Long id, @Valid @RequestBody PermissionRequest request) {
+    public PermissionRequest update(@PathVariable Long id, @Valid @RequestBody PermissionRequest request) {
         Permission permission = permissionRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Permission not found"));
         if (!permission.getName().equals(request.name())
@@ -57,7 +60,8 @@ public class PermissionController {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Permission already exists");
         }
         permission.setName(request.name());
-        return permissionRepository.save(permission);
+        permissionRepository.save(permission);
+        return permissionService.getPermissionById(permission.getId());
     }
 
     @DeleteMapping("/{id}")
@@ -66,6 +70,6 @@ public class PermissionController {
         if (!permissionRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Permission not found");
         }
-        permissionRepository.deleteById(id);
+        permissionService.deletePermission(id);
     }
 }

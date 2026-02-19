@@ -2,7 +2,9 @@ package edu.iastate.dashboard309.controller;
 
 import edu.iastate.dashboard309.dto.RoleRequest;
 import edu.iastate.dashboard309.model.Role;
+import edu.iastate.dashboard309.repository.PermissionRepository;
 import edu.iastate.dashboard309.repository.RoleRepository;
+import edu.iastate.dashboard309.service.RoleService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -20,44 +22,79 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/roles")
 public class RoleController {
-    private final RoleRepository roleRepository;
 
-    public RoleController(RoleRepository roleRepository) {
+    private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
+    private final RoleService roleService;
+
+    public RoleController(RoleRepository roleRepository, PermissionRepository permissionRepository, RoleService roleService) {
         this.roleRepository = roleRepository;
+        this.permissionRepository = permissionRepository;;
+        this.roleService = roleService;
     }
 
     @GetMapping
-    public List<Role> list() {
-        return roleRepository.findAll();
+    public List<RoleRequest> list() {
+        return roleService.getAllRoles();
     }
 
     @GetMapping("/{id}")
-    public Role get(@PathVariable Long id) {
-        return roleRepository.findById(id)
+    public RoleRequest get(@PathVariable Long id) {
+        roleRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
+        return roleService.getRoleById(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Role create(@Valid @RequestBody RoleRequest request) {
+    public RoleRequest create(@Valid @RequestBody RoleRequest request) {
         if (roleRepository.existsByRoleName(request.roleName())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Role already exists");
         }
         Role role = new Role();
         role.setRoleName(request.roleName());
-        return roleRepository.save(role);
+        roleRepository.save(role);
+        return roleService.getRoleById(role.getId());
     }
 
     @PutMapping("/{id}")
-    public Role update(@PathVariable Long id, @Valid @RequestBody RoleRequest request) {
+    public RoleRequest update(@PathVariable Long id, @Valid @RequestBody RoleRequest request) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
         if (!role.getRoleName().equals(request.roleName())
                 && roleRepository.existsByRoleName(request.roleName())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Role already exists");
         }
+        for(String permissions : request.permissions()){
+            if(!permissionRepository.existsByName(permissions)){
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Permission not found");
+            }
+        }
         role.setRoleName(request.roleName());
-        return roleRepository.save(role);
+        roleRepository.save(role);
+        return roleService.getRoleById(role.getId());
+    }
+
+    @PutMapping("/{id}/permissions/add/{permissionName}")
+    public RoleRequest addPermission(@PathVariable Long id, @PathVariable String permissionName){
+        Role role = roleRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
+        permissionRepository.findByName(permissionName)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Permission not found"));
+        roleService.addPermissionToRole(id, permissionName);
+        roleRepository.save(role);
+        return roleService.getRoleById(id);
+    }
+
+    @PutMapping("/{id}/permissions/remove/{permissionName}")
+    public RoleRequest removePermission(@PathVariable Long id, @PathVariable String permissionName){
+        Role role = roleRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
+        permissionRepository.findByName(permissionName)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Permission not found"));
+        roleService.removePermissionToRole(id, permissionName);
+        roleRepository.save(role);
+        return roleService.getRoleById(id);
     }
 
     @DeleteMapping("/{id}")
