@@ -1,5 +1,6 @@
 package edu.iastate.dashboard309.model;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.persistence.Column;
@@ -29,7 +30,7 @@ public class Role {
         joinColumns = @JoinColumn(name = "role_id"),
         inverseJoinColumns = @JoinColumn(name = "permission_id")
     )
-    private List<Permission> permissions;
+    private List<Permission> permissions = new ArrayList<>();
 
     public Long getId() {
         return id;
