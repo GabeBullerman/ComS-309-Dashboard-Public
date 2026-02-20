@@ -1,22 +1,24 @@
 import { View, Text, TouchableOpacity, Image } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import TeamsScreen from "../screens/TeamsScreen";
 import CoursesScreen from "../screens/Courses";
+import TeamsScreen from "../screens/TeamsScreen";
 import TAManager from "../screens/TAManager";
 import TaskAssignmentScreen from "../screens/TaskAssignmentScreen";
 import AssignmentsScreen from "../screens/AssignmentsScreen";
 import { useState } from "react";
-import { UserRole, getUserPermissions } from "../utils/auth";
+import { getUserPermissions } from "../utils/auth";
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../App';
 
-export default function SidebarLayout({ userRole, onLogout }: { userRole: UserRole; onLogout: () => void }) {
+type Props = NativeStackScreenProps<RootStackParamList, 'SidebarLayout'>;
+
+export default function SidebarLayout({route}: Props) {
   const [activeScreen, setActiveScreen] = useState("Teams");
-
   // Get permissions based on role
-  const permissions = getUserPermissions(userRole);
+  const permissions = getUserPermissions(route.params.userRole);
 
   // Placeholder user info
   const name = "John Smith";
-  const role = userRole;
+  const role = route.params.userRole;
 
   // Generate initials for user
   const initials = name
@@ -28,7 +30,7 @@ export default function SidebarLayout({ userRole, onLogout }: { userRole: UserRo
   const renderScreen = () => {
     switch (activeScreen) {
       case "Teams":
-        return <TeamsScreen userRole={userRole} />;
+        return <TeamsScreen userRole={route.params.userRole} onLogout={route.params.onLogout} />;
       case "Courses":
         return <CoursesScreen />;
       case "Assign Tasks":
@@ -38,7 +40,7 @@ export default function SidebarLayout({ userRole, onLogout }: { userRole: UserRo
       case "Tasks":
         return <AssignmentsScreen />;
       default:
-        return <TeamsScreen userRole={userRole} />;
+        return <TeamsScreen userRole={route.params.userRole} onLogout={route.params.onLogout} />;
     }
   };
 
@@ -110,7 +112,7 @@ export default function SidebarLayout({ userRole, onLogout }: { userRole: UserRo
 
           {/* Logout Button */}
           <TouchableOpacity
-            onPress={onLogout}
+            onPress={route.params.onLogout}
             className="mt-4 px-4 py-2 bg-red-600 rounded-lg"
           >
             <Text className="text-white text-sm font-medium text-center">

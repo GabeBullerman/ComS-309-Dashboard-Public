@@ -22,8 +22,11 @@ public class Task {
     @Column(name = "title", nullable = false)
     private String title;
 
-    @Column(name = "date", nullable = false)
-    private LocalDateTime date;
+    @Column(name = "assigned_date")
+    private LocalDateTime assignedDate = LocalDateTime.now();
+
+    @Column(name = "due_date")
+    private LocalDateTime dueDate;
 
     @Column(name = "description")
     private String description;
@@ -52,6 +55,14 @@ public class Task {
         this.title = title;
     }
 
+    public LocalDateTime getDueDate(){
+        return dueDate;
+    }
+
+    public void setDueDate(LocalDateTime date){
+        dueDate = date;
+    }
+
     public String getDescription() {
         return description;
     }
@@ -73,6 +84,6 @@ public class Task {
     }
 
     public void setAssignedTo(User reciever){
-        assignedBy = reciever;
+        assignedTo = reciever;
     }
 }

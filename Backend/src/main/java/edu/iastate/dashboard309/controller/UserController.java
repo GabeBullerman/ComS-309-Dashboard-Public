@@ -45,9 +45,14 @@ public class UserController {
         return userService.getUserById(id);
     }
 
+    @GetMapping("/role/{role}")
+    public List<UserRequest> getUsersWithRole(@PathVariable String role){
+        return userService.getUsersWithRoleName(role);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public User create(@Valid @RequestBody UserRequest request) {
+    public UserRequest create(@Valid @RequestBody UserRequest request) {
         if (userRepository.existsByNetid(request.netid())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Netid already exists");
         }
@@ -60,11 +65,13 @@ public class UserController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
         user.setRole(role);
 
-        return userRepository.save(user);
+        userRepository.save(user);
+
+        return userService.getUserById(user.getId());
     }
 
     @PutMapping("/{id}")
-    public User update(@PathVariable Long id, @Valid @RequestBody UserRequest request) {
+    public UserRequest update(@PathVariable Long id, @Valid @RequestBody UserRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         if (!user.getNetid().equals(request.netid()) && userRepository.existsByNetid(request.netid())) {
@@ -78,7 +85,9 @@ public class UserController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
         user.setRole(role);
 
-        return userRepository.save(user);
+        userRepository.save(user);
+
+        return userService.getUserById(user.getId());
     }
 
     @DeleteMapping("/{id}")
@@ -88,5 +97,9 @@ public class UserController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
         userRepository.deleteById(id);
+
+        // Remove all roles from user
+        // Remove user from all teams
+        //
     }
 }
