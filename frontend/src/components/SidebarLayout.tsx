@@ -30,7 +30,7 @@ export default function SidebarLayout({route}: Props) {
   const renderScreen = () => {
     switch (activeScreen) {
       case "Teams":
-        return <TeamsScreen userRole={route.params.userRole} onLogout={route.params.onLogout} />;
+        return <TeamsScreen userRole={route.params.userRole} />;
       case "Courses":
         return <CoursesScreen />;
       case "Assign Tasks":
@@ -40,7 +40,7 @@ export default function SidebarLayout({route}: Props) {
       case "Tasks":
         return <AssignmentsScreen />;
       default:
-        return <TeamsScreen userRole={route.params.userRole} onLogout={route.params.onLogout} />;
+        return <TeamsScreen userRole={route.params.userRole} />;
     }
   };
 
