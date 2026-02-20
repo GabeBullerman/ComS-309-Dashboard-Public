@@ -10,19 +10,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { teamsData } from '../data/teams';
 import { TeamCard } from '../components/TeamCard';
 import { getUserPermissions, UserRole } from '../utils/auth';
-import { NativeStackScreenProps, NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
+import TeamDetailsScreen from './TeamDetail';
 
 type StatusFilter = 'All' | 'Good' | 'Moderate' | 'Poor';
 type SemesterFilter = 'All' | 'Spring 2026' | 'Fall 2025';
 
 interface Props {
   userRole: UserRole;
-  onLogout: () => void;
 }
 
-export default function ClassTeamsScreen({ userRole, onLogout }: Props) {
+export default function ClassTeamsScreen({ userRole }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const permissions = getUserPermissions(userRole);
 
@@ -163,7 +163,7 @@ export default function ClassTeamsScreen({ userRole, onLogout }: Props) {
             <View style={{ width: '24.5%' }}>
               <TeamCard {...item} onPress={() => {  
                 setSelectedTeam(item);
-                navigation.navigate('TeamDetail', {team: item});
+                navigation.navigate('TeamDetail', { team: item });
               }}/>
             </View>
           )}

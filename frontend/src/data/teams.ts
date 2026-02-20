@@ -1,7 +1,10 @@
+import { Image } from "react-native";
+
 export interface TeamMember {
   name: string;
   initials: string;
   color: string;
+  photo: ReturnType<typeof Image.resolveAssetSource> | string;
 }
 
 export interface Team {
@@ -25,10 +28,10 @@ export const teamsData: Team[] = [
     section: 1,
     status: 'Good',
     members: [
-      { name: 'Alex Johnson', initials: 'AJ', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'Emma Chen', initials: 'EC', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'Michael Brown', initials: 'MB', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'Sarah Davis', initials: 'SD', color: 'bg-[#F1BE48] text-gray-800' },
+      { name: 'Alex Johnson', initials: 'AJ', color: 'bg-[#F1BE48] text-gray-800' , photo: require('../Images/PersonIcon.png')},
+      { name: 'Emma Chen', initials: 'EC', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'Michael Brown', initials: 'MB', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'Sarah Davis', initials: 'SD', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
     ],
   },
   {
@@ -40,9 +43,9 @@ export const teamsData: Team[] = [
     section: 2,
     status: 'Good',
     members: [
-      { name: 'David Wilson', initials: 'DW', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'James Miller', initials: 'JM', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'Robert Taylor', initials: 'RT', color: 'bg-[#F1BE48] text-gray-800' },
+      { name: 'David Wilson', initials: 'DW', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'James Miller', initials: 'JM', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'Robert Taylor', initials: 'RT', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
     ],
   },
   {
@@ -54,11 +57,11 @@ export const teamsData: Team[] = [
     section: 5,
     status: 'Moderate',
     members: [
-      { name: 'Alice Wang', initials: 'AW', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'Caleb Anderson', initials: 'CA', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'Nina Thompson', initials: 'NT', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'Olivia Martinez', initials: 'OM', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'Thomas Johnson', initials: 'TJ', color: 'bg-[#F1BE48] text-gray-800' },
+      { name: 'Alice Wang', initials: 'AW', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'Caleb Anderson', initials: 'CA', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'Nina Thompson', initials: 'NT', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'Olivia Martinez', initials: 'OM', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'Thomas Johnson', initials: 'TJ', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
     ],
   },
   {
@@ -70,8 +73,8 @@ export const teamsData: Team[] = [
     section: 1,
     status: 'Good',
     members: [
-      { name: 'Benjamin Moore', initials: 'BM', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'James Johnson', initials: 'JJ', color: 'bg-[#F1BE48] text-gray-800' },
+      { name: 'Benjamin Moore', initials: 'BM', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'James Johnson', initials: 'JJ', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
     ],
   },
   {
@@ -83,10 +86,10 @@ export const teamsData: Team[] = [
     section: 2,
     status: 'Poor',
     members: [
-      { name: 'Derek Hill', initials: 'DH', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'Olivia Martinez', initials: 'OM', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'Mason Thompson', initials: 'MT', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'Jasmine Smith', initials: 'JS', color: 'bg-[#F1BE48] text-gray-800' },
+      { name: 'Derek Hill', initials: 'DH', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'Olivia Martinez', initials: 'OM', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'Mason Thompson', initials: 'MT', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'Jasmine Smith', initials: 'JS', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
     ],
   },
   {
@@ -98,9 +101,9 @@ export const teamsData: Team[] = [
     section: 3,
     status: 'Good',
     members: [
-      { name: 'William Chen', initials: 'WC', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'Ethan Rodriguez', initials: 'ER', color: 'bg-[#F1BE48] text-gray-800' },
-      { name: 'Jack Liu', initials: 'JL', color: 'bg-[#F1BE48] text-gray-800' },
+      { name: 'William Chen', initials: 'WC', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'Ethan Rodriguez', initials: 'ER', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
+      { name: 'Jack Liu', initials: 'JL', color: 'bg-[#F1BE48] text-gray-800', photo: require('../Images/PersonIcon.png') },
     ],
   },
 ];
