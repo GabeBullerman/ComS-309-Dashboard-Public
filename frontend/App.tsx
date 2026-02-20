@@ -22,7 +22,7 @@ if (Platform.OS === "web") {
 export type RootStackParamList = {
   Home: undefined;
   TeamDetail: { team: Team };
-  Teams: {userRole: UserRole; onLogout: () => void};
+  Teams: {userRole: UserRole};
   TAManager: undefined;
   Courses: undefined;
   Landing: { userEmail: string; onLogout: () => void };
