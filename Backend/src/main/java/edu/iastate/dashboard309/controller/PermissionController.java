@@ -29,16 +29,19 @@ public class PermissionController {
         this.permissionService = permissionService;
     }
 
+    // @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping
     public List<PermissionRequest> list() {
         return permissionService.getAllPermissions();
     }
 
+    // @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping("/{id}")
     public PermissionRequest get(@PathVariable Long id) {
         return permissionService.getPermissionById(id);
     }
 
+    // @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PermissionRequest create(@Valid @RequestBody PermissionRequest request) {
@@ -51,6 +54,7 @@ public class PermissionController {
         return permissionService.getPermissionById(permission.getId());
     }
 
+    // @PreAuthorize("hasAuthority('ADMIN')")
     @PutMapping("/{id}")
     public PermissionRequest update(@PathVariable Long id, @Valid @RequestBody PermissionRequest request) {
         Permission permission = permissionRepository.findById(id)
@@ -64,6 +68,7 @@ public class PermissionController {
         return permissionService.getPermissionById(permission.getId());
     }
 
+    // @PreAuthorize("hasAuthority('ADMIN')")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

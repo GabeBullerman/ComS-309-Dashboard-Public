@@ -2,6 +2,7 @@ package edu.iastate.dashboard309.service;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -38,7 +39,7 @@ public class PermissionService {
     }
 
     @Transactional
-    public List<String> getPermissionNames(List<Permission> permissions){
+    public List<String> getPermissionNames(Set<Permission> permissions){
         return permissions.stream()
             .map(p -> p.getName())
             .toList();
