@@ -1,7 +1,8 @@
 package edu.iastate.dashboard309.model;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -30,7 +31,7 @@ public class Role {
         joinColumns = @JoinColumn(name = "role_id"),
         inverseJoinColumns = @JoinColumn(name = "permission_id")
     )
-    private List<Permission> permissions = new ArrayList<>();
+    private Set<Permission> permissions = new HashSet<>();
 
     public Long getId() {
         return id;
@@ -48,7 +49,7 @@ public class Role {
         this.roleName = roleName;
     }
 
-    public List<Permission> getPermissions(){
+    public Set<Permission> getPermissions(){
         return permissions;
     }
 
@@ -58,7 +59,7 @@ public class Role {
             .toList();
     }
 
-    public void setPermissions(List<Permission> p){
+    public void setPermissions(Set<Permission> p){
         permissions = p;
     }
 

@@ -1,6 +1,7 @@
 package edu.iastate.dashboard309.model;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -40,7 +41,7 @@ public class User {
         joinColumns = @JoinColumn(name = "user_id"),
         inverseJoinColumns = @JoinColumn(name = "role_id")
     )
-    private List<Role> roles = new ArrayList<>();;
+    private Set<Role> roles = new HashSet<>();;
 
     @ManyToOne
     @JoinColumn(name = "team_id")
@@ -75,6 +76,10 @@ public class User {
         return netid;
     }
 
+    public String getUsername(){
+        return netid;
+    }
+
     public void setNetid(String netid) {
         this.netid = netid;
     }
@@ -87,15 +92,33 @@ public class User {
         this.password = password;
     }
 
-    public List<Role> getRole(){
+    public Set<Role> getRole(){
         return roles;
     }
 
-    public void setRole(Role role){
-        if(!roles.isEmpty()){
-            roles.clear();
+    public List<String> getRoleNames(){
+        List<String> roleNames = new ArrayList<String>();
+        for(Role role : roles){
+            roleNames.add(role.getRoleName());
         }
+        return roleNames;
+    }
+
+    public void setRole(Role role){
         roles.add(role);
+    }
+
+    public Set<String> getPermissions(){
+        Set<String> permissions = new HashSet<>();
+        Set<Role> roles = getRole();
+        for(Role role : roles){
+            for(String p : role.getPermissionNames()){
+                if(!permissions.contains(p)){
+                    permissions.add(p);
+                }
+            }
+        }
+        return permissions;
     }
 
     public void setTeam(Team team){

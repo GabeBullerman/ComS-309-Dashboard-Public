@@ -49,6 +49,7 @@ public class TaskController {
         return taskService.getTaskByAssignedByNetid(netid);
     }
 
+    // @PreAuthorize("hasAuthority('SEE_TASKS')")
     @GetMapping("/{id}")
     public TaskRequest get(@PathVariable Long id) {
         taskRepository.findById(id)
@@ -56,6 +57,7 @@ public class TaskController {
         return taskService.getTaskById(id);
     }
 
+    // @PreAuthorize("hasAuthority('CREATE_TASKS')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TaskRequest create(@Valid @RequestBody TaskRequest request) {
@@ -80,6 +82,7 @@ public class TaskController {
         return taskService.getTaskById(task.getId());
     }
 
+    // @PreAuthorize("hasAuthority('DELETE_TASKS')")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

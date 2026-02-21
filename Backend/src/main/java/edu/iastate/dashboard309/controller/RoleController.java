@@ -33,11 +33,13 @@ public class RoleController {
         this.roleService = roleService;
     }
 
+    // @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping
     public List<RoleRequest> list() {
         return roleService.getAllRoles();
     }
 
+    // @PreAuthorize("hasAuthority('ADMIN')")
     @GetMapping("/{id}")
     public RoleRequest get(@PathVariable Long id) {
         roleRepository.findById(id)
@@ -45,6 +47,7 @@ public class RoleController {
         return roleService.getRoleById(id);
     }
 
+    // @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public RoleRequest create(@Valid @RequestBody RoleRequest request) {
@@ -57,6 +60,7 @@ public class RoleController {
         return roleService.getRoleById(role.getId());
     }
 
+    // @PreAuthorize("hasAuthority('ADMIN')")
     @PutMapping("/{id}")
     public RoleRequest update(@PathVariable Long id, @Valid @RequestBody RoleRequest request) {
         Role role = roleRepository.findById(id)
@@ -75,6 +79,7 @@ public class RoleController {
         return roleService.getRoleById(role.getId());
     }
 
+    // @PreAuthorize("hasAuthority('ADMIN')")
     @PutMapping("/{id}/permissions/add/{permissionName}")
     public RoleRequest addPermission(@PathVariable Long id, @PathVariable String permissionName){
         Role role = roleRepository.findById(id)
@@ -86,6 +91,7 @@ public class RoleController {
         return roleService.getRoleById(id);
     }
 
+    // @PreAuthorize("hasAuthority('ADMIN')")
     @PutMapping("/{id}/permissions/remove/{permissionName}")
     public RoleRequest removePermission(@PathVariable Long id, @PathVariable String permissionName){
         Role role = roleRepository.findById(id)
@@ -97,6 +103,7 @@ public class RoleController {
         return roleService.getRoleById(id);
     }
 
+    // @PreAuthorize("hasAuthority('ADMIN')")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {

@@ -1,13 +1,13 @@
 package edu.iastate.dashboard309.dto;
 
-import jakarta.validation.constraints.NotBlank;
+import java.util.List;
 
 public record UserRequest(
         Long id,
-        @NotBlank String name,
-        @NotBlank String netid,
-        @NotBlank String password,
-        // TODO: Change to be able to have multiple roles
-        @NotBlank String role
+        String name,
+        String netid,
+        String password,
+        List<String> role,
+        List<String> permission
 ) {
 }

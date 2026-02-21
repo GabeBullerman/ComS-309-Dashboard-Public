@@ -9,6 +9,7 @@ import edu.iastate.dashboard309.service.UserService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 @RestController
 @RequestMapping("/api/users")
@@ -40,6 +43,12 @@ public class UserController {
         return userService.getAllUsers();
     }
 
+    @GetMapping("/self")
+    public UserRequest getSelf(Authentication authentication) {
+        return userService.getUserByNetid(authentication.getName());
+    }
+    
+
     @GetMapping("/{id}")
     public UserRequest get(@PathVariable Long id) {
         return userService.getUserById(id);
@@ -60,10 +69,12 @@ public class UserController {
         user.setName(request.name());
         user.setNetid(request.netid());
         user.setPassword(request.password());
-
-        Role role = roleRepository.findByRoleName(request.role())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
-        user.setRole(role);
+        System.out.println(request.role());
+        for(String roleName : request.role()){
+            Role role = roleRepository.findByRoleName(roleName)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
+            user.setRole(role);
+        }
 
         userRepository.save(user);
 
@@ -81,9 +92,11 @@ public class UserController {
         user.setNetid(request.netid());
         user.setPassword(request.password());
 
-        Role role = roleRepository.findByRoleName(request.role())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
-        user.setRole(role);
+        for(String role : request.role()){
+            Role userRole = roleRepository.findByRoleName(role)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
+            user.setRole(userRole);
+        }
 
         userRepository.save(user);
 

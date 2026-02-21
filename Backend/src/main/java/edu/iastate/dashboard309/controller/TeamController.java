@@ -11,6 +11,7 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,6 +37,7 @@ public class TeamController {
         this.teamService = teamService;
     }
 
+    // @PreAuthorize("hasAuthority('SEE_ALL_TEAMS')")
     @GetMapping
     public List<TeamRequest> list(@RequestParam(required = false) String taNetid) {
         if (taNetid == null || taNetid.isBlank()) {
@@ -50,6 +52,7 @@ public class TeamController {
         return teamService.getTeamById(id);
     }
 
+    // @PreAuthorize("hasAuthority('CREATE_TEAMS')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public TeamRequest create(@Valid @RequestBody TeamRequest request) {
@@ -62,6 +65,7 @@ public class TeamController {
         return teamService.getTeamById(team.getId());
     }
 
+    // @PreAuthorize("hasAuthority('UPDATE_TEAMS')")
     @PutMapping("/{id}")
     public TeamRequest update(@PathVariable Long id, @Valid @RequestBody TeamRequest request) {
         if (request.taNetid() != null && !userRepository.existsByNetid(request.taNetid())) {
@@ -74,16 +78,19 @@ public class TeamController {
         return teamService.getTeamById(team.getId());
     }
 
+    // @PreAuthorize("hasAuthority('UPDATE_TEAMS')")
     @PutMapping("/{id}/add/{studentId}")
     public void addStudent(@PathVariable Long id, @PathVariable Long studentId){
         teamService.addStudentToTeam(id, studentId);
     }
 
+    // @PreAuthorize("hasAuthority('UPDATE_TEAMS')")
     @PutMapping("/{id}/remove/{studentId}")
     public void removeStudent(@PathVariable Long id, @PathVariable Long studentId){
         teamService.removeStudentFromTeam(id, studentId);
     }
 
+    // @PreAuthorize("hasAuthority('DELETE_TEAMS')")
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
@@ -99,11 +106,23 @@ public class TeamController {
         }
         User ta = userRepository.findByNetid(request.taNetid())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "TA not found"));
-        team.setName(request.name());
-        team.setSection(request.section());
-        team.setTa(ta);
-        team.setStatus(request.status());
-        team.setTaNotes(request.taNotes());
-        team.setGitlab(request.gitlab());
+        if(request.name() != null){
+            team.setName(request.name());
+        }
+        if(request.section() != null){
+            team.setSection(request.section());
+        }
+        if(request.taNetid() != null){
+            team.setTa(ta);
+        }
+        if(request.status() != null){
+            team.setStatus(request.status());
+        }
+        if(request.taNotes() != null){
+            team.setTaNotes(request.taNotes());
+        }
+        if(request.gitlab() != null){
+            team.setGitlab(request.gitlab());
+        }
     }
 }
