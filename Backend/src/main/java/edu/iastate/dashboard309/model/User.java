@@ -125,6 +125,7 @@ public class User {
         this.team = team;
     }
 
-    // TODO: Create get users by role, or team. 
-    // TODO: Create setters.
+    public Team getTeam() {
+        return team;
+    }
 }

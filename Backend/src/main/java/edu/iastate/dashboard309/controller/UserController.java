@@ -1,10 +1,12 @@
 package edu.iastate.dashboard309.controller;
 
+import edu.iastate.dashboard309.dto.TeamRequest;
 import edu.iastate.dashboard309.dto.UserRequest;
 import edu.iastate.dashboard309.model.Role;
 import edu.iastate.dashboard309.model.User;
 import edu.iastate.dashboard309.repository.RoleRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
+import edu.iastate.dashboard309.service.TeamService;
 import edu.iastate.dashboard309.service.UserService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -20,7 +22,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 @RestController
@@ -29,13 +30,16 @@ public class UserController {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserService userService;
+    private final TeamService teamService;
 
     public UserController(UserRepository userRepository,
                           RoleRepository roleRepository,
-                          UserService userService) {
+                          UserService userService,
+                          TeamService teamService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userService = userService;
+        this.teamService = teamService;
     }
 
     @GetMapping
@@ -52,6 +56,16 @@ public class UserController {
     @GetMapping("/{id}")
     public UserRequest get(@PathVariable Long id) {
         return userService.getUserById(id);
+    }
+
+    @GetMapping("/netid/{netid}")
+    public UserRequest getByNetid(@PathVariable String netid) {
+        return userService.getUserByNetid(netid);
+    }
+
+    @GetMapping("/{id}/team")
+    public TeamRequest getTeamForUser(@PathVariable Long id) {
+        return teamService.getTeamByUserId(id);
     }
 
     @GetMapping("/role/{role}")

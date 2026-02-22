@@ -30,17 +30,45 @@ public class TeamService {
     public TeamRequest getTeamById(Long id){
         Team team = teamRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
-        UserRequest ta = null;
+        String taNetid = null;
         if (team.getTa() != null) {
-            Long taId = team.getTa().getId();
-            ta = userService.getUserById(taId);
+            taNetid = team.getTa().getNetid();
         }
 
         List<UserRequest> students = team.getStudents().stream()
             .map(u -> userService.getUserById(u.getId()))
             .toList();
         
-        return new TeamRequest(team.getId(), team.getName(), team.getSection(), ta.netid(), students, team.getStatus(), team.getTaNotes(), team.getGitlab());
+        return new TeamRequest(team.getId(), team.getName(), team.getSection(), taNetid, students, team.getStatus(), team.getTaNotes(), team.getGitlab());
+    }
+
+    @Transactional
+    public List<UserRequest> getTeamStudents(Long teamId) {
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+        return team.getStudents().stream()
+            .map(u -> userService.getUserById(u.getId()))
+            .toList();
+    }
+
+    @Transactional
+    public UserRequest getTeamTa(Long teamId) {
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+        if (team.getTa() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TA not assigned");
+        }
+        return userService.getUserById(team.getTa().getId());
+    }
+
+    @Transactional
+    public TeamRequest getTeamByUserId(Long userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (user.getTeam() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found");
+        }
+        return getTeamById(user.getTeam().getId());
     }
 
     @Transactional

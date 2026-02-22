@@ -1,6 +1,7 @@
 package edu.iastate.dashboard309.controller;
 
 import edu.iastate.dashboard309.dto.TeamRequest;
+import edu.iastate.dashboard309.dto.UserRequest;
 import edu.iastate.dashboard309.model.Team;
 import edu.iastate.dashboard309.model.User;
 import edu.iastate.dashboard309.repository.UserRepository;
@@ -50,6 +51,16 @@ public class TeamController {
     @Query("SELECT t FROM Team t LEFT JOIN FETCH t.students WHERE t.id = :id")
     public TeamRequest get(@PathVariable Long id) {
         return teamService.getTeamById(id);
+    }
+
+    @GetMapping("/{id}/students")
+    public List<UserRequest> getStudents(@PathVariable Long id) {
+        return teamService.getTeamStudents(id);
+    }
+
+    @GetMapping("/{id}/ta")
+    public UserRequest getTa(@PathVariable Long id) {
+        return teamService.getTeamTa(id);
     }
 
     // @PreAuthorize("hasAuthority('CREATE_TEAMS')")
