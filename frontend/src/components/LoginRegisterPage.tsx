@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, Image } from 'react-native';
 
 interface LoginRegisterPageProps {
-  onLogin: (email: string) => void;
+  onLogin: (email: string, role?: string) => void;
 }
 
 const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
@@ -53,7 +53,17 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
   const handleSubmit = () => {
     if (validateForm()) {
       if (isLogin) {
-        onLogin(email);
+        // Call backend login using netid (part before @) and password
+        const netid = email.includes('@') ? email.split('@')[0] : email;
+        import('../utils/auth').then(({ login }) => {
+          login(netid, password)
+            .then(({ token, user }) => {
+              onLogin(email, user?.role);
+            })
+            .catch((err) => {
+              Alert.alert('Login Failed', 'Invalid credentials or server error');
+            });
+        });
       } else {
         // Registration
         Alert.alert('Account Created', `Welcome, ${name}!`, [
