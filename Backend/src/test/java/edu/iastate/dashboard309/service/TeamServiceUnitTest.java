@@ -12,6 +12,7 @@ import edu.iastate.dashboard309.model.User;
 import edu.iastate.dashboard309.repository.TeamRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -65,9 +66,9 @@ class TeamServiceUnitTest {
 
         when(teamRepository.findById(1L)).thenReturn(Optional.of(team));
         when(userService.getUserById(10L))
-            .thenReturn(new UserRequest(10L, "TA One", "ta1", "pw", "UNASSIGNED"));
+            .thenReturn(new UserRequest(10L, "TA One", "ta1", "pw", List.of("UNASSIGNED"), List.of()));
         when(userService.getUserById(20L))
-            .thenReturn(new UserRequest(20L, "Student One", "stud1", "pw", "UNASSIGNED"));
+            .thenReturn(new UserRequest(20L, "Student One", "stud1", "pw", List.of("UNASSIGNED"), List.of()));
 
         TeamRequest result = teamService.getTeamById(1L);
 

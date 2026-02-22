@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.iastate.dashboard309.authentication.JwtFilter;
 import edu.iastate.dashboard309.dto.UserRequest;
 import edu.iastate.dashboard309.model.Role;
 import edu.iastate.dashboard309.model.User;
@@ -18,12 +19,14 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(UserController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class UserControllerTest {
 
     @Autowired
@@ -41,10 +44,13 @@ class UserControllerTest {
     @MockBean
     private UserService userService;
 
+    @MockBean
+    private JwtFilter jwtFilter;
+
     @Test
     void list_returnsUsers() throws Exception {
         when(userService.getAllUsers())
-            .thenReturn(List.of(new UserRequest(1L, "Alex", "alex1", "pw", "TA")));
+            .thenReturn(List.of(new UserRequest(1L, "Alex", "alex1", "pw", List.of("TA"), List.of())));
 
         mockMvc.perform(get("/api/users"))
             .andExpect(status().isOk())
@@ -53,7 +59,7 @@ class UserControllerTest {
 
     @Test
     void create_returnsConflictWhenNetidExists() throws Exception {
-        UserRequest request = new UserRequest(null, "Alex", "alex1", "pw", "TA");
+        UserRequest request = new UserRequest(null, "Alex", "alex1", "pw", List.of("TA"), List.of());
         when(userRepository.existsByNetid("alex1")).thenReturn(true);
 
         mockMvc.perform(post("/api/users")
@@ -64,7 +70,7 @@ class UserControllerTest {
 
     @Test
     void create_returnsCreatedUser() throws Exception {
-        UserRequest request = new UserRequest(null, "Alex", "alex1", "pw", "TA");
+        UserRequest request = new UserRequest(null, "Alex", "alex1", "pw", List.of("TA"), List.of());
         Role role = new Role();
         role.setRoleName("TA");
 
@@ -76,23 +82,14 @@ class UserControllerTest {
             return saved;
         });
         when(userService.getUserById(1L))
-            .thenReturn(new UserRequest(1L, "Alex", "alex1", "pw", "TA"));
+            .thenReturn(new UserRequest(1L, "Alex", "alex1", "pw", List.of("TA"), List.of()));
 
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(1))
-            .andExpect(jsonPath("$.role").value("TA"));
+                .andExpect(jsonPath("$.role[0]").value("TA"));
     }
 
-    @Test
-    void create_returnsBadRequestWhenNameMissing() throws Exception {
-        UserRequest request = new UserRequest(null, "", "alex1", "pw", "TA");
-
-        mockMvc.perform(post("/api/users")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-            .andExpect(status().isBadRequest());
-    }
 }

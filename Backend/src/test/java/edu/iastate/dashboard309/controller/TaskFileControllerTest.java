@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import edu.iastate.dashboard309.authentication.JwtFilter;
 import edu.iastate.dashboard309.model.TaskFile;
 import edu.iastate.dashboard309.repository.TaskFileRepository;
 import edu.iastate.dashboard309.repository.TaskRepository;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -22,6 +24,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(TaskFileController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class TaskFileControllerTest {
 
     @Autowired
@@ -32,6 +35,9 @@ class TaskFileControllerTest {
 
     @MockBean
     private TaskRepository taskRepository;
+
+    @MockBean
+    private JwtFilter jwtFilter;
 
     @Test
     void listByTask_returnsNotFoundWhenMissing() throws Exception {

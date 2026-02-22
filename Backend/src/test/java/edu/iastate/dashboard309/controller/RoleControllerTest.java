@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.iastate.dashboard309.authentication.JwtFilter;
 import edu.iastate.dashboard309.dto.RoleRequest;
 import edu.iastate.dashboard309.model.Permission;
 import edu.iastate.dashboard309.model.Role;
@@ -19,12 +20,14 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(RoleController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class RoleControllerTest {
 
     @Autowired
@@ -41,6 +44,9 @@ class RoleControllerTest {
 
     @MockBean
     private RoleService roleService;
+
+    @MockBean
+    private JwtFilter jwtFilter;
 
     @Test
     void list_returnsRoles() throws Exception {

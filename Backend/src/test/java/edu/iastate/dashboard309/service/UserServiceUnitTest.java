@@ -41,7 +41,7 @@ class UserServiceUnitTest {
 
         UserRequest result = userService.getUserById(1L);
 
-        assertThat(result.role()).isEqualTo("UNASSIGNED");
+        assertThat(result.role()).isEmpty();
     }
 
     @Test
@@ -59,8 +59,6 @@ class UserServiceUnitTest {
         userTwo.setPassword("pw2");
 
         when(userRepository.findAll()).thenReturn(List.of(userOne, userTwo));
-        when(userRepository.findById(1L)).thenReturn(Optional.of(userOne));
-        when(userRepository.findById(2L)).thenReturn(Optional.of(userTwo));
 
         List<UserRequest> results = userService.getAllUsers();
 
