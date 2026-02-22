@@ -1,6 +1,7 @@
 package edu.iastate.dashboard309.service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,19 +24,31 @@ public class UserService {
     }
 
     @Transactional
+    private UserRequest userToRequest(User user){
+        return new UserRequest(user.getId(), user.getName(), user.getNetid(), user.getPassword(), user.getRoleNames(), user.getPermissions().stream().collect(Collectors.toList()));
+    }
+
+    @Transactional
     public UserRequest getUserById(Long id){
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        // TODO: Change to handle multiple roles. Only takes the first role of the user at the moment.
-        String roleName = user.getRole().isEmpty() ? "UNASSIGNED" : user.getRole().get(0).getRoleName();
-        return new UserRequest(user.getId(), user.getName(), user.getNetid(), user.getPassword(), roleName);
+        // String roleName = user.getRole().isEmpty() ? "UNASSIGNED" : user.getRole().get(0).getRoleName();
+        return userToRequest(user);
+    }
+
+    @Transactional
+    public UserRequest getUserByNetid(String netid){
+        User user = userRepository.findByNetid(netid)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        // String roleName = user.getRole().isEmpty() ? "UNASSIGNED" : user.getRole().get(0).getRoleName();
+        return userToRequest(user);
     }
     
     @Transactional 
     public List<UserRequest> getAllUsers(){
         List<User> users = userRepository.findAll();
         return users.stream()
-            .map(u -> getUserById(u.getId()))
+            .map(u -> userToRequest(u))
             .toList();
     }
 
@@ -45,7 +58,7 @@ public class UserService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
         List<User> users = userRepository.findByRoles_roleName(roleName);
         return users.stream()
-            .map(u -> getUserById(u.getId()))
+            .map(u -> userToRequest(u))
             .toList();
     }
 }

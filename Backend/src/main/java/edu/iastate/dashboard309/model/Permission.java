@@ -1,7 +1,7 @@
 package edu.iastate.dashboard309.model;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -23,7 +23,7 @@ public class Permission {
     private String name;
 
     @ManyToMany(mappedBy = "permissions")
-    private List<Role> roles = new ArrayList<>();
+    private Set<Role> roles = new HashSet<>();
 
     public Long getId() {
         return id;
@@ -41,7 +41,7 @@ public class Permission {
         this.name = name;
     }
 
-    public List<Role> getRoles(){
+    public Set<Role> getRoles(){
         return roles;
     }
 

@@ -46,7 +46,7 @@ class UserServiceTest {
 
         assertThat(result.name()).isEqualTo("Alex");
         assertThat(result.netid()).isEqualTo("alex1");
-        assertThat(result.role()).isEqualTo("TA");
+        assertThat(result.role()).containsExactly("TA");
     }
 
     @Test
@@ -77,6 +77,6 @@ class UserServiceTest {
 
         assertThat(userService.getUsersWithRoleName("STUDENT"))
             .hasSize(2)
-            .allSatisfy(user -> assertThat(user.role()).isEqualTo("STUDENT"));
+            .allSatisfy(user -> assertThat(user.role()).containsExactly("STUDENT"));
     }
 }

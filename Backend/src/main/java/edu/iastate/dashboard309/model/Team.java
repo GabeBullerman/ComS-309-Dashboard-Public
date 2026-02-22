@@ -1,5 +1,6 @@
 package edu.iastate.dashboard309.model;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import jakarta.persistence.Column;
@@ -31,7 +32,7 @@ public class Team {
     private User ta;
 
     @OneToMany(mappedBy = "team")
-    private Set<User> students;
+    private Set<User> students = new HashSet<>();
 
     @Column(name = "status")
     private Integer status;
