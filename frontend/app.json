@@ -4,10 +4,10 @@
     "slug": "instructor-dashboard",
     "version": "0.1.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./src/Images/Iowa_State_Cyclones_logo.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./src/Images/Iowa_State_Cyclones_logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#1e3a8a"
     },
@@ -15,17 +15,26 @@
       "**/*"
     ],
     "ios": {
-      "supportsTabletMode": true
+      "supportsTabletMode": true,
+      "bundleIdentifier": "com.gabebullerman1.instructordashboard",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./src/Images/Iowa_State_Cyclones_logo.png",
         "backgroundColor": "#1e3a8a"
       }
     },
     "web": {
       "favicon": "./src/Images/Iowa_State_Cyclones_logo.png",
       "bundler": "metro"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9cef021a-b4c7-45e7-b7a4-0d19cd95c969"
+      }
     }
   }
 }
