@@ -62,4 +62,14 @@ class PermissionControllerTest {
         mockMvc.perform(delete("/api/permissions/99"))
             .andExpect(status().isNotFound());
     }
+
+    @Test
+    void create_returnsBadRequestWhenNameMissing() throws Exception {
+        PermissionRequest request = new PermissionRequest(null, "");
+
+        mockMvc.perform(post("/api/permissions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+    }
 }

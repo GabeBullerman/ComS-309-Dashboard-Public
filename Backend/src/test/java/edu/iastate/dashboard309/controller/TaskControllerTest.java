@@ -97,4 +97,14 @@ class TaskControllerTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(1));
     }
+
+    @Test
+    void create_returnsBadRequestWhenTitleMissing() throws Exception {
+        TaskRequest request = new TaskRequest(null, "", "Desc", null, "ta1", "ta2");
+
+        mockMvc.perform(post("/api/tasks")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+    }
 }

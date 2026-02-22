@@ -83,4 +83,14 @@ class RoleControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.permissions[0]").value("TASK_EDIT"));
     }
+
+    @Test
+    void create_returnsBadRequestWhenRoleNameMissing() throws Exception {
+        RoleRequest request = new RoleRequest(null, "", List.of());
+
+        mockMvc.perform(post("/api/roles")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+    }
 }

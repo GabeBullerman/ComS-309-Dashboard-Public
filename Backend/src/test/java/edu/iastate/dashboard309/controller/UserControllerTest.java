@@ -85,4 +85,14 @@ class UserControllerTest {
             .andExpect(jsonPath("$.id").value(1))
             .andExpect(jsonPath("$.role").value("TA"));
     }
+
+    @Test
+    void create_returnsBadRequestWhenNameMissing() throws Exception {
+        UserRequest request = new UserRequest(null, "", "alex1", "pw", "TA");
+
+        mockMvc.perform(post("/api/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+    }
 }
