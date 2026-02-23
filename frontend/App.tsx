@@ -11,7 +11,8 @@ import TeamsScreen from './src/screens/TeamsScreen';
 import CoursesScreen from "./src/screens/Courses";
 import SidebarLayout from "./src/components/SidebarLayout";
 import TeamDetailScreen from "./src/screens/TeamDetail";
-import { getCurrentUserRole, UserRole } from './src/utils/auth';
+import { logout as apiLogout } from './src/utils/auth';
+import type { UserRole } from './src/utils/auth';
 import { Team } from "@/data/teams";
 
 if (Platform.OS === "web") {
@@ -26,7 +27,7 @@ export type RootStackParamList = {
   TAManager: undefined;
   Courses: undefined;
   Landing: { userEmail: string; onLogout: () => void };
-  Login: { onLogin: (email: string) => void };
+  Login: { onLogin: (email: string, role?: string) => void };
   SidebarLayout: { userRole: UserRole; onLogout: () => void };
 };
 
@@ -44,10 +45,11 @@ export default function App() {
     const loadUser = async () => {
       try {
         const email = await AsyncStorage.getItem('userEmail');
+        const role = await AsyncStorage.getItem('user_role');
         if (email) {
           setUserEmail(email);
           setIsLoggedIn(true);
-          setUserRole(getCurrentUserRole());
+          if (role) setUserRole(role as UserRole);
         }
       } catch (e) {
         console.warn('Failed to load stored user email', e);
@@ -57,28 +59,38 @@ export default function App() {
     loadUser();
   }, []);
 
-  const handleLogin = async (email: string) => {
+  const handleLogin = async (email: string, role?: UserRole) => {
     setUserEmail(email);
-    setUserRole(getCurrentUserRole()); // Get role from auth utils
+    if (role) setUserRole(role);
     setIsLoggedIn(true);
 
     if (!__DEV__) return;
     try {
       await AsyncStorage.setItem('userEmail', email);
+      if (role) await AsyncStorage.setItem('user_role', String(role));
     } catch (e) {
       console.warn('Failed to persist user email', e);
     }
   };
 
   const handleLogout = async () => {
+    // Call backend logout and clear stored credentials
+    try {
+      await apiLogout();
+    } catch {
+      // ignore errors
+    }
+
     setIsLoggedIn(false);
     setUserEmail('');
+    setUserRole('Student');
 
     if (!__DEV__) return;
     try {
       await AsyncStorage.removeItem('userEmail');
+      await AsyncStorage.removeItem('user_role');
     } catch (e) {
-      console.warn('Failed to remove stored user email', e);
+      console.warn('Failed to remove stored user data', e);
     }
   };
 

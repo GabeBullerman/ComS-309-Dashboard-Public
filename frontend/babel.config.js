@@ -6,8 +6,9 @@ module.exports = function (api) {
       "nativewind/babel",
     ],
     plugins: [
-      "react-native-reanimated/plugin",
       "@babel/plugin-proposal-export-namespace-from",
+      ["@babel/plugin-transform-private-methods", { "loose": true }],
+      "react-native-reanimated/plugin",
     ],
   }
 }
