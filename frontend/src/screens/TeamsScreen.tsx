@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,7 +12,7 @@ import { getUserPermissions, UserRole } from '../utils/auth';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
-import TeamDetailsScreen from './TeamDetail';
+import { Picker } from '@react-native-picker/picker';
 
 type StatusFilter = 'All' | 'Good' | 'Moderate' | 'Poor';
 type SemesterFilter = 'All' | 'Spring 2026' | 'Fall 2025';
@@ -88,58 +87,36 @@ export default function ClassTeamsScreen({ userRole }: Props) {
       <View className="flex-row mb-4">
         <Text className="text-sm text-gray-600 mb-2 mr-2 my-2">Status</Text>
         <View className="flex-row flex-wrap gap-2">
-          {(['All', 'Good', 'Moderate', 'Poor'] as StatusFilter[]).map(
-            (status) => (
-              <TouchableOpacity
-                key={status}
-                onPress={() => setStatusFilter(status)}
-                className={`px-3 py-2 rounded-md ${
-                  statusFilter === status
-                    ? 'bg-[#C8102E]'
-                    : 'bg-gray-200'
-                }`}
+              <Picker
+                selectedValue={statusFilter}
+                onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+                dropdownIconColor="#000"
+                style={{ height: 44, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}
               >
-                <Text
-                  className={`text-sm ${
-                    statusFilter === status
-                      ? 'text-white'
-                      : 'text-gray-800'
-                  }`}
-                >
-                  {status}
-                </Text>
-              </TouchableOpacity>
-            )
-          )}
+                {(['All', 'Poor', 'Moderate', 'Good'] as StatusFilter[]).map(
+                  (status) => (
+                    <Picker.Item key={status} label={status} value={status} />
+                  )
+                )}
+              </Picker>
         </View>
 
         {permissions.canViewPastSemesters && (
           <>
             <Text className="text-sm text-gray-600 mx-2 my-2 mb-2">Semester</Text>
             <View className="flex-row flex-wrap gap-2">
-              {(['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map(
-                (semester) => (
-                  <TouchableOpacity
-                    key={semester}
-                    onPress={() => setSemesterFilter(semester)}
-                    className={`px-3 py-2 rounded-md ${
-                      semesterFilter === semester
-                        ? 'bg-[#C8102E]'
-                        : 'bg-gray-200'
-                    }`}
-                  >
-                    <Text
-                      className={`text-sm ${
-                        semesterFilter === semester
-                          ? 'text-white'
-                          : 'text-gray-800'
-                      }`}
-                    >
-                      {semester}
-                    </Text>
-                  </TouchableOpacity>
-                )
-              )}
+              <Picker
+                selectedValue={semesterFilter}
+                onValueChange={(value) => setSemesterFilter(value as SemesterFilter)}
+                dropdownIconColor="#000"
+                style={{ height: 44, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}
+              >
+                {(['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map(
+                  (semester) => (
+                    <Picker.Item key={semester} label={semester} value={semester} />
+                  )
+                )}
+              </Picker>
             </View>
           </>
         )}

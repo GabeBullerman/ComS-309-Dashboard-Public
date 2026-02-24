@@ -63,12 +63,6 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
               Demo Results
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            className={`py-2 px-4 rounded-lg ${activeTab === 'activity' ? 'bg-yellow-400' : 'bg-gray-200'}`}
-            onPress={() => setActiveTab('activity')}
-          >
-            <Text className={`${activeTab === 'activity' ? 'text-white font-bold' : 'text-gray-700'}`}>Activity</Text>
-          </TouchableOpacity>
         </View>
 
         <View className="p-4 bg-gray-100 rounded-lg min-h-[100px]">
