@@ -10,10 +10,12 @@ type TeamDetailProps = NativeStackScreenProps<RootStackParamList, 'TeamDetail'>;
 export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps) {
   const { team } = route.params;
   const [selectedMember, setSelectedMember] = useState<TeamMember>(team.members[0]); // Default to first member
-  const [activeTab, setActiveTab] = useState<'contributions' | 'demoResults' | 'activity'>('contributions');
+  const [activeTab, setActiveTab] = useState<'contributions' | 'demoResults' | 'activity' | 'Push frequency'>('contributions');
 
   return (
     <View className="flex-1 bg-white pt-16">
+
+      {/* Left Side*/}
       {/* Header */}
       <View className="flex-row items-center px-4">
         <TouchableOpacity onPress={() => navigation.goBack()} className="pr-4">
@@ -56,6 +58,14 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
+            className={`py-2 px-4 rounded-lg ${activeTab === 'Push frequency' ? 'bg-yellow-400' : 'bg-gray-200'}`}
+            onPress={() => setActiveTab('Push frequency')}
+          >
+            <Text className={`${activeTab === 'Push frequency' ? 'text-white font-bold' : 'text-gray-700'}`}>
+              Push Frequency
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             className={`py-2 px-4 rounded-lg ${activeTab === 'demoResults' ? 'bg-yellow-400' : 'bg-gray-200'}`}
             onPress={() => setActiveTab('demoResults')}
           >
@@ -65,9 +75,10 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           </TouchableOpacity>
         </View>
 
-        <View className="p-4 bg-gray-100 rounded-lg min-h-[100px]">
+        <View className="p-4 bg-gray-100 rounded-lg min-h-[200px]">
           {activeTab === 'contributions' && <Text>{selectedMember.demoResults?.map((demo) => demo.contribution).join('\n')}</Text>}
           {activeTab === 'demoResults' && <Text>{selectedMember.demoResults?.map((demo) => demo.name + ': ' + demo.result).join('\n')}</Text>}
+          {activeTab === 'Push frequency' && <Text>{'feature not implemented yet :('}</Text>}
         </View>
       </View>
     </View>

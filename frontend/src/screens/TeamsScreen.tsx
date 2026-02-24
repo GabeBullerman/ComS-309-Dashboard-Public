@@ -36,6 +36,7 @@ export default function ClassTeamsScreen({ userRole }: Props) {
       const matchesSearch =
         team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         team.section.toString().includes(searchQuery) ||
+        team.ta.toLowerCase().includes(searchQuery.toLowerCase()) ||
         team.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         team.members.some((member) =>
           member.initials.toLowerCase().includes(searchQuery.toLowerCase()) ||
