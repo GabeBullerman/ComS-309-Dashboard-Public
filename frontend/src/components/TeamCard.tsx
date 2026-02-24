@@ -34,7 +34,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({name, description, memberCoun
     >
     <View className="bg-white rounded-xl border border-gray-200 p-6 mb-4 shadow-sm">
       {/* Header */}
-      <View className="flex-row items-start justify-between mb-2">
+      <View className="flex-row items-start flex-wrap justify-between mb-2">
         <Text className="text-lg font-semibold text-gray-900 flex-1 pr-2">
           {name}
         </Text>
@@ -101,7 +101,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({name, description, memberCoun
       </View>
 
       {/* Member Avatars */}
-      <View className="flex-row items-center">
+      <View className="flex-row flex-wrap items-center">
         {members.map((member, index) => (
           <View
             key={index}
