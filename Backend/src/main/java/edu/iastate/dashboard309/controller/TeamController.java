@@ -10,6 +10,9 @@ import edu.iastate.dashboard309.repository.TeamRepository;
 import jakarta.validation.Valid;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -40,11 +43,12 @@ public class TeamController {
 
     // @PreAuthorize("hasAuthority('SEE_ALL_TEAMS')")
     @GetMapping
-    public List<TeamRequest> list(@RequestParam(required = false) String taNetid) {
-        if (taNetid == null || taNetid.isBlank()) {
-            return teamService.getAllTeams();
-        }
-        return teamService.getTeamByTaNetid(taNetid);
+    public Page<TeamRequest> list(@RequestParam(required = false) String taNetid,
+                                  @RequestParam(required = false) Integer section,
+                                  @RequestParam(required = false) Integer status,
+                                  @PageableDefault(size = 20) Pageable pageable) {
+        String normalizedTaNetid = normalize(taNetid);
+        return teamService.getTeams(normalizedTaNetid, section, status, pageable);
     }
 
     @GetMapping("/{id}")
@@ -135,5 +139,13 @@ public class TeamController {
         if(request.gitlab() != null){
             team.setGitlab(request.gitlab());
         }
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

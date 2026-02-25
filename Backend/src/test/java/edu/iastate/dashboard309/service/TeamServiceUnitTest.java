@@ -65,8 +65,6 @@ class TeamServiceUnitTest {
         ReflectionTestUtils.setField(team, "students", students);
 
         when(teamRepository.findById(1L)).thenReturn(Optional.of(team));
-        when(userService.getUserById(10L))
-            .thenReturn(new UserRequest(10L, "TA One", "ta1", "pw", List.of("UNASSIGNED"), List.of()));
         when(userService.getUserById(20L))
             .thenReturn(new UserRequest(20L, "Student One", "stud1", "pw", List.of("UNASSIGNED"), List.of()));
 

@@ -2,6 +2,8 @@ package edu.iastate.dashboard309.service;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,10 +28,8 @@ public class TeamService {
         this.userService = userService;
     }
 
-    @Transactional 
-    public TeamRequest getTeamById(Long id){
-        Team team = teamRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+    @Transactional
+    private TeamRequest teamToRequest(Team team) {
         String taNetid = null;
         if (team.getTa() != null) {
             taNetid = team.getTa().getNetid();
@@ -38,8 +38,22 @@ public class TeamService {
         List<UserRequest> students = team.getStudents().stream()
             .map(u -> userService.getUserById(u.getId()))
             .toList();
-        
-        return new TeamRequest(team.getId(), team.getName(), team.getSection(), taNetid, students, team.getStatus(), team.getTaNotes(), team.getGitlab());
+
+        return new TeamRequest(team.getId(), team.getName(), team.getSection(), taNetid, students,
+            team.getStatus(), team.getTaNotes(), team.getGitlab());
+    }
+
+    @Transactional 
+    public TeamRequest getTeamById(Long id){
+        Team team = teamRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+        return teamToRequest(team);
+    }
+
+    @Transactional
+    public Page<TeamRequest> getTeams(String taNetid, Integer section, Integer status, Pageable pageable) {
+        return teamRepository.findTeams(taNetid, section, status, pageable)
+            .map(this::teamToRequest);
     }
 
     @Transactional
@@ -79,7 +93,7 @@ public class TeamService {
         }
                 
         return teams.stream()
-            .map(t -> getTeamById(t.getId()))
+            .map(this::teamToRequest)
             .toList();
     }
 
@@ -87,7 +101,7 @@ public class TeamService {
     public List<TeamRequest> getAllTeams(){
         List<Team> teams = teamRepository.findAll();
         return teams.stream()
-            .map(t -> getTeamById(t.getId()))
+            .map(this::teamToRequest)
             .toList();
     }
 

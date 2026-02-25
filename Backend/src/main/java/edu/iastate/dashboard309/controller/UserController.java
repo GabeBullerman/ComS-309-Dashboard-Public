@@ -10,6 +10,9 @@ import edu.iastate.dashboard309.service.TeamService;
 import edu.iastate.dashboard309.service.UserService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -43,8 +47,12 @@ public class UserController {
     }
 
     @GetMapping
-    public List<UserRequest> list() {
-        return userService.getAllUsers();
+    public Page<UserRequest> list(@RequestParam(required = false) String role,
+                                  @RequestParam(required = false) String search,
+                                  @PageableDefault(size = 20) Pageable pageable) {
+        String normalizedRole = normalize(role);
+        String normalizedSearch = normalize(search);
+        return userService.getUsers(normalizedRole, normalizedSearch, pageable);
     }
 
     @GetMapping("/self")
@@ -128,5 +136,13 @@ public class UserController {
         // Remove all roles from user
         // Remove user from all teams
         //
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }
