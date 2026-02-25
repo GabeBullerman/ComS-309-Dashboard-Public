@@ -31,8 +31,6 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
 
     if (!password.trim()) {
       newErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
     }
 
     if (!isLogin) {
@@ -58,7 +56,12 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
         import('../utils/auth').then(({ login }) => {
           login(netid, password)
             .then(({ token, user }) => {
-              onLogin(email, user?.role);
+              // Handle role which might be a string or array
+              let userRole = user?.role;
+              if (Array.isArray(userRole)) {
+                userRole = userRole[0];
+              }
+              onLogin(email, userRole);
             })
             .catch((err) => {
               Alert.alert('Login Failed', 'Invalid credentials or server error');

@@ -14,12 +14,12 @@ interface TA {
   id: string;
   name: string;
   email: string;
-  role: 'TA' | 'Head TA';
+  role: 'TA' | 'HTA';
   courses: string[];
 }
 
 const mockTAs: TA[] = [
-  { id: '1', name: 'John Smith', email: 'john.smith@iastate.edu', role: 'Head TA', courses: ['CS 309', 'CS 319'] },
+  { id: '1', name: 'John Smith', email: 'john.smith@iastate.edu', role: 'HTA', courses: ['CS 309', 'CS 319'] },
   { id: '2', name: 'Alice Brown', email: 'alice.brown@iastate.edu', role: 'TA', courses: ['CS 309'] },
   { id: '3', name: 'Michael Lee', email: 'michael.lee@iastate.edu', role: 'TA', courses: ['CS 319'] },
 ];
@@ -32,7 +32,7 @@ export default function TAManagerScreen() {
   const [inviteForm, setInviteForm] = useState({
     name: '',
     email: '',
-    role: 'TA' as 'TA' | 'Head TA',
+    role: 'TA' as 'TA' | 'HTA',
     courses: [] as string[],
   });
 
@@ -68,7 +68,7 @@ export default function TAManagerScreen() {
     );
   };
 
-  const handleUpdateRole = (taId: string, newRole: 'TA' | 'Head TA') => {
+  const handleUpdateRole = (taId: string, newRole: 'TA' | 'HTA') => {
     setTAs(prev => prev.map(ta =>
       ta.id === taId ? { ...ta, role: newRole } : ta
     ));
@@ -92,13 +92,13 @@ export default function TAManagerScreen() {
         </View>
         <View className="flex-row items-center">
           <TouchableOpacity
-            onPress={() => handleUpdateRole(item.id, item.role === 'TA' ? 'Head TA' : 'TA')}
+            onPress={() => handleUpdateRole(item.id, item.role === 'TA' ? 'HTA' : 'TA')}
             className={`px-3 py-1 rounded-full mr-2 ${
-              item.role === 'Head TA' ? 'bg-yellow-100' : 'bg-blue-100'
+              item.role === 'HTA' ? 'bg-yellow-100' : 'bg-blue-100'
             }`}
           >
             <Text className={`text-xs font-medium ${
-              item.role === 'Head TA' ? 'text-yellow-800' : 'text-blue-800'
+              item.role === 'HTA' ? 'text-yellow-800' : 'text-blue-800'
             }`}>
               {item.role}
             </Text>
@@ -159,7 +159,7 @@ export default function TAManagerScreen() {
 
           <Text className="text-sm font-medium mb-2">Role:</Text>
           <View className="flex-row mb-3">
-            {(['TA', 'Head TA'] as const).map(role => (
+            {(['TA', 'HTA'] as const).map(role => (
               <TouchableOpacity
                 key={role}
                 onPress={() => setInviteForm(prev => ({ ...prev, role }))}
