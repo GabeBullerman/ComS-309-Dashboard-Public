@@ -27,7 +27,9 @@ public class SecurityConfig {
             "http://localhost:19006",
             "http://127.0.0.1:8081",
             "http://127.0.0.1:8082",
-            "http://127.0.0.1:19006"
+            "http://127.0.0.1:19006",
+            "http://coms-4020-006.class.las.iastate.edu:8080",
+            "http://coms-4020-006.class.las.iastate.edu"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
