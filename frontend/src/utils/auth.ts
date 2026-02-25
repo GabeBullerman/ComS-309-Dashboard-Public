@@ -2,7 +2,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type UserRole = 'Student' | 'TA' | 'Instructor' | 'Head TA' | string;
+export type UserRole = 'Student' | 'TA' | 'Instructor' | 'HTA' | string;
 
 export interface UserPermissions {
   canViewPastSemesters?: boolean;
@@ -58,26 +58,60 @@ export const clearToken = async () => {
   await AsyncStorage.removeItem(TOKEN_KEY);
 };
 
+// Decode JWT token to extract user role
+export const decodeToken = (token: string): { roles?: string[]; sub?: string } => {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return {};
+    
+    // Decode the payload (second part)
+    const payload = parts[1];
+    const decoded = JSON.parse(atob(payload));
+    return decoded;
+  } catch (e) {
+    console.error('Failed to decode token:', e);
+    return {};
+  }
+};
+
+// Get the first role from the decoded token
+export const getRoleFromToken = (token: string): UserRole => {
+  const decoded = decodeToken(token);
+  const roles = decoded.roles || [];
+  return roles.length > 0 ? (roles[0] as UserRole) : 'Student';
+};
+
 // POST /api/auth/login -> { netid, password } -> returns token string
 export const login = async (netid: string, password: string): Promise<{ token: string; user?: UserSummary }> => {
   const res = await axiosInstance.post('/api/auth/login', { netid, password });
   const token: string = res.data;
   await storeToken(token);
+  
+  // Extract role from JWT token
+  const role = getRoleFromToken(token);
+  
   // fetch user summary
   let user: UserSummary | undefined;
   try {
     const userRes = await axiosInstance.get('/api/users/self');
     user = userRes.data;
+    // Ensure user has the role from token
+    if (!user.role && role) {
+      user.role = role;
+    }
   } catch (e) {
-    // ignore fetching user if it fails
+    // If fetchng user fails, create a basic user object with role from token
+    user = { role };
   }
+  
   // persist simple user info for sync with app state
   try {
-    if (user?.email) await AsyncStorage.setItem('userEmail', user.email);
-    if (user?.role) await AsyncStorage.setItem('user_role', String(user.role));
+    if (user?.netid) await AsyncStorage.setItem('userEmail', user.netid);
+    if (role) await AsyncStorage.setItem('user_role', String(role));
   } catch (e) {
     // ignore
   }
+  
   return { token, user };
 };
 
@@ -101,7 +135,9 @@ export const getCurrentUserRole = (): UserRole => {
   // synchronous accessor for App state initialization; returns stored role if available
   try {
     // Note: AsyncStorage is async but we keep a best-effort synchronous read using a cached value not available here.
-    // Fallback to 'Student' — App will update role after login completes.
+    // This function is synchronous, so it can't directly use AsyncStorage.
+    // The App component should handle loading the role from storage in useEffect.
+    // Fallback to 'Student' — App will update role after login/load completes.
     // Consumers should prefer `getCurrentUser()` for authoritative async fetch.
     return 'Student';
   } catch {
@@ -139,7 +175,7 @@ export const getUserPermissions = (role: UserRole): UserPermissions => {
         canAccessTasks: false,
         canManageTAs: true,
       };
-    case 'Head TA':
+    case 'HTA':
       return {
         canViewPastSemesters: true,
         canViewAllTeams: true,
