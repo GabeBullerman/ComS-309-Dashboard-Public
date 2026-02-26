@@ -36,11 +36,13 @@ public class TeamService {
             ta = userService.getUserById(taId);
         }
 
+        String taNetid = ta != null ? ta.netid() : null;
+
         List<UserRequest> students = team.getStudents().stream()
             .map(u -> userService.getUserById(u.getId()))
             .toList();
         
-        return new TeamRequest(team.getId(), team.getName(), team.getSection(), ta.netid(), students, team.getStatus(), team.getTaNotes(), team.getGitlab());
+        return new TeamRequest(team.getId(), team.getName(), team.getSection(), taNetid, students, team.getStatus(), team.getTaNotes(), team.getGitlab());
     }
 
     @Transactional
