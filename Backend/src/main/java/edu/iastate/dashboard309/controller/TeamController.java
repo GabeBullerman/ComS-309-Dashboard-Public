@@ -67,6 +67,13 @@ public class TeamController {
         return teamService.getTeamTa(id);
     }
 
+    @GetMapping("/{id}/status")
+    public Integer getStatus(@PathVariable Long id) {
+        Team team = teamRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+        return team.getStatus();
+    }
+
     // @PreAuthorize("hasAuthority('CREATE_TEAMS')")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
