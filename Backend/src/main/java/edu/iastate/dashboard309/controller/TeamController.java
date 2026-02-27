@@ -123,11 +123,6 @@ public class TeamController {
     }
 
     private void applyRequest(Team team, TeamRequest request) {
-        if (request.taNetid() != null && !userRepository.existsByNetid(request.taNetid())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TA does not exist");
-        }
-        User ta = userRepository.findByNetid(request.taNetid())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "TA not found"));
         if(request.name() != null){
             team.setName(request.name());
         }
@@ -135,6 +130,11 @@ public class TeamController {
             team.setSection(request.section());
         }
         if(request.taNetid() != null){
+            if (!userRepository.existsByNetid(request.taNetid())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TA does not exist");
+            }
+            User ta = userRepository.findByNetid(request.taNetid())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "TA not found"));
             team.setTa(ta);
         }
         if(request.status() != null){

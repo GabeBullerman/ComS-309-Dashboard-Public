@@ -114,37 +114,30 @@ public class UserController {
     public UserRequest update(@PathVariable Long id, @Valid @RequestBody UserRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        if (!user.getNetid().equals(request.netid()) && userRepository.existsByNetid(request.netid())) {
+        if (request.netid() != null && !user.getNetid().equals(request.netid()) && userRepository.existsByNetid(request.netid())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Netid already exists");
         }
-
         if (request.name() != null) {
             user.setName(request.name());
         }
-
         if (request.netid() != null) {
             user.setNetid(request.netid());
         }
-
         if (request.password() != null) {
             user.setPassword(request.password());
         }
-
         if (request.role() != null) {
             user.getRole().clear();
-             for(String roleName : request.role()){
+            for(String roleName : request.role()){
                 Role role = roleRepository.findByRoleName(roleName)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
                 user.setRole(role);
             }
         }
-
         if (request.contributions() != null) {
             user.setContributions(request.contributions());
         }
-
         userRepository.save(user);
-
         return userService.getUserById(user.getId());
     }
 
