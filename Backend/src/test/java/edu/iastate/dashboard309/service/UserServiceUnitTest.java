@@ -41,7 +41,7 @@ class UserServiceUnitTest {
 
         UserRequest result = userService.getUserById(1L);
 
-        assertThat(result.role()).isEmpty();
+        assertThat(result.role()).isEmpty(); // Update this if you construct UserRequest manually elsewhere
     }
 
     @Test

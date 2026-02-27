@@ -57,7 +57,7 @@ class UserControllerTest {
     void list_returnsUsers() throws Exception {
         when(userService.getUsers(any(), any(), any(Pageable.class)))
             .thenReturn(new PageImpl<>(
-                List.of(new UserRequest(1L, "Alex", "alex1", "pw", List.of("TA"), List.of()))));
+                List.of(new UserRequest(1L, "Alex", "alex1", "pw", List.of("TA"), List.of(), 0))));
 
         mockMvc.perform(get("/api/users"))
             .andExpect(status().isOk())
@@ -66,7 +66,7 @@ class UserControllerTest {
 
     @Test
     void create_returnsConflictWhenNetidExists() throws Exception {
-        UserRequest request = new UserRequest(null, "Alex", "alex1", "pw", List.of("TA"), List.of());
+        UserRequest request = new UserRequest(null, "Alex", "alex1", "pw", List.of("TA"), List.of(), 0);
         when(userRepository.existsByNetid("alex1")).thenReturn(true);
 
         mockMvc.perform(post("/api/users")
@@ -77,7 +77,7 @@ class UserControllerTest {
 
     @Test
     void create_returnsCreatedUser() throws Exception {
-        UserRequest request = new UserRequest(null, "Alex", "alex1", "pw", List.of("TA"), List.of());
+        UserRequest request = new UserRequest(null, "Alex", "alex1", "pw", List.of("TA"), List.of(), 0);
         Role role = new Role();
         role.setRoleName("TA");
 
@@ -89,7 +89,7 @@ class UserControllerTest {
             return saved;
         });
         when(userService.getUserById(1L))
-            .thenReturn(new UserRequest(1L, "Alex", "alex1", "pw", List.of("TA"), List.of()));
+            .thenReturn(new UserRequest(1L, "Alex", "alex1", "pw", List.of("TA"), List.of(), 0));
 
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)
