@@ -31,21 +31,6 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
-        @GetMapping("/{id}/contributions")
-        public Integer getContributions(@PathVariable Long id) {
-            User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-            return user.getContributions();
-        }
-
-        @PutMapping("/{id}/contributions")
-        public UserRequest setContributions(@PathVariable Long id, @RequestParam Integer value) {
-            User user = userRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-            user.setContributions(value);
-            userRepository.save(user);
-            return userService.getUserById(user.getId());
-        }
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserService userService;
@@ -96,6 +81,13 @@ public class UserController {
         return userService.getUsersWithRoleName(role);
     }
 
+    @GetMapping("/{id}/contributions")
+    public Integer getContributions(@PathVariable Long id) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return user.getContributions();
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public UserRequest create(@Valid @RequestBody UserRequest request) {
@@ -125,14 +117,30 @@ public class UserController {
         if (!user.getNetid().equals(request.netid()) && userRepository.existsByNetid(request.netid())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Netid already exists");
         }
-        user.setName(request.name());
-        user.setNetid(request.netid());
-        user.setPassword(request.password());
 
-        for(String role : request.role()){
-            Role userRole = roleRepository.findByRoleName(role)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
-            user.setRole(userRole);
+        if (request.name() != null) {
+            user.setName(request.name());
+        }
+
+        if (request.netid() != null) {
+            user.setNetid(request.netid());
+        }
+
+        if (request.password() != null) {
+            user.setPassword(request.password());
+        }
+
+        if (request.role() != null) {
+            user.getRole().clear();
+             for(String roleName : request.role()){
+                Role role = roleRepository.findByRoleName(roleName)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
+                user.setRole(role);
+            }
+        }
+
+        if (request.contributions() != null) {
+            user.setContributions(request.contributions());
         }
 
         userRepository.save(user);
@@ -151,33 +159,6 @@ public class UserController {
         // Remove all roles from user
         // Remove user from all teams
         //
-    }
-
-    @PostMapping("/{id}/contributions")
-    public UserRequest createContributions(@PathVariable Long id, @RequestParam Integer initialValue) {
-        User user = userRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        user.setContributions(initialValue);
-        userRepository.save(user);
-        return userService.getUserById(user.getId());
-    }
-
-    @PutMapping("/{id}/contributions/increase")
-    public UserRequest increaseContributions(@PathVariable Long id, @RequestParam Integer amount) {
-        User user = userRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        user.incrementContributions(amount);
-        userRepository.save(user);
-        return userService.getUserById(user.getId());
-    }
-
-    @PutMapping("/{id}/contributions/decrease")
-    public UserRequest decreaseContributions(@PathVariable Long id, @RequestParam Integer amount) {
-        User user = userRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        user.decrementContributions(amount);
-        userRepository.save(user);
-        return userService.getUserById(user.getId());
     }
 
     private String normalize(String value) {

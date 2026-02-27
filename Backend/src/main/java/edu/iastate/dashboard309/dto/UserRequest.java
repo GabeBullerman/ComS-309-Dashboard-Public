@@ -8,6 +8,7 @@ public record UserRequest(
         String netid,
         String password,
         List<String> role,
-        List<String> permission
+        List<String> permission,
+        Integer contributions
 ) {
 }

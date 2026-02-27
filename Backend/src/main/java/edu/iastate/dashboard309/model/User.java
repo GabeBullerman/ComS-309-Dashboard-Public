@@ -139,13 +139,4 @@ public class User {
     public void setContributions(Integer contributions) {
         this.contributions = contributions;
     }
-
-    public void incrementContributions(int amount) {
-        this.contributions += amount;
-    }
-
-    public void decrementContributions(int amount) {
-        this.contributions -= amount;
-        if (this.contributions < 0) this.contributions = 0;
-    }
 }
