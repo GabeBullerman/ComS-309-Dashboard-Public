@@ -21,11 +21,23 @@ public interface UserRepository extends JpaRepository<User, Long> {
         SELECT DISTINCT u FROM User u
         LEFT JOIN u.roles r
         WHERE (:role IS NULL OR r.roleName = :role)
+    """)
+    Page<User> findUsersWithoutSearch(
+            @Param("role") String role,
+            Pageable pageable);
+
+
+    @Query("""
+        SELECT DISTINCT u FROM User u
+        LEFT JOIN u.roles r
+        WHERE (:role IS NULL OR r.roleName = :role)
         AND (
-            :search IS NULL
-            OR LOWER(u.name) LIKE LOWER(CONCAT('%', :search, '%'))
-            OR LOWER(u.netid) LIKE LOWER(CONCAT('%', :search, '%'))
+            u.name ILIKE CONCAT('%', :search, '%')
+            OR u.netid ILIKE CONCAT('%', :search, '%')
         )
     """)
-    Page<User> findUsers(@Param("role") String role, @Param("search") String search, Pageable pageable);
+    Page<User> findUsersWithSearch(
+            @Param("role") String role,
+            @Param("search") String search,
+            Pageable pageable);
 }

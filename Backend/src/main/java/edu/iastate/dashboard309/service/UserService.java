@@ -56,8 +56,15 @@ public class UserService {
 
     @Transactional
     public Page<UserRequest> getUsers(String role, String search, Pageable pageable) {
-        return userRepository.findUsers(role, search, pageable)
-            .map(this::userToRequest);
+        Page<User> page;
+
+        if (search == null) {
+            page = userRepository.findUsersWithoutSearch(role, pageable);
+        } else {
+            page = userRepository.findUsersWithSearch(role, search, pageable);
+        }
+
+        return page.map(this::userToRequest);
     }
 
     @Transactional
