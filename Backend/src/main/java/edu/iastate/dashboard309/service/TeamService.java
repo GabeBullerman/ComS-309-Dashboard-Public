@@ -35,8 +35,6 @@ public class TeamService {
             taNetid = team.getTa().getNetid();
         }
 
-        String taNetid = ta != null ? ta.netid() : null;
-
         List<UserRequest> students = team.getStudents().stream()
             .map(u -> userService.getUserById(u.getId()))
             .toList();
