@@ -2,6 +2,8 @@ package edu.iastate.dashboard309.service;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,14 +28,11 @@ public class TeamService {
         this.userService = userService;
     }
 
-    @Transactional 
-    public TeamRequest getTeamById(Long id){
-        Team team = teamRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
-        UserRequest ta = null;
+    @Transactional
+    private TeamRequest teamToRequest(Team team) {
+        String taNetid = null;
         if (team.getTa() != null) {
-            Long taId = team.getTa().getId();
-            ta = userService.getUserById(taId);
+            taNetid = team.getTa().getNetid();
         }
 
         String taNetid = ta != null ? ta.netid() : null;
@@ -41,8 +40,51 @@ public class TeamService {
         List<UserRequest> students = team.getStudents().stream()
             .map(u -> userService.getUserById(u.getId()))
             .toList();
-        
-        return new TeamRequest(team.getId(), team.getName(), team.getSection(), taNetid, students, team.getStatus(), team.getTaNotes(), team.getGitlab());
+
+        return new TeamRequest(team.getId(), team.getName(), team.getSection(), taNetid, students,
+            team.getStatus(), team.getTaNotes(), team.getGitlab());
+    }
+
+    @Transactional 
+    public TeamRequest getTeamById(Long id){
+        Team team = teamRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+        return teamToRequest(team);
+    }
+
+    @Transactional
+    public Page<TeamRequest> getTeams(String taNetid, Integer section, Integer status, Pageable pageable) {
+        return teamRepository.findTeams(taNetid, section, status, pageable)
+            .map(this::teamToRequest);
+    }
+
+    @Transactional
+    public List<UserRequest> getTeamStudents(Long teamId) {
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+        return team.getStudents().stream()
+            .map(u -> userService.getUserById(u.getId()))
+            .toList();
+    }
+
+    @Transactional
+    public UserRequest getTeamTa(Long teamId) {
+        Team team = teamRepository.findById(teamId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+        if (team.getTa() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "TA not assigned");
+        }
+        return userService.getUserById(team.getTa().getId());
+    }
+
+    @Transactional
+    public TeamRequest getTeamByUserId(Long userId) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (user.getTeam() == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found");
+        }
+        return getTeamById(user.getTeam().getId());
     }
 
     @Transactional
@@ -53,7 +95,7 @@ public class TeamService {
         }
                 
         return teams.stream()
-            .map(t -> getTeamById(t.getId()))
+            .map(this::teamToRequest)
             .toList();
     }
 
@@ -61,7 +103,7 @@ public class TeamService {
     public List<TeamRequest> getAllTeams(){
         List<Team> teams = teamRepository.findAll();
         return teams.stream()
-            .map(t -> getTeamById(t.getId()))
+            .map(this::teamToRequest)
             .toList();
     }
 

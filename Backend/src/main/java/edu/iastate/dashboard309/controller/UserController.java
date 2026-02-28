@@ -1,13 +1,18 @@
 package edu.iastate.dashboard309.controller;
 
+import edu.iastate.dashboard309.dto.TeamRequest;
 import edu.iastate.dashboard309.dto.UserRequest;
 import edu.iastate.dashboard309.model.Role;
 import edu.iastate.dashboard309.model.User;
 import edu.iastate.dashboard309.repository.RoleRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
+import edu.iastate.dashboard309.service.TeamService;
 import edu.iastate.dashboard309.service.UserService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,10 +22,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 @RestController
@@ -29,18 +34,25 @@ public class UserController {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserService userService;
+    private final TeamService teamService;
 
     public UserController(UserRepository userRepository,
                           RoleRepository roleRepository,
-                          UserService userService) {
+                          UserService userService,
+                          TeamService teamService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userService = userService;
+        this.teamService = teamService;
     }
 
     @GetMapping
-    public List<UserRequest> list() {
-        return userService.getAllUsers();
+    public Page<UserRequest> list(@RequestParam(required = false) String role,
+                                  @RequestParam(required = false) String search,
+                                  @PageableDefault(size = 20) Pageable pageable) {
+        String normalizedRole = normalize(role);
+        String normalizedSearch = normalize(search);
+        return userService.getUsers(normalizedRole, normalizedSearch, pageable);
     }
 
     @GetMapping("/self")
@@ -54,9 +66,26 @@ public class UserController {
         return userService.getUserById(id);
     }
 
+    @GetMapping("/netid/{netid}")
+    public UserRequest getByNetid(@PathVariable String netid) {
+        return userService.getUserByNetid(netid);
+    }
+
+    @GetMapping("/{id}/team")
+    public TeamRequest getTeamForUser(@PathVariable Long id) {
+        return teamService.getTeamByUserId(id);
+    }
+
     @GetMapping("/role/{role}")
     public List<UserRequest> getUsersWithRole(@PathVariable String role){
         return userService.getUsersWithRoleName(role);
+    }
+
+    @GetMapping("/{id}/contributions")
+    public Integer getContributions(@PathVariable Long id) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return user.getContributions();
     }
 
     @PostMapping
@@ -85,21 +114,30 @@ public class UserController {
     public UserRequest update(@PathVariable Long id, @Valid @RequestBody UserRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        if (!user.getNetid().equals(request.netid()) && userRepository.existsByNetid(request.netid())) {
+        if (request.netid() != null && !user.getNetid().equals(request.netid()) && userRepository.existsByNetid(request.netid())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Netid already exists");
         }
-        user.setName(request.name());
-        user.setNetid(request.netid());
-        user.setPassword(request.password());
-
-        for(String role : request.role()){
-            Role userRole = roleRepository.findByRoleName(role)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
-            user.setRole(userRole);
+        if (request.name() != null) {
+            user.setName(request.name());
         }
-
+        if (request.netid() != null) {
+            user.setNetid(request.netid());
+        }
+        if (request.password() != null) {
+            user.setPassword(request.password());
+        }
+        if (request.role() != null) {
+            user.getRole().clear();
+            for(String roleName : request.role()){
+                Role role = roleRepository.findByRoleName(roleName)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Role not found"));
+                user.setRole(role);
+            }
+        }
+        if (request.contributions() != null) {
+            user.setContributions(request.contributions());
+        }
         userRepository.save(user);
-
         return userService.getUserById(user.getId());
     }
 
@@ -114,5 +152,13 @@ public class UserController {
         // Remove all roles from user
         // Remove user from all teams
         //
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

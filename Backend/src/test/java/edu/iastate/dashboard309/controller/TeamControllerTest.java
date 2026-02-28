@@ -23,6 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -51,21 +53,23 @@ class TeamControllerTest {
     @Test
     void list_withoutTaNetid_returnsAllTeams() throws Exception {
         TeamRequest team = new TeamRequest(1L, "Team A", 1, "ta1", List.of(), 0, "notes", "gitlab");
-        when(teamService.getAllTeams()).thenReturn(List.of(team));
+        when(teamService.getTeams(any(), any(), any(), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(team)));
 
         mockMvc.perform(get("/api/teams"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].name").value("Team A"));
+            .andExpect(jsonPath("$.content[0].name").value("Team A"));
     }
 
     @Test
     void list_withTaNetid_returnsFilteredTeams() throws Exception {
         TeamRequest team = new TeamRequest(2L, "Team B", 2, "ta2", List.of(), 0, "notes", "gitlab");
-        when(teamService.getTeamByTaNetid("ta2")).thenReturn(List.of(team));
+        when(teamService.getTeams(any(), any(), any(), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(team)));
 
         mockMvc.perform(get("/api/teams").param("taNetid", "ta2"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].taNetid").value("ta2"));
+            .andExpect(jsonPath("$.content[0].taNetid").value("ta2"));
     }
 
     @Test

@@ -35,7 +35,6 @@ public class User {
     private String password;
 
     @ManyToMany
-    @Column(name = "roles")
     @JoinTable(
         name = "user_roles",
         joinColumns = @JoinColumn(name = "user_id"),
@@ -125,6 +124,18 @@ public class User {
         this.team = team;
     }
 
-    // TODO: Create get users by role, or team. 
-    // TODO: Create setters.
+    public Team getTeam() {
+        return team;
+    }
+
+    @Column(name = "contributions", nullable = false)
+    private Integer contributions = 0;
+
+    public Integer getContributions() {
+        return contributions;
+    }
+
+    public void setContributions(Integer contributions) {
+        this.contributions = contributions;
+    }
 }

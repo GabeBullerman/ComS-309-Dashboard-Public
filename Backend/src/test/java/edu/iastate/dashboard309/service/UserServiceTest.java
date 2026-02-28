@@ -42,7 +42,7 @@ class UserServiceTest {
         user.setRole(role);
         userRepository.save(user);
 
-        UserRequest result = userService.getUserById(user.getId());
+        UserRequest result = userService.getUserById(user.getId()); // Update this if you construct UserRequest manually elsewhere
 
         assertThat(result.name()).isEqualTo("Alex");
         assertThat(result.netid()).isEqualTo("alex1");

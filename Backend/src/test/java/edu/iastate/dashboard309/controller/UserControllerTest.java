@@ -14,6 +14,7 @@ import edu.iastate.dashboard309.model.Role;
 import edu.iastate.dashboard309.model.User;
 import edu.iastate.dashboard309.repository.RoleRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
+import edu.iastate.dashboard309.service.TeamService;
 import edu.iastate.dashboard309.service.UserService;
 import java.util.List;
 import java.util.Optional;
@@ -22,6 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -45,21 +48,25 @@ class UserControllerTest {
     private UserService userService;
 
     @MockBean
+    private TeamService teamService;
+
+    @MockBean
     private JwtFilter jwtFilter;
 
     @Test
     void list_returnsUsers() throws Exception {
-        when(userService.getAllUsers())
-            .thenReturn(List.of(new UserRequest(1L, "Alex", "alex1", "pw", List.of("TA"), List.of())));
+        when(userService.getUsers(any(), any(), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(
+                List.of(new UserRequest(1L, "Alex", "alex1", "pw", List.of("TA"), List.of(), 0))));
 
         mockMvc.perform(get("/api/users"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].netid").value("alex1"));
+            .andExpect(jsonPath("$.content[0].netid").value("alex1"));
     }
 
     @Test
     void create_returnsConflictWhenNetidExists() throws Exception {
-        UserRequest request = new UserRequest(null, "Alex", "alex1", "pw", List.of("TA"), List.of());
+        UserRequest request = new UserRequest(null, "Alex", "alex1", "pw", List.of("TA"), List.of(), 0);
         when(userRepository.existsByNetid("alex1")).thenReturn(true);
 
         mockMvc.perform(post("/api/users")
@@ -70,7 +77,7 @@ class UserControllerTest {
 
     @Test
     void create_returnsCreatedUser() throws Exception {
-        UserRequest request = new UserRequest(null, "Alex", "alex1", "pw", List.of("TA"), List.of());
+        UserRequest request = new UserRequest(null, "Alex", "alex1", "pw", List.of("TA"), List.of(), 0);
         Role role = new Role();
         role.setRoleName("TA");
 
@@ -82,7 +89,7 @@ class UserControllerTest {
             return saved;
         });
         when(userService.getUserById(1L))
-            .thenReturn(new UserRequest(1L, "Alex", "alex1", "pw", List.of("TA"), List.of()));
+            .thenReturn(new UserRequest(1L, "Alex", "alex1", "pw", List.of("TA"), List.of(), 0));
 
         mockMvc.perform(post("/api/users")
                 .contentType(MediaType.APPLICATION_JSON)

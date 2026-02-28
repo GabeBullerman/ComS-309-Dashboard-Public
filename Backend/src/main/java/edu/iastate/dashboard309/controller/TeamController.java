@@ -1,6 +1,7 @@
 package edu.iastate.dashboard309.controller;
 
 import edu.iastate.dashboard309.dto.TeamRequest;
+import edu.iastate.dashboard309.dto.UserRequest;
 import edu.iastate.dashboard309.model.Team;
 import edu.iastate.dashboard309.model.User;
 import edu.iastate.dashboard309.repository.UserRepository;
@@ -9,6 +10,9 @@ import edu.iastate.dashboard309.repository.TeamRepository;
 import jakarta.validation.Valid;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -39,17 +43,35 @@ public class TeamController {
 
     // @PreAuthorize("hasAuthority('SEE_ALL_TEAMS')")
     @GetMapping
-    public List<TeamRequest> list(@RequestParam(required = false) String taNetid) {
-        if (taNetid == null || taNetid.isBlank()) {
-            return teamService.getAllTeams();
-        }
-        return teamService.getTeamByTaNetid(taNetid);
+    public Page<TeamRequest> list(@RequestParam(required = false) String taNetid,
+                                  @RequestParam(required = false) Integer section,
+                                  @RequestParam(required = false) Integer status,
+                                  @PageableDefault(size = 20) Pageable pageable) {
+        String normalizedTaNetid = normalize(taNetid);
+        return teamService.getTeams(normalizedTaNetid, section, status, pageable);
     }
 
     @GetMapping("/{id}")
     @Query("SELECT t FROM Team t LEFT JOIN FETCH t.students WHERE t.id = :id")
     public TeamRequest get(@PathVariable Long id) {
         return teamService.getTeamById(id);
+    }
+
+    @GetMapping("/{id}/students")
+    public List<UserRequest> getStudents(@PathVariable Long id) {
+        return teamService.getTeamStudents(id);
+    }
+
+    @GetMapping("/{id}/ta")
+    public UserRequest getTa(@PathVariable Long id) {
+        return teamService.getTeamTa(id);
+    }
+
+    @GetMapping("/{id}/status")
+    public Integer getStatus(@PathVariable Long id) {
+        Team team = teamRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+        return team.getStatus();
     }
 
     // @PreAuthorize("hasAuthority('CREATE_TEAMS')")
@@ -101,11 +123,6 @@ public class TeamController {
     }
 
     private void applyRequest(Team team, TeamRequest request) {
-        if (request.taNetid() != null && !userRepository.existsByNetid(request.taNetid())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TA does not exist");
-        }
-        User ta = userRepository.findByNetid(request.taNetid())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "TA not found"));
         if(request.name() != null){
             team.setName(request.name());
         }
@@ -113,6 +130,11 @@ public class TeamController {
             team.setSection(request.section());
         }
         if(request.taNetid() != null){
+            if (!userRepository.existsByNetid(request.taNetid())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "TA does not exist");
+            }
+            User ta = userRepository.findByNetid(request.taNetid())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "TA not found"));
             team.setTa(ta);
         }
         if(request.status() != null){
@@ -124,5 +146,13 @@ public class TeamController {
         if(request.gitlab() != null){
             team.setGitlab(request.gitlab());
         }
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }
