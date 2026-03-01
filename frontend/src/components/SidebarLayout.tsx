@@ -4,8 +4,8 @@ import TeamsScreen from "../screens/TeamsScreen";
 import TAManager from "../screens/TAManager";
 import TaskAssignmentScreen from "../screens/TaskAssignmentScreen";
 import AssignmentsScreen from "../screens/AssignmentsScreen";
-import { useState } from "react";
-import { getUserPermissions } from "../utils/auth";
+import { useEffect, useState } from "react";
+import { getCurrentUser, getUserPermissions } from "../utils/auth";
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +14,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SidebarLayout'>;
 
 export default function SidebarLayout({route}: Props) {
   const [activeScreen, setActiveScreen] = useState("Teams");
+  const [displayName, setDisplayName] = useState("User");
   // Get permissions based on role
   const permissions = getUserPermissions(route.params.userRole);
   const screenWidth = Dimensions.get("window").width;
@@ -22,12 +23,32 @@ export default function SidebarLayout({route}: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const slideAnim = useState(new Animated.Value(-240))[0]; // sidebar width
 
-  // Placeholder user info
-  const name = "John Smith";
   const role = route.params.userRole;
 
+  useEffect(() => {
+    let mounted = true;
+
+    getCurrentUser()
+      .then((user) => {
+        if (!mounted) return;
+        if (user?.name && user.name.trim().length > 0) {
+          setDisplayName(user.name);
+          return;
+        }
+        if (user?.netid && user.netid.trim().length > 0) {
+          setDisplayName(user.netid);
+        }
+      })
+      .catch(() => {
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   // Generate initials for user
-  const initials = name
+  const initials = displayName
   .split(" ")
   .map((n: string) => n[0])
   .join("")
@@ -117,7 +138,7 @@ export default function SidebarLayout({route}: Props) {
 
           <View>
             <Text className="font-semibold text-sm text-white">
-              {name}
+              {displayName}
             </Text>
             <Text className="text-xs text-white/70">
               {role}
