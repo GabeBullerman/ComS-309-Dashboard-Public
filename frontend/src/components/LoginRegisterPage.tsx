@@ -12,6 +12,7 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [loginError, setLoginError] = useState('');
 
   // Iowa State email regex
   const iaStateEmailRegex = /^[a-zA-Z0-9._-]+@iastate\.edu$/;
@@ -49,6 +50,7 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
   };
 
   const handleSubmit = () => {
+    setLoginError('');
     if (validateForm()) {
       if (isLogin) {
         // Call backend login using netid (part before @) and password
@@ -61,10 +63,11 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
               if (Array.isArray(userRole)) {
                 userRole = userRole[0];
               }
+              setLoginError('');
               onLogin(email, userRole);
             })
             .catch((err) => {
-              Alert.alert('Login Failed', 'Invalid credentials or server error');
+              setLoginError('Incorrect Username or Password, Try Again');
             });
         });
       } else {
@@ -77,6 +80,7 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
             setConfirmPassword('');
             setName('');
             setErrors({});
+            setLoginError('');
           }}
         ]);
       }
@@ -107,6 +111,7 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
               setErrors({});
               setName('');
               setConfirmPassword('');
+              setLoginError('');
             }}
           >
             <Text style={[styles.tabText, isLogin && styles.tabTextActive]}>Login</Text>
@@ -116,6 +121,7 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
             onPress={() => {
               setIsLogin(false);
               setErrors({});
+              setLoginError('');
             }}
           >
             <Text style={[styles.tabText, !isLogin && styles.tabTextActive]}>Register</Text>
@@ -151,6 +157,7 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
             onChangeText={(text) => {
               setEmail(text);
               if (errors.email) setErrors({ ...errors, email: '' });
+                if (loginError) setLoginError('');
             }}
           />
           {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
@@ -168,9 +175,11 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
             onChangeText={(text) => {
               setPassword(text);
               if (errors.password) setErrors({ ...errors, password: '' });
+                if (loginError) setLoginError('');
             }}
           />
           {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+          {!!loginError && <Text style={styles.loginErrorText}>{loginError}</Text>}
         </View>
 
         {!isLogin && (
@@ -203,6 +212,7 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
               onPress={() => {
                 setIsLogin(!isLogin);
                 setErrors({});
+                setLoginError('');
               }}
             >
               {isLogin ? 'Register' : 'Login'}
@@ -315,6 +325,11 @@ const styles = StyleSheet.create({
     color: '#ef4444',
     fontSize: 12,
     marginTop: 4,
+  },
+  loginErrorText: {
+    color: '#ef4444',
+    fontSize: 12,
+    marginTop: 8,
   },
   hint: {
     fontSize: 12,

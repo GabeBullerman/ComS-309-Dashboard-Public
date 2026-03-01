@@ -30,6 +30,7 @@ export default function ClassTeamsScreen({ userRole }: Props) {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
   const [semesterFilter, setSemesterFilter] = useState<SemesterFilter>('All');
+  const [sectionFilter, setSectionFilter] = useState<string>('All');
   const [teams, setTeams] = useState<Team[]>(teamsData);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -115,23 +116,45 @@ export default function ClassTeamsScreen({ userRole }: Props) {
     loadTeams();
   }, [effectiveRole]);
 
+  const isStudentView = effectiveRole === 'Student';
+  const isTAView = effectiveRole === 'TA';
+  const canFilterSemester = effectiveRole === 'Instructor' || effectiveRole === 'HTA';
+  const canFilterSection = effectiveRole === 'Instructor' || effectiveRole === 'HTA' || effectiveRole === 'TA';
+  const searchPlaceholder = isTAView
+    ? 'Search teams or members...'
+    : 'Search teams, TA, or members...';
+
+  const sectionOptions = useMemo(() => {
+    const sections = Array.from(new Set(teams.map((team) => team.section)))
+      .filter((section) => Number.isFinite(section))
+      .sort((a, b) => a - b)
+      .map((section) => String(section));
+
+    return ['All', ...sections];
+  }, [teams]);
+
   const filteredTeams = useMemo(() => {
-    return teams.filter((team) => {
+    const filtered = teams.filter((team) => {
       const matchesSearch =
-        team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        team.section.toString().includes(searchQuery) ||
-        team.ta.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        team.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        team.members.some((member) =>
-          member.initials.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          member.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        isStudentView
+          ? true
+          : team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            team.section.toString().includes(searchQuery) ||
+            team.ta.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            team.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            team.members.some((member) =>
+              member.initials.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              member.name.toLowerCase().includes(searchQuery.toLowerCase())
+            );
 
       const matchesStatus =
-        statusFilter === 'All' || team.status === statusFilter;
+        isStudentView || statusFilter === 'All' || team.status === statusFilter;
 
       const matchesSemester =
-        semesterFilter === 'All' || team.semester === semesterFilter;
+        !canFilterSemester || semesterFilter === 'All' || team.semester === semesterFilter;
+
+      const matchesSection =
+        !canFilterSection || sectionFilter === 'All' || String(team.section) === sectionFilter;
 
       // Role-based filtering
       const matchesRole =
@@ -139,9 +162,22 @@ export default function ClassTeamsScreen({ userRole }: Props) {
           ? true
           : permissions.canViewPastSemesters || team.semester === 'Spring 2026'; // Others can see past if allowed
 
-      return matchesSearch && matchesStatus && matchesSemester && matchesRole;
-    }).sort((a, b) => a.section - b.section);
-  }, [teams, searchQuery, statusFilter, semesterFilter, effectiveRole, permissions]);
+      return matchesSearch && matchesStatus && matchesSemester && matchesSection && matchesRole;
+    });
+
+    return filtered.sort((a, b) => a.name.localeCompare(b.name));
+  }, [
+    teams,
+    searchQuery,
+    statusFilter,
+    semesterFilter,
+    sectionFilter,
+    effectiveRole,
+    permissions,
+    isStudentView,
+    canFilterSemester,
+    canFilterSection,
+  ]);
 
   if (isLoading) {
     return (
@@ -166,62 +202,79 @@ export default function ClassTeamsScreen({ userRole }: Props) {
     <View className="flex-row flex-1 bg-gray-50">
       {/* Main Content */}
       <View className="flex-1 p-6">
-        <Text className="text-2xl font-bold">
+        <Text className="text-3xl font-bold">
           Class Teams
         </Text>
-        <Text className="text-gray-500 mb-4">
-          Manage and view all student teams for your courses
-        </Text>
+        <View className="mb-4" />
 
-        {/* Search */}
-        <View className="flex-row items-center bg-white rounded-lg px-4 py-2 mb-3">
-          <Ionicons name="search" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
-          <TextInput
-          placeholder="Search teams, projects, section, or members..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          className="w-full pl-3 pr-4 py-3 bg-white border border-gray-300 rounded-lg"
-          />
-        </View>
-
-      {/* Filters */}
-      <View className="flex-row mb-4">
-        <Text className="text-sm text-gray-600 mb-2 mr-2 my-2">Status</Text>
-        <View className="flex-row flex-wrap gap-2">
-              <Picker
-                selectedValue={statusFilter}
-                onValueChange={(value) => setStatusFilter(value as StatusFilter)}
-                dropdownIconColor="#000"
-                style={{ height: 44, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}
-              >
-                {(['All', 'Poor', 'Moderate', 'Good'] as StatusFilter[]).map(
-                  (status) => (
-                    <Picker.Item key={status} label={status} value={status} />
-                  )
-                )}
-              </Picker>
-        </View>
-
-        {permissions.canViewPastSemesters && (
+        {!isStudentView && (
           <>
-            <Text className="text-sm text-gray-600 mx-2 my-2 mb-2">Semester</Text>
-            <View className="flex-row flex-wrap gap-2">
-              <Picker
-                selectedValue={semesterFilter}
-                onValueChange={(value) => setSemesterFilter(value as SemesterFilter)}
-                dropdownIconColor="#000"
-                style={{ height: 44, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}
-              >
-                {(['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map(
-                  (semester) => (
-                    <Picker.Item key={semester} label={semester} value={semester} />
-                  )
-                )}
-              </Picker>
+            {/* Search */}
+            <View className="flex-row items-center bg-white rounded-lg px-4 py-2 mb-3">
+              <Ionicons name="search" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
+              <TextInput
+                placeholder={searchPlaceholder}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                className="w-full pl-3 pr-4 py-3 bg-white border border-gray-300 rounded-lg"
+              />
+            </View>
+
+            {/* Filters */}
+            <View className="flex-row mb-4">
+              <Text className="text-sm text-gray-600 mb-2 mr-2 my-2">Status</Text>
+              <View className="flex-row flex-wrap gap-2">
+                <Picker
+                  selectedValue={statusFilter}
+                  onValueChange={(value: string) => setStatusFilter(value as StatusFilter)}
+                  dropdownIconColor="#000"
+                  style={{ height: 44, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}
+                >
+                  {(['All', 'Poor', 'Moderate', 'Good'] as StatusFilter[]).map((status) => (
+                    <Picker.Item key={status} label={status} value={status} />
+                  ))}
+                </Picker>
+              </View>
+
+              {canFilterSection && (
+                <>
+                  <Text className="text-sm text-gray-600 mx-2 my-2 mb-2">Section</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    <Picker
+                      selectedValue={sectionFilter}
+                      onValueChange={(value: string) => setSectionFilter(value)}
+                      dropdownIconColor="#000"
+                      style={{ height: 44, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}
+                    >
+                      {sectionOptions.map((section) => (
+                        <Picker.Item key={section} label={section} value={section} />
+                      ))}
+                    </Picker>
+                  </View>
+                </>
+              )}
+
+              {canFilterSemester && (
+                <>
+                  <Text className="text-sm text-gray-600 mx-2 my-2 mb-2">Semester</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    <Picker
+                      selectedValue={semesterFilter}
+                      onValueChange={(value: string) => setSemesterFilter(value as SemesterFilter)}
+                      dropdownIconColor="#000"
+                      style={{ height: 44, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}
+                    >
+                      {(['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map((semester) => (
+                        <Picker.Item key={semester} label={semester} value={semester} />
+                      ))}
+                    </Picker>
+                  </View>
+                </>
+              )}
+
             </View>
           </>
         )}
-      </View>
 
       <Text className="text-gray-500 mb-4">
         Showing {filteredTeams.length} of {teams.length} teams

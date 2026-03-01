@@ -16,6 +16,7 @@ export interface UserPermissions {
 
 export interface UserSummary {
   id?: number;
+  name?: string;
   netid?: string;
   email?: string;
   role?: UserRole;
@@ -177,11 +178,34 @@ export const getCurrentUser = async (): Promise<UserSummary | null> => {
 };
 
 export const getTeams = async (taNetid?: string): Promise<TeamApiResponse[]> => {
-  const res = await axiosInstance.get('/api/teams', {
-    params: taNetid ? { taNetid } : undefined,
+  const baseParams = taNetid ? { taNetid } : {};
+  const first = await axiosInstance.get('/api/teams', {
+    params: baseParams,
   });
 
-  return Array.isArray(res.data) ? res.data : [];
+  if (Array.isArray(first.data)) {
+    return first.data;
+  }
+
+  if (first.data && Array.isArray(first.data.content)) {
+    const totalPages = Number(first.data.totalPages ?? 1);
+    if (totalPages <= 1) {
+      return first.data.content;
+    }
+
+    const allTeams: TeamApiResponse[] = [...first.data.content];
+    for (let page = 1; page < totalPages; page += 1) {
+      const next = await axiosInstance.get('/api/teams', {
+        params: { ...baseParams, page },
+      });
+      if (next.data && Array.isArray(next.data.content)) {
+        allTeams.push(...next.data.content);
+      }
+    }
+    return allTeams;
+  }
+
+  return [];
 };
 
 export const getCurrentUserRole = (): UserRole => {
