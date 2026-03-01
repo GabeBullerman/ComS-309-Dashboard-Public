@@ -22,6 +22,23 @@ export interface UserSummary {
   permissions?: UserPermissions;
 }
 
+export interface TeamApiUser {
+  id?: number;
+  name?: string;
+  netid?: string;
+}
+
+export interface TeamApiResponse {
+  id?: number;
+  name?: string;
+  section?: number;
+  taNetid?: string | null;
+  students?: TeamApiUser[];
+  status?: number | null;
+  taNotes?: string | null;
+  gitlab?: string | null;
+}
+
 const TOKEN_KEY = 'auth_token';
 
 let apiBaseUrl = 'http://coms-4020-006.class.las.iastate.edu:8080';
@@ -78,7 +95,26 @@ export const decodeToken = (token: string): { roles?: string[]; sub?: string } =
 export const getRoleFromToken = (token: string): UserRole => {
   const decoded = decodeToken(token);
   const roles = decoded.roles || [];
-  return roles.length > 0 ? (roles[0] as UserRole) : 'Student';
+  return normalizeRole(roles.length > 0 ? String(roles[0]) : 'Student');
+};
+
+export const normalizeRole = (role?: string | null): UserRole => {
+  const normalized = (role ?? '').trim().toUpperCase();
+
+  switch (normalized) {
+    case 'STUDENT':
+      return 'Student';
+    case 'TA':
+      return 'TA';
+    case 'HEAD_TA':
+    case 'HTA':
+      return 'HTA';
+    case 'INSTRUCTOR':
+    case 'PROFESSOR':
+      return 'Instructor';
+    default:
+      return role && role.length > 0 ? role : 'Student';
+  }
 };
 
 // POST /api/auth/login -> { netid, password } -> returns token string
@@ -95,19 +131,23 @@ export const login = async (netid: string, password: string): Promise<{ token: s
   try {
     const userRes = await axiosInstance.get('/api/users/self');
     user = userRes.data;
-    // Ensure user has the role from token
-    if (!user.role && role) {
-      user.role = role;
-    }
+    const userRoleFromApi = Array.isArray((user as any)?.role)
+      ? (user as any).role[0]
+      : user?.role;
+    user.role = normalizeRole((userRoleFromApi as string | undefined) ?? String(role));
   } catch (e) {
     // If fetchng user fails, create a basic user object with role from token
-    user = { role };
+    user = { role: normalizeRole(String(role)) };
   }
   
   // persist simple user info for sync with app state
   try {
     if (user?.netid) await AsyncStorage.setItem('userEmail', user.netid);
-    if (role) await AsyncStorage.setItem('user_role', String(role));
+    if (user?.role) {
+      await AsyncStorage.setItem('user_role', String(user.role));
+    } else if (role) {
+      await AsyncStorage.setItem('user_role', String(normalizeRole(String(role))));
+    }
   } catch (e) {
     // ignore
   }
@@ -125,10 +165,23 @@ export const logout = async (): Promise<string> => {
 export const getCurrentUser = async (): Promise<UserSummary | null> => {
   try {
     const res = await axiosInstance.get('/api/users/self');
-    return res.data;
+    const userData = res.data;
+    const userRoleFromApi = Array.isArray(userData?.role) ? userData.role[0] : userData?.role;
+    return {
+      ...userData,
+      role: normalizeRole(userRoleFromApi),
+    };
   } catch (e) {
     return null;
   }
+};
+
+export const getTeams = async (taNetid?: string): Promise<TeamApiResponse[]> => {
+  const res = await axiosInstance.get('/api/teams', {
+    params: taNetid ? { taNetid } : undefined,
+  });
+
+  return Array.isArray(res.data) ? res.data : [];
 };
 
 export const getCurrentUserRole = (): UserRole => {
@@ -146,7 +199,9 @@ export const getCurrentUserRole = (): UserRole => {
 };
 
 export const getUserPermissions = (role: UserRole): UserPermissions => {
-  switch (role) {
+  const normalizedRole = normalizeRole(String(role));
+
+  switch (normalizedRole) {
     case 'Student':
       return {
         canViewPastSemesters: false,
