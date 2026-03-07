@@ -35,3 +35,9 @@ coverage/
 
 # Misc
 .cache/
+
+# Build artifacts
+.npmrc
+*.apks
+*.apk
+toc.pb
