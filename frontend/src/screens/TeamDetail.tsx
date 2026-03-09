@@ -82,7 +82,6 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         </TouchableOpacity>
         <View className="flex-1 items-center mr-10">
           <Text className="text-xl font-bold">{team.name}</Text>
-          <Text className="text-gray-500 text-sm">{team.description}</Text>
         </View>
       </View>
 
