@@ -1,4 +1,5 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, Menu } = require('electron');
+Menu.setApplicationMenu(null);
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
