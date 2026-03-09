@@ -12,12 +12,11 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../App';
 import { TeamMember } from '../data/teams';
-import { getTeam, updateTeamInfo } from '../utils/auth';
+import { getTeam, updateTeamInfo, setUserProjectRole } from '../utils/auth';
 
 type TeamDetailProps = NativeStackScreenProps<RootStackParamList, 'TeamDetail'>;
 
@@ -28,7 +27,11 @@ const PROJECT_ROLES: ProjectRole[] = ['Frontend', 'Backend', 'Full Stack'];
 
 export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps) {
   const { team, userRole } = route.params;
-  const [selectedMember, setSelectedMember] = useState<TeamMember>(team.members[0]);
+  const [selectedKey, setSelectedKey] = useState<string>('team');
+  const selectedMember =
+    selectedKey === 'team'
+      ? team.members[0]
+      : (team.members.find((m) => (m.netid || m.name) === selectedKey) ?? team.members[0]);
   const [activeTab, setActiveTab] = useState<TabKey>('contributions');
   const [gitlab, setGitlab] = useState<string>(team.gitlab || '');
   const [teamName, setTeamName] = useState(team.name);
@@ -40,19 +43,26 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   const [saving, setSaving] = useState(false);
 
   const canEditRepo = userRole === 'TA' || userRole === 'HTA' || userRole === 'Instructor';
-  const rolesKey = `team_member_roles_${team.id}`;
 
-  // Fetch fresh team data and stored member roles on mount
+  // Fetch fresh team data and project roles from the backend on mount
   useEffect(() => {
     if (!team.id) return;
     getTeam(team.id)
       .then((fresh) => {
         if (fresh.gitlab != null) setGitlab(fresh.gitlab);
         if (fresh.name) setTeamName(fresh.name);
+        // Build member roles map from each student's projectRole field
+        if (fresh.students) {
+          const rolesFromApi: Record<string, ProjectRole> = {};
+          for (const student of fresh.students) {
+            const key = student.netid || String(student.id);
+            if (student.projectRole) {
+              rolesFromApi[key] = student.projectRole as ProjectRole;
+            }
+          }
+          setMemberRoles(rolesFromApi);
+        }
       })
-      .catch(() => {});
-    AsyncStorage.getItem(rolesKey)
-      .then((stored) => { if (stored) setMemberRoles(JSON.parse(stored)); })
       .catch(() => {});
   }, [team.id]);
 
@@ -76,7 +86,14 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     setSaving(true);
     try {
       await updateTeamInfo(team.id, { name: editName.trim(), gitlab: editUrl.trim() });
-      await AsyncStorage.setItem(rolesKey, JSON.stringify(editRoles));
+      // Save each member's project role to the backend
+      for (const member of team.members) {
+        const key = member.netid || member.name;
+        const role = editRoles[key];
+        if (member.id && role !== memberRoles[key]) {
+          await setUserProjectRole(member.id, role ?? '');
+        }
+      }
       setGitlab(editUrl.trim());
       setTeamName(editName.trim());
       setMemberRoles(editRoles);
@@ -152,29 +169,84 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         ) : null}
       </View>
 
-      {/* Team Members */}
+      {/* Team Members — "All Members" tile + individual members */}
       <FlatList
         horizontal
-        data={team.members}
-        keyExtractor={(item) => item.netid || item.name}
+        data={[
+          { type: 'team' as const },
+          ...team.members.map((m) => ({ type: 'member' as const, member: m })),
+        ]}
+        keyExtractor={(item) => item.type === 'team' ? 'team' : (item.member.netid || item.member.name)}
         showsHorizontalScrollIndicator={false}
-        contentContainerClassName="flex-grow justify-center items-center py-5 px-4"
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 20, paddingHorizontal: 16 }}
         renderItem={({ item }) => {
-          const memberKey = item.netid || item.name;
+          // Shared container size — 128 inner + 3 border + 2 padding on each side = 136 total
+          const TILE = 136;
+          const INNER = 128;
+          const RADIUS_OUTER = 35;
+          const RADIUS_INNER = 32;
+
+          if (item.type === 'team') {
+            const isSelected = selectedKey === 'team';
+            return (
+              <TouchableOpacity
+                onPress={() => setSelectedKey('team')}
+                style={{ marginRight: 16, alignItems: 'center' }}
+              >
+                <View style={{
+                  width: TILE, height: TILE,
+                  borderRadius: RADIUS_OUTER,
+                  borderWidth: 3,
+                  borderColor: isSelected ? '#F1BE48' : 'transparent',
+                  padding: 2,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <View style={{
+                    width: INNER, height: INNER,
+                    borderRadius: RADIUS_INNER,
+                    backgroundColor: '#F3F4F6',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <Ionicons name="people" size={60} color={isSelected ? '#F1BE48' : '#9CA3AF'} />
+                  </View>
+                </View>
+                <Text style={{ marginTop: 8, fontSize: 14, fontWeight: isSelected ? '700' : '400' }}>
+                  All Members
+                </Text>
+              </TouchableOpacity>
+            );
+          }
+
+          const memberKey = item.member.netid || item.member.name;
           const role = memberRoles[memberKey];
+          const isSelected = selectedKey === memberKey;
           return (
-            <TouchableOpacity onPress={() => setSelectedMember(item)} className="mr-4 items-center">
-              <Image
-                source={typeof item.photo === 'string' ? { uri: item.photo } : item.photo}
-                style={{ width: 128, height: 128, borderRadius: 32 }}
-              />
-              <Text className="mt-2 text-sm">{item.name}</Text>
+            <TouchableOpacity
+              onPress={() => setSelectedKey(memberKey)}
+              style={{ marginRight: 16, alignItems: 'center' }}
+            >
+              <View style={{
+                width: TILE, height: TILE,
+                borderRadius: RADIUS_OUTER,
+                borderWidth: 3,
+                borderColor: isSelected ? '#F1BE48' : 'transparent',
+                padding: 2,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Image
+                  source={typeof item.member.photo === 'string' ? { uri: item.member.photo } : item.member.photo}
+                  style={{ width: INNER, height: INNER, borderRadius: RADIUS_INNER }}
+                />
+              </View>
+              <Text style={{ marginTop: 8, fontSize: 14, fontWeight: isSelected ? '700' : '400' }}>
+                {item.member.name}
+              </Text>
               {role && (
-                <View
-                  className="mt-1 px-2 rounded-full"
-                  style={{ backgroundColor: '#C8102E', paddingVertical: 2 }}
-                >
-                  <Text className="text-white text-xs font-medium">{role}</Text>
+                <View style={{ backgroundColor: '#C8102E', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, marginTop: 4 }}>
+                  <Text style={{ color: 'white', fontSize: 12, fontWeight: '500' }}>{role}</Text>
                 </View>
               )}
             </TouchableOpacity>

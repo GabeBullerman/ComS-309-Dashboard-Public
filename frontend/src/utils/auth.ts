@@ -27,6 +27,7 @@ export interface TeamApiUser {
   id?: number;
   name?: string;
   netid?: string;
+  projectRole?: string;
 }
 
 export interface TeamApiResponse {
@@ -216,6 +217,10 @@ export const getTeam = async (teamId: number): Promise<TeamApiResponse> => {
 
 export const updateTeamInfo = async (teamId: number, data: { name?: string; gitlab?: string }): Promise<void> => {
   await axiosInstance.put(`/api/teams/${teamId}`, data);
+};
+
+export const setUserProjectRole = async (userId: number, projectRole: string): Promise<void> => {
+  await axiosInstance.put(`/api/users/${userId}/project-role`, { projectRole });
 };
 
 export const getCurrentUserRole = (): UserRole => {
