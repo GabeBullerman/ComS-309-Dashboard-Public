@@ -71,6 +71,7 @@ async function createWindow() {
     minWidth: 800,
     minHeight: 600,
     title: 'Instructor Dashboard',
+    icon: path.join(__dirname, '../src/Images/Iowa_State_Cyclones_logo.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
