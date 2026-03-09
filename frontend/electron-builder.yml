@@ -21,11 +21,12 @@ files:
   - "!**/{.git,.gitignore,.github}"
 
 win:
-  icon: src/Images/Iowa_State_Cyclones_logo.png
+  icon: src/Images/Iowa_State_Cyclones_logo.ico
   target:
     - nsis
     - portable
   certificateFile: null
+  signAndEditExecutable: false
 
 nsis:
   oneClick: false

@@ -11,10 +11,10 @@ delete env.ELECTRON_RUN_AS_NODE;
 
 const builderBin = path.join(__dirname, '..', 'node_modules', '.bin', 'electron-builder');
 
-const child = spawn(process.platform === 'win32' ? `${builderBin}.cmd` : builderBin, [], {
+const child = spawn('npx', ['electron-builder'], {
   stdio: 'inherit',
   env,
-  shell: false,
+  shell: true,
 });
 
 child.on('close', (code) => process.exit(code ?? 0));
