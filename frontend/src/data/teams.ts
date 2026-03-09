@@ -2,6 +2,7 @@ import { Image } from "react-native";
 
 export interface TeamMember {
   name: string;
+  netid?: string;
   initials: string;
   color: string;
   photo: ReturnType<typeof Image.resolveAssetSource> | string;

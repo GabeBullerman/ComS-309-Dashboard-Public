@@ -10,34 +10,50 @@ import {
   Linking,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../App';
 import { TeamMember } from '../data/teams';
-import { getTeam, updateTeamGitlab } from '../utils/auth';
+import { getTeam, updateTeamInfo } from '../utils/auth';
 
 type TeamDetailProps = NativeStackScreenProps<RootStackParamList, 'TeamDetail'>;
 
 type TabKey = 'contributions' | 'demoResults' | 'Push frequency';
+type ProjectRole = 'Frontend' | 'Backend' | 'Full Stack';
+
+const PROJECT_ROLES: ProjectRole[] = ['Frontend', 'Backend', 'Full Stack'];
 
 export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps) {
   const { team, userRole } = route.params;
   const [selectedMember, setSelectedMember] = useState<TeamMember>(team.members[0]);
   const [activeTab, setActiveTab] = useState<TabKey>('contributions');
   const [gitlab, setGitlab] = useState<string>(team.gitlab || '');
+  const [teamName, setTeamName] = useState(team.name);
+  const [memberRoles, setMemberRoles] = useState<Record<string, ProjectRole>>({});
   const [modalVisible, setModalVisible] = useState(false);
   const [editUrl, setEditUrl] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editRoles, setEditRoles] = useState<Record<string, ProjectRole>>({});
   const [saving, setSaving] = useState(false);
 
   const canEditRepo = userRole === 'TA' || userRole === 'HTA' || userRole === 'Instructor';
+  const rolesKey = `team_member_roles_${team.id}`;
 
-  // Fetch fresh team data on mount so gitlab is always up to date
+  // Fetch fresh team data and stored member roles on mount
   useEffect(() => {
     if (!team.id) return;
     getTeam(team.id)
-      .then((fresh) => { if (fresh.gitlab != null) setGitlab(fresh.gitlab); })
-      .catch(() => {}); // silently fall back to whatever was in nav params
+      .then((fresh) => {
+        if (fresh.gitlab != null) setGitlab(fresh.gitlab);
+        if (fresh.name) setTeamName(fresh.name);
+      })
+      .catch(() => {});
+    AsyncStorage.getItem(rolesKey)
+      .then((stored) => { if (stored) setMemberRoles(JSON.parse(stored)); })
+      .catch(() => {});
   }, [team.id]);
 
   const handleOpenRepo = () => {
@@ -47,6 +63,8 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
   const handleEditPress = () => {
     setEditUrl(gitlab);
+    setEditName(teamName);
+    setEditRoles({ ...memberRoles });
     setModalVisible(true);
   };
 
@@ -57,11 +75,14 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     }
     setSaving(true);
     try {
-      await updateTeamGitlab(team.id, editUrl.trim());
+      await updateTeamInfo(team.id, { name: editName.trim(), gitlab: editUrl.trim() });
+      await AsyncStorage.setItem(rolesKey, JSON.stringify(editRoles));
       setGitlab(editUrl.trim());
+      setTeamName(editName.trim());
+      setMemberRoles(editRoles);
       setModalVisible(false);
     } catch {
-      Alert.alert('Error', 'Failed to save repo URL. Please try again.');
+      Alert.alert('Error', 'Failed to save. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -81,15 +102,15 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           <Ionicons name="arrow-back" size={24} color="black" />
         </TouchableOpacity>
         <View className="flex-1 items-center mr-10">
-          <Text className="text-xl font-bold">{team.name}</Text>
+          <Text className="text-xl font-bold">{teamName}</Text>
         </View>
       </View>
 
-      {/* Repo Button */}
+      {/* Repo / Edit Button */}
       <View className="px-4 pt-3 pb-1 mt-1">
         {canEditRepo ? (
           gitlab ? (
-            // Split button: View Project (left) | Edit (right)
+            // Split button: View Project (left) | Edit Info (right)
             <View className="flex-row rounded-lg overflow-hidden" style={{ backgroundColor: '#C8102E' }}>
               <TouchableOpacity
                 onPress={handleOpenRepo}
@@ -104,22 +125,22 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                 className="flex-row items-center justify-center py-3 px-5"
               >
                 <Ionicons name="pencil-outline" size={15} color="white" />
-                <Text className="ml-1 text-white font-semibold">Edit</Text>
+                <Text className="ml-1 text-white font-semibold">Edit Info</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            // Full-width Add Repo button
+            // Full-width Edit Team Info button
             <TouchableOpacity
               onPress={handleEditPress}
               className="flex-row items-center justify-center rounded-lg py-3 px-4"
               style={{ backgroundColor: '#C8102E' }}
             >
-              <Ionicons name="add-circle-outline" size={16} color="white" />
-              <Text className="ml-2 text-white font-semibold">Add Repo</Text>
+              <Ionicons name="create-outline" size={16} color="white" />
+              <Text className="ml-2 text-white font-semibold">Edit Team Info</Text>
             </TouchableOpacity>
           )
         ) : gitlab ? (
-          // Students/read-only: View Project only
+          // Students: View Project only
           <TouchableOpacity
             onPress={handleOpenRepo}
             className="flex-row items-center justify-center rounded-lg py-3 px-4"
@@ -135,18 +156,30 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       <FlatList
         horizontal
         data={team.members}
-        keyExtractor={(item) => item.name}
+        keyExtractor={(item) => item.netid || item.name}
         showsHorizontalScrollIndicator={false}
         contentContainerClassName="flex-grow justify-center items-center py-5 px-4"
-        renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => setSelectedMember(item)} className="mr-4 items-center">
-            <Image
-              source={typeof item.photo === 'string' ? { uri: item.photo } : item.photo}
-              style={{ width: 128, height: 128, borderRadius: 32 }}
-            />
-            <Text className="mt-2 text-sm">{item.name}</Text>
-          </TouchableOpacity>
-        )}
+        renderItem={({ item }) => {
+          const memberKey = item.netid || item.name;
+          const role = memberRoles[memberKey];
+          return (
+            <TouchableOpacity onPress={() => setSelectedMember(item)} className="mr-4 items-center">
+              <Image
+                source={typeof item.photo === 'string' ? { uri: item.photo } : item.photo}
+                style={{ width: 128, height: 128, borderRadius: 32 }}
+              />
+              <Text className="mt-2 text-sm">{item.name}</Text>
+              {role && (
+                <View
+                  className="mt-1 px-2 rounded-full"
+                  style={{ backgroundColor: '#C8102E', paddingVertical: 2 }}
+                >
+                  <Text className="text-white text-xs font-medium">{role}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        }}
       />
 
       {/* Tab Panel */}
@@ -178,7 +211,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         </View>
       </View>
 
-      {/* Edit / Add Repo Modal */}
+      {/* Edit Team Info Modal */}
       <Modal
         visible={modalVisible}
         transparent
@@ -189,23 +222,81 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           className="flex-1 items-center justify-center px-6"
           style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
         >
-          <View className="bg-white rounded-2xl p-6 w-full">
-            <Text className="text-lg font-bold mb-1">
-              {gitlab ? 'Edit Repo URL' : 'Add Repo URL'}
-            </Text>
-            <Text className="text-gray-500 text-sm mb-4">
-              Enter the full URL for {team.name}'s repository.
-            </Text>
-            <TextInput
-              value={editUrl}
-              onChangeText={setEditUrl}
-              placeholder="https://gitlab.com/..."
-              className="border border-gray-300 rounded-lg px-3 py-2 mb-4 text-gray-800"
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-            />
-            <View className="flex-row justify-end" style={{ gap: 8 }}>
+          <View className="bg-white rounded-2xl w-full" style={{ maxHeight: '85%' }}>
+            {/* Modal Header */}
+            <View className="px-6 pt-6 pb-4 border-b border-gray-100">
+              <Text className="text-lg font-bold">Edit Team Info</Text>
+            </View>
+
+            <ScrollView className="px-6" contentContainerStyle={{ paddingVertical: 16 }}>
+              {/* Team Name */}
+              <Text className="text-sm font-semibold text-gray-700 mb-1">Team Name</Text>
+              <TextInput
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="Team name"
+                className="border border-gray-300 rounded-lg px-3 py-2 mb-5 text-gray-800"
+                autoCorrect={false}
+              />
+
+              {/* Repo URL */}
+              <Text className="text-sm font-semibold text-gray-700 mb-1">Repo URL</Text>
+              <TextInput
+                value={editUrl}
+                onChangeText={setEditUrl}
+                placeholder="https://gitlab.com/..."
+                className="border border-gray-300 rounded-lg px-3 py-2 mb-5 text-gray-800"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+
+              {/* Member Roles */}
+              {team.members.length > 0 && (
+                <>
+                  <Text className="text-sm font-semibold text-gray-700 mb-3">Member Roles</Text>
+                  {team.members.map((member) => {
+                    const memberKey = member.netid || member.name;
+                    const selected = editRoles[memberKey];
+                    return (
+                      <View key={memberKey} className="mb-4">
+                        <Text className="text-sm text-gray-600 mb-1">{member.name}</Text>
+                        <View className="flex-row" style={{ gap: 6 }}>
+                          {PROJECT_ROLES.map((role) => (
+                            <TouchableOpacity
+                              key={role}
+                              onPress={() =>
+                                setEditRoles((prev) => ({ ...prev, [memberKey]: role }))
+                              }
+                              className="flex-1 items-center py-2 rounded-lg"
+                              style={{
+                                backgroundColor: selected === role ? '#C8102E' : '#F3F4F6',
+                              }}
+                            >
+                              <Text
+                                style={{
+                                  color: selected === role ? 'white' : '#374151',
+                                  fontSize: 12,
+                                  fontWeight: '500',
+                                }}
+                              >
+                                {role}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </>
+              )}
+            </ScrollView>
+
+            {/* Modal Footer */}
+            <View
+              className="px-6 py-4 border-t border-gray-100 flex-row justify-end"
+              style={{ gap: 8 }}
+            >
               <TouchableOpacity
                 onPress={() => setModalVisible(false)}
                 className="px-4 py-2 rounded-lg bg-gray-200"

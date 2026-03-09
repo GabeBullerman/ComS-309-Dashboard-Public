@@ -214,8 +214,8 @@ export const getTeam = async (teamId: number): Promise<TeamApiResponse> => {
   return res.data;
 };
 
-export const updateTeamGitlab = async (teamId: number, gitlab: string): Promise<void> => {
-  await axiosInstance.put(`/api/teams/${teamId}`, { gitlab });
+export const updateTeamInfo = async (teamId: number, data: { name?: string; gitlab?: string }): Promise<void> => {
+  await axiosInstance.put(`/api/teams/${teamId}`, data);
 };
 
 export const getCurrentUserRole = (): UserRole => {
