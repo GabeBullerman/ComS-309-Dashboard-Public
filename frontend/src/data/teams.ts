@@ -15,6 +15,7 @@ export interface Demo{
 }
 
 export interface Team {
+  id?: number;
   name: string;
   description: string;
   memberCount: number;
@@ -23,6 +24,7 @@ export interface Team {
   section: number;
   status: 'Good' | 'Moderate' | 'Poor';
   members: TeamMember[];
+  gitlab?: string;
 }
 
 export const teamsData: Team[] = [

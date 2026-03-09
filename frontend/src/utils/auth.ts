@@ -51,9 +51,10 @@ export const setApiBaseUrl = (url: string) => {
 
 const axiosInstance = axios.create({ baseURL: apiBaseUrl });
 
-// Attach token to outgoing requests if present
+// Attach token to outgoing requests if present (skip for login so a stale token doesn't block re-authentication)
 axiosInstance.interceptors.request.use(async (config) => {
   try {
+    if (config.url === '/api/auth/login') return config;
     const token = await AsyncStorage.getItem(TOKEN_KEY);
     if (token && config.headers) {
       config.headers['Authorization'] = `Bearer ${token}`;
@@ -206,6 +207,15 @@ export const getTeams = async (taNetid?: string): Promise<TeamApiResponse[]> => 
   }
 
   return [];
+};
+
+export const getTeam = async (teamId: number): Promise<TeamApiResponse> => {
+  const res = await axiosInstance.get(`/api/teams/${teamId}`);
+  return res.data;
+};
+
+export const updateTeamGitlab = async (teamId: number, gitlab: string): Promise<void> => {
+  await axiosInstance.put(`/api/teams/${teamId}`, { gitlab });
 };
 
 export const getCurrentUserRole = (): UserRole => {

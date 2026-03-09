@@ -1,0 +1,41 @@
+appId: edu.iastate.dashboard.desktop
+productName: Class Dashboard
+
+directories:
+  output: build
+  buildResources: assets
+
+# Override the `main` entry only for the packaged Electron app.
+# The package.json `main` field is left as-is so Expo mobile/web remain unaffected.
+extraMetadata:
+  main: electron/main.js
+
+files:
+  - dist/**/*
+  - electron/**/*
+  - node_modules/**/*
+  - package.json
+  - "!node_modules/react-native/android"
+  - "!node_modules/**/*.{md,markdown,txt,map}"
+  - "!**/{.git,.gitignore,.github}"
+
+win:
+  target:
+    - nsis
+    - portable
+  certificateFile: null
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.education
+
+linux:
+  target:
+    - AppImage
+  category: Education

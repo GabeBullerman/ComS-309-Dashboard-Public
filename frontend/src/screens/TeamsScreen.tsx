@@ -64,14 +64,16 @@ export default function ClassTeamsScreen({ userRole }: Props) {
       }));
 
       return {
+        id: team.id,
         name: team.name || 'Unnamed Team',
-        description: (team.taNotes && team.taNotes.trim().length > 0) ? team.taNotes : (team.gitlab || 'No description available'),
+        description: (team.taNotes && team.taNotes.trim().length > 0) ? team.taNotes : 'No description available',
         memberCount: members.length,
         semester: 'Spring 2026',
         ta: team.taNetid || 'Unassigned',
         section: team.section ?? 0,
         status: mapStatus(team.status),
         members,
+        gitlab: team.gitlab ?? undefined,
       };
     };
 
@@ -294,7 +296,7 @@ export default function ClassTeamsScreen({ userRole }: Props) {
             <View style={{ width: '24.5%' }}>
               <TeamCard {...item} onPress={() => {  
                 setSelectedTeam(item);
-                navigation.navigate('TeamDetail', { team: item });
+                navigation.navigate('TeamDetail', { team: item, userRole: effectiveRole });
               }}/>
             </View>
           )}

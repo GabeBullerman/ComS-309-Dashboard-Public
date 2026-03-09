@@ -22,7 +22,7 @@ if (Platform.OS === "web") {
 // This is how you pass screen props to the screen since navigation doesn't support it directly
 export type RootStackParamList = {
   Home: undefined;
-  TeamDetail: { team: Team };
+  TeamDetail: { team: Team; userRole: UserRole };
   Teams: {userRole: UserRole};
   TAManager: undefined;
   Courses: undefined;
@@ -106,7 +106,7 @@ export default function App() {
           </Stack.Screen>
         ) : (
           <>
-            <Stack.Screen name="SidebarLayout" component={SidebarLayout} options={{ headerShown: false }} initialParams={{ userRole, onLogout: handleLogout }} />
+            <Stack.Screen name="SidebarLayout" component={SidebarLayout} options={{ headerShown: false, title: 'Dashboard' }} initialParams={{ userRole, onLogout: handleLogout }} />
             <Stack.Screen name="TAManager" component={TAManager} options={{ headerShown: false }} />
             <Stack.Screen name="TeamDetail" component={TeamDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Courses" component={CoursesScreen} options={{ headerShown: false }} />
