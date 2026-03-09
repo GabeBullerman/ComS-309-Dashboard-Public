@@ -80,7 +80,7 @@ async function createWindow() {
   if (isDev) {
     // Requires `npm run web` (expo start --web) to be running on port 8081
     await win.loadURL('http://localhost:8081');
-    win.webContents.openDevTools();
+    // win.webContents.openDevTools();
   } else {
     const distPath = path.join(__dirname, '..', 'dist');
     const port = await startStaticServer(distPath);
