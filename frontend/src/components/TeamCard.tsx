@@ -50,11 +50,6 @@ export const TeamCard: React.FC<TeamCardProps> = ({name, description, memberCoun
         </View>
       </View>
 
-      {/* Description */}
-      <Text className="text-sm text-gray-600 mb-4">
-        {description}
-      </Text>
-
       {/* Members */}
       <View className="space-y-2">
         <View className="flex-row items-center mb-2">
