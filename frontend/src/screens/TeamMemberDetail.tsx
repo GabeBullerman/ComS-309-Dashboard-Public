@@ -12,13 +12,6 @@ interface DemoRow {
   teamwork: ProgressLevel;
 }
 
-const demoData: DemoRow[] = [
-  { demo: "Demo 1", code: "good", teamwork: "ungraded" },
-  { demo: "Demo 2", code: "ungraded", teamwork: "ungraded" },
-  { demo: "Demo 3", code: "ungraded", teamwork: "ungraded" },
-  { demo: "Demo 4", code: "ungraded", teamwork: "ungraded" },
-];
-
 const colorMap = {
   good: "bg-green-500",
   moderate: "bg-yellow-400",
@@ -35,15 +28,39 @@ const labelMap = {
 
 const INNER = 128;
 const RADIUS_INNER = 32;
+const levels: ProgressLevel[] = ["ungraded", "good", "moderate", "poor"];
+function ProgressBar({ level, onPress }: { level: ProgressLevel; onPress: (level: ProgressLevel) => void }) {
+  const [open, setOpen] = useState(false);
 
-function ProgressBar({ level }: { level: ProgressLevel }) {
   return (
-    <View className="flex-1 h-8 bg-gray-200 rounded-md overflow-hidden justify-center">
-      <View className={`h-full ${colorMap[level]} items-center justify-center`}>
-        <Text className="text-white text-xs font-semibold">
-          {labelMap[level]}
-        </Text>
-      </View>
+    <View className="flex-1">
+      {/* The bar itself */}
+      <TouchableOpacity
+        className="h-8 bg-gray-200 rounded-md overflow-hidden justify-center"
+        onPress={() => setOpen(o => !o)}
+        activeOpacity={0.7}
+      >
+        <View className={`h-full ${colorMap[level]} items-center justify-center flex-row`}>
+          <Text className="text-white text-xs font-semibold mr-1">{labelMap[level]}</Text>
+          <Ionicons name={open ? "chevron-up" : "chevron-down"} size={12} color="white" />
+        </View>
+      </TouchableOpacity>
+
+      {/* Inline dropdown */}
+      {open && (
+        <View className="bg-white border border-gray-200 rounded-md shadow mt-1 z-10">
+          {levels.map((l) => (
+            <TouchableOpacity
+              key={l}
+              className="flex-row items-center px-3 py-2 border-b border-gray-100"
+              onPress={() => { onPress(l); setOpen(false); }}
+            >
+              <View className={`w-3 h-3 rounded-full mr-2 ${colorMap[l]}`} />
+              <Text className="text-xs text-gray-700">{labelMap[l]}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -55,6 +72,20 @@ export default function TeamProgressScreen({navigation, route}: TeamMemberDetail
   const [commentText, setCommentText] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [statusOpen, setStatusOpen] = useState(false);
+
+  const [demos, setDemos] = useState<DemoRow[]>([
+    { demo: "Demo 1", code: "good", teamwork: "ungraded" },
+    { demo: "Demo 2", code: "ungraded", teamwork: "ungraded" },
+    { demo: "Demo 3", code: "ungraded", teamwork: "ungraded" },
+    { demo: "Demo 4", code: "ungraded", teamwork: "ungraded" },
+  ]);
+
+  const setLevel = (rowIndex: number, field: "code" | "teamwork", level: ProgressLevel) => {
+  setDemos(prev => prev.map((row, i) =>
+    i === rowIndex ? { ...row, [field]: level } : row
+  ));
+};
+
   return (
     <ScrollView className="flex-1 bg-gray-100 p-4 pt-16">
       {/* Back Button */}
@@ -102,18 +133,14 @@ export default function TeamProgressScreen({navigation, route}: TeamMemberDetail
         </View>
 
         {/* ROWS */}
-        {demoData.map((row, index) => (
-          <View
-            key={index}
-            className="flex-row items-center mb-3 space-x-2"
-          >
+        {demos.map((row, index) => (
+          <View key={index} className="flex-row items-center mb-3 space-x-2">
             <TouchableOpacity className="w-20 bg-gray-100 py-2 rounded items-center">
               <Text className="text-xs">{row.demo}</Text>
             </TouchableOpacity>
 
-            <ProgressBar level={row.code} />
-
-            <ProgressBar level={row.teamwork} />
+          <ProgressBar level={row.code} onPress={(l) => setLevel(index, "code", l)} />
+          <ProgressBar level={row.teamwork} onPress={(l) => setLevel(index, "teamwork", l)} />
           </View>
         ))}
 
@@ -128,13 +155,13 @@ export default function TeamProgressScreen({navigation, route}: TeamMemberDetail
         </View>
       </View>
 
-  {/* TEAM COMMENTS */}
+  {/* MEMBER COMMENTS */}
   <View className="bg-white rounded-xl shadow mt-6 mb-12 overflow-hidden">
   
   {/* Header */}
   <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
     <Ionicons name="chatbubble-outline" size={18} color="#be123c" />
-    <Text className="text-lg font-semibold ml-2">Team Comments</Text>
+    <Text className="text-lg font-semibold ml-2">Member Comments</Text>
   </View>
 
   {/* Two-column body */}
@@ -144,7 +171,7 @@ export default function TeamProgressScreen({navigation, route}: TeamMemberDetail
     <View className="flex-1 p-4 border-r border-gray-200">
       <Text className="text-sm font-semibold text-gray-700 mb-3">Comment History</Text>
       <View className="flex-1 items-center justify-center py-8">
-        <Text className="text-gray-400 text-sm">No comments available for this team</Text>
+        <Text className="text-gray-400 text-sm">No comments available for this team member</Text>
       </View>
     </View>
 
@@ -205,7 +232,6 @@ export default function TeamProgressScreen({navigation, route}: TeamMemberDetail
 
   </View>
   </View>
-
-    </ScrollView>
+  </ScrollView>
   );
 }

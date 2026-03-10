@@ -28,6 +28,9 @@ const PROJECT_ROLES: ProjectRole[] = ['Frontend', 'Backend', 'Full Stack'];
 export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps) {
   const { team, userRole } = route.params;
   const [selectedKey, setSelectedKey] = useState<string>('team');
+  const [commentText, setCommentText] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [statusOpen, setStatusOpen] = useState(false);
   const selectedMember =
     selectedKey === 'team'
       ? team.members[0]
@@ -112,7 +115,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   ];
 
   return (
-    <View className="flex-1 bg-white pt-16">
+    <ScrollView className="flex-1 bg-gray-100 p-4 pt-16">
       {/* Header */}
       <View className="flex-row items-center px-4">
         <TouchableOpacity onPress={() => navigation.goBack()} className="pr-4">
@@ -169,7 +172,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         ) : null}
       </View>
 
-      {/* Team Members — "All Members" tile + individual members */}
+      {/* Team Members */}
       <FlatList
         horizontal
         data={[
@@ -187,34 +190,12 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           const RADIUS_INNER = 32;
 
           if (item.type === 'team') {
-            const isSelected = selectedKey === 'team';
+
             return (
               <TouchableOpacity
                 onPress={() => setSelectedKey('team')}
                 style={{ marginRight: 16, alignItems: 'center' }}
               >
-                <View style={{
-                  width: TILE, height: TILE,
-                  borderRadius: RADIUS_OUTER,
-                  borderWidth: 3,
-                  borderColor: isSelected ? '#F1BE48' : 'transparent',
-                  padding: 2,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <View style={{
-                    width: INNER, height: INNER,
-                    borderRadius: RADIUS_INNER,
-                    backgroundColor: '#F3F4F6',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <Ionicons name="people" size={60} color={isSelected ? '#F1BE48' : '#9CA3AF'} />
-                  </View>
-                </View>
-                <Text style={{ marginTop: 8, fontSize: 14, fontWeight: isSelected ? '700' : '400' }}>
-                  All Members
-                </Text>
               </TouchableOpacity>
             );
           }
@@ -254,8 +235,15 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         }}
       />
 
+    <View className="bg-white rounded-xl shadow my-4 overflow-hidden pb-4">
+    {/* Header */}
+    <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
+      <Ionicons name="chatbubble-outline" size={18} color="#be123c" />
+      <Text className="text-lg font-semibold ml-2">Team Results</Text>
+    </View>
+
       {/* Tab Panel */}
-      <View className="flex-1 px-4">
+      <View className="flex-1 px-4 pt-4">
         <View className="flex-row justify-around mb-4">
           {tabs.map(({ key, label }) => (
             <TouchableOpacity
@@ -282,6 +270,83 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           )}
         </View>
       </View>
+      </View>
+       {/* MEMBER COMMENTS */}
+  <View className="bg-white rounded-xl shadow mt-6 mb-12 overflow-hidden">
+  
+  {/* Header */}
+  <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
+    <Ionicons name="chatbubble-outline" size={18} color="#be123c" />
+    <Text className="text-lg font-semibold ml-2">Team Comments</Text>
+  </View>
+
+  {/* Two-column body */}
+  <View className="flex-row">
+
+    {/* LEFT: Comment History */}
+    <View className="flex-1 p-4 border-r border-gray-200">
+      <Text className="text-sm font-semibold text-gray-700 mb-3">Comment History</Text>
+      <View className="flex-1 items-center justify-center py-8">
+        <Text className="text-gray-400 text-sm">No comments available for this team</Text>
+      </View>
+    </View>
+
+    {/* RIGHT: Add Comment */}
+    <View className="flex-1 p-4">
+      <Text className="text-sm font-semibold text-gray-700 mb-3">Add Comment</Text>
+
+      {/* Comment input */}
+      <Text className="text-xs text-gray-600 mb-1">Comment</Text>
+      <View className="border border-gray-300 rounded-md mb-1">
+        <TextInput
+          className="p-2 text-sm text-gray-800 h-28"
+          placeholder="Write your comment..."
+          placeholderTextColor="#9ca3af"
+          multiline
+          maxLength={1400} // ~200 words
+          value={commentText}
+          onChangeText={setCommentText}
+          textAlignVertical="top"
+        />
+      </View>
+      <Text className="text-xs text-gray-400 mb-3">
+        {commentText.trim() === "" ? 0 : commentText.trim().split(/\s+/).length}/200 words
+      </Text>
+
+      {/* Status dropdown (simplified) */}
+      <Text className="text-xs text-gray-600 mb-1">Status</Text>
+      <View className="border border-gray-300 rounded-md mb-4 overflow-hidden">
+        <TouchableOpacity
+          className="flex-row items-center justify-between px-3 py-2"
+          onPress={() => setStatusOpen(!statusOpen)}
+        >
+          <Text className={selectedStatus ? "text-sm text-gray-800" : "text-sm text-gray-400"}>
+            {selectedStatus ?? "Select Status"}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color="#6b7280" />
+        </TouchableOpacity>
+        {statusOpen && (
+          <View className="border-t border-gray-200">
+            {["Good", "Moderate", "Poor"].map((s) => (
+              <TouchableOpacity
+                key={s}
+                className="px-3 py-2"
+                onPress={() => { setSelectedStatus(s); setStatusOpen(false); }}
+              >
+                <Text className="text-sm text-gray-700">{s}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+
+      {/* Submit */}
+      <TouchableOpacity className="bg-red-700 rounded-lg py-3 items-center">
+        <Text className="text-white font-semibold text-sm">Submit Comment</Text>
+      </TouchableOpacity>
+    </View>
+    </View>
+    </View>
 
       {/* Edit Team Info Modal */}
       <Modal
@@ -391,6 +456,6 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           </View>
         </View>
       </Modal>
-    </View>
+      </ScrollView>
   );
 }
