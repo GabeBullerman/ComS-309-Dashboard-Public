@@ -1,6 +1,7 @@
 import { Image } from "react-native";
 
 export interface TeamMember {
+  id?: number;
   name: string;
   netid?: string;
   initials: string;

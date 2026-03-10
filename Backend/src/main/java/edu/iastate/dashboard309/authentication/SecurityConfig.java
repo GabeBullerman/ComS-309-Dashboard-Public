@@ -21,13 +21,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:8081", 
-            "http://localhost:8082", 
-            "http://localhost:19006",
-            "http://127.0.0.1:8081",
-            "http://127.0.0.1:8082",
-            "http://127.0.0.1:19006",
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+            "http://localhost:*",
+            "http://127.0.0.1:*",
             "http://coms-4020-006.class.las.iastate.edu:8080",
             "http://coms-4020-006.class.las.iastate.edu"
         ));
@@ -50,6 +46,7 @@ public class SecurityConfig {
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/swagger-ui/**").permitAll()
                     .requestMatchers("/v3/api-docs/**").permitAll()
+                    .requestMatchers("/error").permitAll()
                     .anyRequest().authenticated())
             .httpBasic(httpBasic -> httpBasic.disable())
             .formLogin(form -> form.disable())

@@ -27,7 +27,7 @@ public class UserService {
 
     @Transactional
     private UserRequest userToRequest(User user){
-        return new UserRequest(user.getId(), user.getName(), user.getNetid(), user.getPassword(), user.getRoleNames(), user.getPermissions().stream().collect(Collectors.toList()), user.getContributions());
+        return new UserRequest(user.getId(), user.getName(), user.getNetid(), user.getPassword(), user.getRoleNames(), user.getPermissions().stream().collect(Collectors.toList()), user.getContributions(), user.getProjectRole());
     }
 
     @Transactional

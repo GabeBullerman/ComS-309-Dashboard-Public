@@ -10,6 +10,7 @@ import edu.iastate.dashboard309.service.TeamService;
 import edu.iastate.dashboard309.service.UserService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -137,8 +138,20 @@ public class UserController {
         if (request.contributions() != null) {
             user.setContributions(request.contributions());
         }
+        if (request.projectRole() != null) {
+            user.setProjectRole(request.projectRole());
+        }
         userRepository.save(user);
         return userService.getUserById(user.getId());
+    }
+
+    @PutMapping("/{id}/project-role")
+    public UserRequest updateProjectRole(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        user.setProjectRole(body.get("projectRole"));
+        userRepository.save(user);
+        return userService.getUserById(id);
     }
 
     @DeleteMapping("/{id}")

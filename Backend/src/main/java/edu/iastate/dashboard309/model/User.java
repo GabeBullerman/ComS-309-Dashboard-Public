@@ -138,4 +138,15 @@ public class User {
     public void setContributions(Integer contributions) {
         this.contributions = contributions;
     }
+
+    @Column(name = "project_role")
+    private String projectRole;
+
+    public String getProjectRole() {
+        return projectRole;
+    }
+
+    public void setProjectRole(String projectRole) {
+        this.projectRole = projectRole;
+    }
 }

@@ -9,6 +9,7 @@ public record UserRequest(
         String password,
         List<String> role,
         List<String> permission,
-        Integer contributions
+        Integer contributions,
+        String projectRole
 ) {
 }

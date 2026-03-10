@@ -66,7 +66,7 @@ class TeamServiceUnitTest {
 
         when(teamRepository.findById(1L)).thenReturn(Optional.of(team));
         when(userService.getUserById(20L))
-            .thenReturn(new UserRequest(20L, "Student One", "stud1", "pw", List.of("UNASSIGNED"), List.of(), 0));
+            .thenReturn(new UserRequest(20L, "Student One", "stud1", "pw", List.of("UNASSIGNED"), List.of(), 0, null));
 
         TeamRequest result = teamService.getTeamById(1L);
 

@@ -13,6 +13,7 @@ extraMetadata:
 files:
   - dist/**/*
   - electron/**/*
+  - src/Images/Iowa_State_Cyclones_logo.png
   - node_modules/**/*
   - package.json
   - "!node_modules/react-native/android"
@@ -20,22 +21,26 @@ files:
   - "!**/{.git,.gitignore,.github}"
 
 win:
+  icon: src/Images/Iowa_State_Cyclones_logo.ico
   target:
     - nsis
     - portable
   certificateFile: null
+  signAndEditExecutable: false
 
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
 
 mac:
+  icon: src/Images/Iowa_State_Cyclones_logo.png
   target:
     - dmg
     - zip
   category: public.app-category.education
 
 linux:
+  icon: src/Images/Iowa_State_Cyclones_logo.png
   target:
     - AppImage
   category: Education

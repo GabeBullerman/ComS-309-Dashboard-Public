@@ -32,7 +32,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({name, description, memberCoun
       },
     ]}
     >
-    <View className="bg-white rounded-xl border border-gray-200 p-6 mb-4 shadow-sm">
+    <View className="bg-white rounded-xl border border-gray-200 px-6 py-10 mb-4 shadow-sm">
       {/* Header */}
       <View className="flex-row items-start flex-wrap justify-between mb-2">
         <Text className="text-lg font-semibold text-gray-900 flex-1 pr-2">
@@ -49,11 +49,6 @@ export const TeamCard: React.FC<TeamCardProps> = ({name, description, memberCoun
           </Text>
         </View>
       </View>
-
-      {/* Description */}
-      <Text className="text-sm text-gray-600 mb-4">
-        {description}
-      </Text>
 
       {/* Members */}
       <View className="space-y-2">
@@ -101,13 +96,14 @@ export const TeamCard: React.FC<TeamCardProps> = ({name, description, memberCoun
       </View>
 
       {/* Member Avatars */}
-      <View className="flex-row flex-wrap items-center">
+      <View className="flex-row flex-wrap items-center" style={{ rowGap: 10 }}>
         {members.map((member, index) => (
           <View
             key={index}
             className={`w-10 h-10 rounded-full items-center justify-center mr-5 ${member.color}`}
+            style={{ borderWidth: 1.5, borderColor: '#000' }}
           >
-            <Text className="text-sm font-semibold text-white">
+            <Text className="text-sm font-semibold" style={{ color: '#000' }}>
               {member.initials}
             </Text>
           </View>
