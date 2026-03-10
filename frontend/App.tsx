@@ -15,7 +15,8 @@ import SidebarLayout from "./src/components/SidebarLayout";
 import TeamDetailScreen from "./src/screens/TeamDetail";
 import { logout as apiLogout } from './src/utils/auth';
 import type { UserRole } from './src/utils/auth';
-import { Team } from "@/data/teams";
+import { Team, TeamMember } from "@/data/teams";
+import TeamMemberDetail from "@/screens/TeamMemberDetail";
 
 if (Platform.OS === "web") {
   import("./nativewind/output.css"); // Use the built file
@@ -25,6 +26,7 @@ if (Platform.OS === "web") {
 export type RootStackParamList = {
   Home: undefined;
   TeamDetail: { team: Team; userRole: UserRole };
+  TeamMemberDetail: {member: TeamMember};
   Teams: {userRole: UserRole};
   TAManager: undefined;
   Courses: undefined;
@@ -114,6 +116,7 @@ export default function App() {
             <Stack.Screen name="SidebarLayout" component={SidebarLayout} options={{ headerShown: false, title: 'Dashboard' }} initialParams={{ userRole, onLogout: handleLogout }} />
             <Stack.Screen name="TAManager" component={TAManager} options={{ headerShown: false }} />
             <Stack.Screen name="TeamDetail" component={TeamDetailScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="TeamMemberDetail" component={TeamMemberDetail} options={{ headerShown: false }} />
             <Stack.Screen name="Courses" component={CoursesScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Landing" options={{ headerShown: false }}>
               {(props) => <LandingPage {...props} userEmail={userEmail} onLogout={handleLogout} />}

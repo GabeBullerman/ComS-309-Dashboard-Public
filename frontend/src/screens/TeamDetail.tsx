@@ -224,7 +224,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           const isSelected = selectedKey === memberKey;
           return (
             <TouchableOpacity
-              onPress={() => setSelectedKey(memberKey)}
+              onPress={() => navigation.navigate('TeamMemberDetail', { member: item.member })}
               style={{ marginRight: 16, alignItems: 'center' }}
             >
               <View style={{

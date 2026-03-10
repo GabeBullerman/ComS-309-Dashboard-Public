@@ -1,6 +1,10 @@
-import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, TextInput, ScrollView, Image, TouchableOpacity } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
+import { RootStackParamList } from "App";
+import { NativeStackScreenProps } from "node_modules/@react-navigation/native-stack/lib/typescript/src/types";
+import { useState } from "react";
 
-type ProgressLevel = "excellent" | "good" | "moderate" | "danger" | "ungraded";
+type ProgressLevel = "good" | "moderate" | "poor" | "ungraded";
 
 interface DemoRow {
   demo: string;
@@ -16,20 +20,21 @@ const demoData: DemoRow[] = [
 ];
 
 const colorMap = {
-  excellent: "bg-blue-500",
   good: "bg-green-500",
   moderate: "bg-yellow-400",
-  danger: "bg-red-500",
+  poor: "bg-red-500",
   ungraded: "bg-gray-400",
 };
 
 const labelMap = {
-  excellent: "Excellent",
   good: "Good",
   moderate: "Moderate",
-  danger: "In Danger",
+  poor: "Poor",
   ungraded: "Ungraded",
 };
+
+const INNER = 128;
+const RADIUS_INNER = 32;
 
 function ProgressBar({ level }: { level: ProgressLevel }) {
   return (
@@ -43,9 +48,31 @@ function ProgressBar({ level }: { level: ProgressLevel }) {
   );
 }
 
-export default function TeamProgressScreen() {
+type TeamMemberDetailProps = NativeStackScreenProps<RootStackParamList, 'TeamMemberDetail'>;
+
+export default function TeamProgressScreen({navigation, route}: TeamMemberDetailProps) {
+  const { member } = route.params;
+  const [commentText, setCommentText] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [statusOpen, setStatusOpen] = useState(false);
   return (
-    <ScrollView className="flex-1 bg-gray-100 p-4">
+    <ScrollView className="flex-1 bg-gray-100 p-4 pt-16">
+      {/* Back Button */}
+      <View className="flex-row items-center justify-between">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="pr-4">
+          <Ionicons name="arrow-back" size={24} color="black" />
+        </TouchableOpacity>
+        <Text className="text-xl text-center font-bold flex-1">{member.name}</Text>
+      </View>
+      {/* Header */}
+      <View className="flex-row items-center pl-10 py-4">
+        <View className="flex-1 items-center">
+          <Image
+            source={typeof member.photo === 'string' ? { uri: member.photo } : member.photo}
+            style={{ width: INNER, height: INNER, borderRadius: RADIUS_INNER }}
+          />
+        </View>
+      </View>
 
       {/* TEAM PROGRESS CARD */}
       <View className="bg-white rounded-xl p-4 shadow">
@@ -101,31 +128,83 @@ export default function TeamProgressScreen() {
         </View>
       </View>
 
-      {/* CATME CARD */}
-      <View className="bg-white rounded-xl p-4 shadow mt-6">
-        <Text className="text-lg font-semibold mb-3">
-          CATME Peer Evaluation Results
-        </Text>
+  {/* TEAM COMMENTS */}
+  <View className="bg-white rounded-xl shadow mt-6 mb-12 overflow-hidden">
+  
+  {/* Header */}
+  <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
+    <Ionicons name="chatbubble-outline" size={18} color="#be123c" />
+    <Text className="text-lg font-semibold ml-2">Team Comments</Text>
+  </View>
 
-        <View className="flex-row mb-2">
-          <Text className="flex-1 text-gray-500 text-xs">Student Name</Text>
-          <Text className="flex-1 text-gray-500 text-xs">Ratings</Text>
-          <Text className="flex-1 text-gray-500 text-xs">Adjustment Factor</Text>
-          <Text className="flex-1 text-gray-500 text-xs">Status</Text>
-        </View>
+  {/* Two-column body */}
+  <View className="flex-row">
 
-        <View className="py-6 items-center">
-          <Text className="text-gray-400 text-sm">
-            No CATME data available.
+    {/* LEFT: Comment History */}
+    <View className="flex-1 p-4 border-r border-gray-200">
+      <Text className="text-sm font-semibold text-gray-700 mb-3">Comment History</Text>
+      <View className="flex-1 items-center justify-center py-8">
+        <Text className="text-gray-400 text-sm">No comments available for this team</Text>
+      </View>
+    </View>
+
+    {/* RIGHT: Add Comment */}
+    <View className="flex-1 p-4">
+      <Text className="text-sm font-semibold text-gray-700 mb-3">Add Comment</Text>
+
+      {/* Comment input */}
+      <Text className="text-xs text-gray-600 mb-1">Comment</Text>
+      <View className="border border-gray-300 rounded-md mb-1">
+        <TextInput
+          className="p-2 text-sm text-gray-800 h-28"
+          placeholder="Write your comment..."
+          placeholderTextColor="#9ca3af"
+          multiline
+          maxLength={1400} // ~200 words
+          value={commentText}
+          onChangeText={setCommentText}
+          textAlignVertical="top"
+        />
+      </View>
+      <Text className="text-xs text-gray-400 mb-3">
+        {commentText.trim() === "" ? 0 : commentText.trim().split(/\s+/).length}/200 words
+      </Text>
+
+      {/* Status dropdown (simplified) */}
+      <Text className="text-xs text-gray-600 mb-1">Status</Text>
+      <View className="border border-gray-300 rounded-md mb-4 overflow-hidden">
+        <TouchableOpacity
+          className="flex-row items-center justify-between px-3 py-2"
+          onPress={() => setStatusOpen(!statusOpen)}
+        >
+          <Text className={selectedStatus ? "text-sm text-gray-800" : "text-sm text-gray-400"}>
+            {selectedStatus ?? "Select Status"}
           </Text>
-        </View>
+          <Ionicons name="chevron-down" size={16} color="#6b7280" />
+        </TouchableOpacity>
+        {statusOpen && (
+          <View className="border-t border-gray-200">
+            {["Good", "Moderate", "Poor"].map((s) => (
+              <TouchableOpacity
+                key={s}
+                className="px-3 py-2"
+                onPress={() => { setSelectedStatus(s); setStatusOpen(false); }}
+              >
+                <Text className="text-sm text-gray-700">{s}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
-      {/* TEAM COMMENTS */}
-      <View className="bg-white rounded-xl p-4 shadow mt-6 mb-12">
-        <Text className="text-lg font-semibold mb-3">Team Comments</Text>
-        <Text className="text-gray-400">No comments yet.</Text>
-      </View>
+      {/* Submit */}
+      <TouchableOpacity className="bg-red-700 rounded-lg py-3 items-center">
+        <Text className="text-white font-semibold text-sm">Submit Comment</Text>
+      </TouchableOpacity>
+    </View>
+
+  </View>
+  </View>
 
     </ScrollView>
   );
