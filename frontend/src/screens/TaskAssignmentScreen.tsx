@@ -31,6 +31,7 @@ export default function TaskAssignmentScreen() {
   const [tas, setTas] = useState<UserSummary[]>([]);
   const [teams, setTeams] = useState<TeamApiResponse[]>([]);
   const [myTasks, setMyTasks] = useState<TaskApiResponse[]>([]);
+  const [taskLabelMap, setTaskLabelMap] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -78,19 +79,29 @@ export default function TaskAssignmentScreen() {
     if (!title.trim() || !netid) return;
 
     let recipients: string[] = [];
+    let recipientLabel = '';
 
     if (recipientType === 'specific-ta') {
       if (!selectedTANetid) { Alert.alert('Select a TA first.'); return; }
       recipients = [selectedTANetid];
+      const ta = tas.find((t) => t.netid === selectedTANetid);
+      recipientLabel = ta?.name ?? selectedTANetid;
     } else if (recipientType === 'all-tas') {
       recipients = tas.map((t) => t.netid!).filter(Boolean);
+      recipientLabel = 'All TAs';
     } else if (recipientType === 'specific-team') {
       const team = teams.find((t) => t.id === selectedTeamId);
       if (!team) { Alert.alert('Select a team first.'); return; }
       recipients = (team.students ?? []).map((s) => s.netid!).filter(Boolean);
-    } else if (recipientType === 'all-my-teams' || recipientType === 'all-students') {
+      recipientLabel = team.name ?? 'Team';
+    } else if (recipientType === 'all-my-teams') {
       const all = teams.flatMap((t) => (t.students ?? []).map((s) => s.netid!)).filter(Boolean);
       recipients = [...new Set(all)];
+      recipientLabel = 'All My Teams';
+    } else if (recipientType === 'all-students') {
+      const all = teams.flatMap((t) => (t.students ?? []).map((s) => s.netid!)).filter(Boolean);
+      recipients = [...new Set(all)];
+      recipientLabel = 'All Students';
     }
 
     if (recipients.length === 0) { Alert.alert('No recipients found.'); return; }
@@ -113,6 +124,12 @@ export default function TaskAssignmentScreen() {
         .map((r) => r.value);
       const failedCount = results.filter((r) => r.status === 'rejected').length;
       setMyTasks((prev) => [...created, ...prev]);
+      // Store the label for each created task so the display shows the right recipient name
+      setTaskLabelMap((prev) => {
+        const next = { ...prev };
+        for (const t of created) next[t.id] = recipientLabel;
+        return next;
+      });
       setTitle('');
       setDescription('');
       setDueDate('');
@@ -302,9 +319,8 @@ export default function TaskAssignmentScreen() {
                 }
                 renderItem={({ item: g }) => {
                   const dateOnly = g.rep.dueDate ? g.rep.dueDate.split('T')[0] : null;
-                  const recipientLabel = g.netids.length === 1
-                    ? g.netids[0]
-                    : `${g.netids.length} recipients`;
+                  const recipientLabel = taskLabelMap[g.rep.id]
+                    ?? (g.netids.length === 1 ? g.netids[0] : `${g.netids.length} recipients`);
                   return (
                     <View style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>

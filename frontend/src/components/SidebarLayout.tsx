@@ -100,10 +100,10 @@ export default function SidebarLayout({route}: Props) {
 
       {[
         "Teams",
-        ...(permissions.canAccessCourses ? ["Courses"] : []),
-        ...(permissions.canAccessTAManager ? ["Assign Tasks"] : []),
+        ...(role === 'TA' || role === 'HTA' || role === 'Instructor' ? ["Assign Tasks"] : []),
         ...(permissions.canManageTAs ? ["TA Manager"] : []),
-        ...(permissions.canAccessTasks ? ["Tasks"] : []),
+        ...(role !== 'Instructor' ? ["Tasks"] : []),
+        ...(permissions.canAccessCourses ? ["Courses"] : []),
       ].map((item) => (
         <TouchableOpacity
           key={item}

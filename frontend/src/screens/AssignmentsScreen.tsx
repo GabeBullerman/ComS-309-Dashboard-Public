@@ -151,7 +151,7 @@ export default function AssignmentsScreen() {
               }}
             >
               <Text style={{ color: activeTab === tab ? 'white' : '#374151', fontWeight: '500', fontSize: 13 }}>
-                {tab === 'assigned-to-me' ? 'Assigned to Me' : 'Assigned by Me'}
+                {tab === 'assigned-to-me' ? 'My Tasks' : 'I Assigned'}
               </Text>
             </TouchableOpacity>
           ))}
