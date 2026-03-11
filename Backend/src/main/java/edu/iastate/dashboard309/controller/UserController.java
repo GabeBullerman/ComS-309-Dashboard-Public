@@ -90,6 +90,13 @@ public class UserController {
         return user.getGitlabToken();
     }
 
+    @GetMapping("/self/gitlab-token")
+    public String getSelfGitlabToken(Authentication authentication){
+        User user = userRepository.findByNetid(authentication.getName())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return user.getGitlabToken();
+    }
+
     @GetMapping("/role/{role}")
     public List<UserRequest> getUsersWithRole(@PathVariable String role){
         return userService.getUsersWithRoleName(role);
@@ -162,6 +169,14 @@ public class UserController {
     @PutMapping("/{id}/gitlab-token")
     public void updateGitlabToken(@PathVariable Long id, @Valid @RequestBody GitlabTokenRequest request ){
         User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        user.setGitlabToken(request.gitlabToken());
+        userRepository.save(user);
+    }
+
+    @PutMapping("/self/gitlab-token")
+    public void updateSelfGitlabToken(Authentication authentication, @Valid @RequestBody GitlabTokenRequest request ){
+        User user = userRepository.findByNetid(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         user.setGitlabToken(request.gitlabToken());
         userRepository.save(user);
