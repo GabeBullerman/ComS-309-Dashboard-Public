@@ -4,12 +4,12 @@ spring:
   application:
     name: class-dashboard
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://coms-4020-006.class.las.iastate.edu:5432/class_dashboard}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/class_dashboard}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     properties:
       hibernate:
         format_sql: true

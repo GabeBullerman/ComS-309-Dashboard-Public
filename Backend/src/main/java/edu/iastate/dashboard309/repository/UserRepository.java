@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByNetid(String netid);
+    Optional<User> findByGoogleId(String googleId);
     boolean existsByNetid(String netid);
 
     List<User> findByRoles_roleName(String roleName);
