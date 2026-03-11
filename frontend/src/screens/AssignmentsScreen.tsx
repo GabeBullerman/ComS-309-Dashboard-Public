@@ -1,207 +1,171 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  getCurrentUser,
+  getUserByNetid,
+  getTasksAssignedTo,
+  TaskApiResponse,
+  UserSummary,
+  normalizeRole,
+} from '../utils/auth';
 
-const mockTasks = [
-  { id: 't1', title: 'Submit Project Proposal', due: '2026-02-12', status: 'In Progress' },
-  { id: 't2', title: 'TA Live Demo 1', due: '2026-02-20', status: 'Not Started' },
-  { id: 't3', title: 'Create Team', due: '2026-02-15', status: 'Completed' },
-];
+const roleLabel = (role?: string): string => {
+  switch (normalizeRole(role)) {
+    case 'Instructor': return 'Instructor';
+    case 'HTA': return 'Head TA';
+    case 'TA': return 'TA';
+    default: return '';
+  }
+};
 
-const AssignmentsScreen: React.FC = () => {
-  const [filterStatus, setFilterStatus] = useState<string>('All');
+type FilterKey = 'All' | 'Overdue' | 'Upcoming' | 'No Date';
 
-  // Sort tasks by status priority (In Progress > Not Started > Completed), then by due date
-  const filteredAndSortedTasks = useMemo(() => {
-    let filtered = mockTasks;
+const today = () => new Date().toISOString().split('T')[0];
 
-    if (filterStatus !== 'All') {
-      filtered = mockTasks.filter(task => task.status === filterStatus);
-    }
+const stripDate = (dueDate: string) => dueDate.split('T')[0];
 
-    // Define status priority: In Progress (1), Not Started (2), Completed (3)
-    const getStatusPriority = (status: string) => {
-      switch (status) {
-        case 'In Progress': return 1;
-        case 'Not Started': return 2;
-        case 'Completed': return 3;
-        default: return 4;
-      }
-    };
+const getDateLabel = (dueDate?: string): { label: string; color: string } => {
+  if (!dueDate) return { label: 'No due date', color: '#9ca3af' };
+  const dateOnly = stripDate(dueDate);
+  const due = new Date(dateOnly);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  if (due < now) return { label: `Overdue · ${dateOnly}`, color: '#DC2626' };
+  const diff = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff <= 7) return { label: `Due in ${diff}d · ${dateOnly}`, color: '#D97706' };
+  return { label: `Due ${dateOnly}`, color: '#6B7280' };
+};
 
-    // Sort by status priority first, then by due date (earliest first)
-    return filtered.sort((a, b) => {
-      const priorityA = getStatusPriority(a.status);
-      const priorityB = getStatusPriority(b.status);
-      
-      if (priorityA !== priorityB) {
-        return priorityA - priorityB; // Lower number = higher priority
-      }
-      
-      // If same priority, sort by due date (earliest first)
-      return new Date(a.due).getTime() - new Date(b.due).getTime();
+export default function AssignmentsScreen() {
+  const [netid, setNetid] = useState<string | null>(null);
+  const [, setRole] = useState<string>('Student');
+  const [myTasks, setMyTasks] = useState<TaskApiResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterKey>('All');
+  const [assignerMap, setAssignerMap] = useState<Record<string, UserSummary>>({});
+
+  useEffect(() => {
+    getCurrentUser().then((user) => {
+      if (!user?.netid) { setError('Could not load user.'); setLoading(false); return; }
+      setNetid(user.netid);
+      setRole(normalizeRole(String(user.role)));
+      getTasksAssignedTo(user.netid).then((tasks) => {
+        setMyTasks(tasks);
+        const uniqueNetids = [...new Set(tasks.map((t) => t.assignedByNetid).filter(Boolean))] as string[];
+        Promise.all(uniqueNetids.map((n) => getUserByNetid(n).then((u) => u ? [n, u] : null)))
+          .then((results) => {
+            const map: Record<string, UserSummary> = {};
+            for (const r of results) { if (r) map[r[0] as string] = r[1] as UserSummary; }
+            setAssignerMap(map);
+          });
+      }).catch(() => {}).finally(() => setLoading(false));
+    }).catch(() => { setError('Could not load user.'); setLoading(false); });
+  }, []);
+
+  const displayedTasks = useMemo(() => {
+    const t = today();
+    const filtered = myTasks.filter((task) => {
+      if (filter === 'All') return true;
+      if (filter === 'No Date') return !task.dueDate;
+      if (!task.dueDate) return false;
+      if (filter === 'Overdue') return task.dueDate.split('T')[0] < t;
+      if (filter === 'Upcoming') return task.dueDate.split('T')[0] >= t;
+      return true;
     });
-  }, [filterStatus]);
+    return filtered.sort((a, b) => {
+      if (!a.dueDate && !b.dueDate) return 0;
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return a.dueDate.localeCompare(b.dueDate);
+    });
+  }, [myTasks, filter]);
 
-  const renderItem = ({ item }: any) => (
-    <TouchableOpacity
-      style={styles.row}
-      onPress={() => Alert.alert('Task Details', `${item.title}\nDue: ${item.due}\nStatus: ${item.status}`)}
-    >
-      <View style={styles.taskContent}>
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.meta}>Due: {item.due}</Text>
-        <Text style={[styles.status, getStatusStyle(item.status)]}>{item.status}</Text>
-      </View>
-    </TouchableOpacity>
+  if (loading) return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <ActivityIndicator size="large" color="#C8102E" />
+    </View>
   );
 
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'Completed':
-        return styles.statusCompleted;
-      case 'In Progress':
-        return styles.statusInProgress;
-      case 'Not Started':
-        return styles.statusNotStarted;
-      default:
-        return styles.statusDefault;
-    }
-  };
+  if (error) return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <Text style={{ color: '#DC2626' }}>{error}</Text>
+    </View>
+  );
 
-  const filterOptions = ['All', 'Completed', 'In Progress', 'Not Started'];
+  const filterOptions: FilterKey[] = ['All', 'Upcoming', 'Overdue', 'No Date'];
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>My Tasks</Text>
+    <View style={{ flex: 1, backgroundColor: '#f5f7fa', padding: 24 }}>
+      <Text style={{ fontSize: 26, fontWeight: '700', color: '#1e3a8a', marginBottom: 4 }}>Tasks</Text>
+      <Text style={{ color: '#64748b', marginBottom: 16 }}>{netid}</Text>
 
-      {/* Filter Buttons */}
-      <View style={styles.filterContainer}>
-        {filterOptions.map((option) => (
+      {/* Filters */}
+      <View style={{ flexDirection: 'row', marginBottom: 16, gap: 8 }}>
+        {filterOptions.map((opt) => (
           <TouchableOpacity
-            key={option}
-            style={[
-              styles.filterButton,
-              filterStatus === option && styles.filterButtonActive
-            ]}
-            onPress={() => setFilterStatus(option)}
+            key={opt}
+            onPress={() => setFilter(opt)}
+            style={{
+              paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+              backgroundColor: filter === opt ? '#1e3a8a' : '#e5e7eb',
+            }}
           >
-            <Text
-              style={[
-                styles.filterButtonText,
-                filterStatus === option && styles.filterButtonTextActive
-              ]}
-            >
-              {option}
+            <Text style={{ color: filter === opt ? 'white' : '#374151', fontSize: 13, fontWeight: '500' }}>
+              {opt}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
       <FlatList
-        data={filteredAndSortedTasks}
-        keyExtractor={(i) => i.id}
-        renderItem={renderItem}
+        data={displayedTasks}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={{ gap: 10, paddingBottom: 40 }}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>No tasks match the selected filter.</Text>
+          <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 40, fontSize: 15 }}>
+            No tasks found.
+          </Text>
         }
+        renderItem={({ item }) => {
+          const { label, color } = getDateLabel(item.dueDate);
+          return (
+            <View style={{
+              backgroundColor: 'white', borderRadius: 10, padding: 16,
+              borderLeftWidth: 4, borderLeftColor: '#C8102E',
+              shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+            }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a' }}>
+                {item.title}
+              </Text>
+              {item.description ? (
+                <Text style={{ color: '#475569', fontSize: 13, marginTop: 4 }}>{item.description}</Text>
+              ) : null}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+                <Ionicons name="calendar-outline" size={13} color={color} style={{ marginRight: 4 }} />
+                <Text style={{ color, fontSize: 12 }}>{label}</Text>
+              </View>
+              {item.assignedByNetid && (() => {
+                const assigner = assignerMap[item.assignedByNetid];
+                const rl = assigner ? roleLabel(String(assigner.role)) : '';
+                const name = assigner?.name ?? item.assignedByNetid;
+                return (
+                  <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>
+                    From: {rl ? `${rl} ` : ''}{name}
+                  </Text>
+                );
+              })()}
+            </View>
+          );
+        }}
       />
     </View>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#f5f7fa',
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1e3a8a',
-    marginBottom: 20,
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-    flexWrap: 'wrap',
-  },
-  filterButton: {
-    backgroundColor: '#e5e7eb',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  filterButtonActive: {
-    backgroundColor: '#C8102E',
-  },
-  filterButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-  },
-  filterButtonTextActive: {
-    color: '#ffffff',
-  },
-  row: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#C8102E',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  taskContent: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#0f172a',
-    marginBottom: 4,
-  },
-  meta: {
-    fontSize: 14,
-    color: '#64748b',
-    marginBottom: 8,
-  },
-  status: {
-    fontSize: 12,
-    fontWeight: '500',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  statusCompleted: {
-    backgroundColor: '#dcfce7',
-    color: '#166534',
-  },
-  statusInProgress: {
-    backgroundColor: '#fef3c7',
-    color: '#92400e',
-  },
-  statusNotStarted: {
-    backgroundColor: '#fee2e2',
-    color: '#991b1b',
-  },
-  statusDefault: {
-    backgroundColor: '#f3f4f6',
-    color: '#374151',
-  },
-  emptyText: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#64748b',
-    marginTop: 40,
-  },
-});
-
-export default AssignmentsScreen;
+}

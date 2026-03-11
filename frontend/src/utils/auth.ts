@@ -137,7 +137,7 @@ export const login = async (netid: string, password: string): Promise<{ token: s
     const userRoleFromApi = Array.isArray((user as any)?.role)
       ? (user as any).role[0]
       : user?.role;
-    user.role = normalizeRole((userRoleFromApi as string | undefined) ?? String(role));
+    if (user) user.role = normalizeRole((userRoleFromApi as string | undefined) ?? String(role));
   } catch (e) {
     // If fetchng user fails, create a basic user object with role from token
     user = { role: normalizeRole(String(role)) };
@@ -175,6 +175,17 @@ export const getCurrentUser = async (): Promise<UserSummary | null> => {
       role: normalizeRole(userRoleFromApi),
     };
   } catch (e) {
+    return null;
+  }
+};
+
+export const getUserByNetid = async (netid: string): Promise<UserSummary | null> => {
+  try {
+    const res = await axiosInstance.get(`/api/users/netid/${netid}`);
+    const userData = res.data;
+    const userRoleFromApi = Array.isArray(userData?.role) ? userData.role[0] : userData?.role;
+    return { ...userData, role: normalizeRole(userRoleFromApi) };
+  } catch {
     return null;
   }
 };
@@ -222,6 +233,57 @@ export const updateTeamInfo = async (teamId: number, data: { name?: string; gitl
 export const setUserProjectRole = async (userId: number, projectRole: string): Promise<void> => {
   await axiosInstance.put(`/api/users/${userId}/project-role`, { projectRole });
 };
+
+// ── Tasks ────────────────────────────────────────────────────────────────────
+
+export interface TaskApiResponse {
+  id: number;
+  title: string;
+  description?: string;
+  assignedDate?: string;
+  dueDate?: string;
+  assignedToNetid?: string;
+  assignedByNetid?: string;
+}
+
+export interface TaskCreateRequest {
+  title: string;
+  description?: string;
+  dueDate?: string;
+  assignedToNetid: string;
+  assignedByNetid: string;
+}
+
+export const getTasksAssignedTo = async (netid: string): Promise<TaskApiResponse[]> => {
+  const res = await axiosInstance.get(`/api/tasks/assigned-to/${netid}`);
+  return Array.isArray(res.data) ? res.data : (res.data?.content ?? []);
+};
+
+export const getTasksAssignedBy = async (netid: string): Promise<TaskApiResponse[]> => {
+  const res = await axiosInstance.get(`/api/tasks/assigned-by/${netid}`);
+  return Array.isArray(res.data) ? res.data : (res.data?.content ?? []);
+};
+
+export const createTask = async (data: TaskCreateRequest): Promise<TaskApiResponse> => {
+  // Backend expects LocalDateTime — convert YYYY-MM-DD to YYYY-MM-DDTHH:mm:ss
+  const payload = {
+    ...data,
+    dueDate: data.dueDate ? `${data.dueDate}T00:00:00` : undefined,
+  };
+  const res = await axiosInstance.post('/api/tasks', payload);
+  return res.data;
+};
+
+export const deleteTask = async (id: number): Promise<void> => {
+  await axiosInstance.delete(`/api/tasks/${id}`);
+};
+
+export const getUsersByRole = async (role: string): Promise<UserSummary[]> => {
+  const res = await axiosInstance.get(`/api/users/role/${encodeURIComponent(role)}`);
+  return Array.isArray(res.data) ? res.data : (res.data?.content ?? []);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const getCurrentUserRole = (): UserRole => {
   // synchronous accessor for App state initialization; returns stored role if available
