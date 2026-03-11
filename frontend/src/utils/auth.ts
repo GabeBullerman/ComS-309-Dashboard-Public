@@ -338,17 +338,17 @@ export const getUsersByRole = async (role: string): Promise<UserSummary[]> => {
 
 // ── GitLab token (backend-stored per user) ───────────────────────────────────
 
-export const getGitLabTokenFromBackend = async (userId: number): Promise<string | null> => {
+export const getGitLabTokenFromBackend = async (): Promise<string | null> => {
   try {
-    const res = await axiosInstance.get(`/api/users/${userId}/gitlab-token`);
-    return res.data?.gitlabToken ?? res.data ?? null;
+    const res = await axiosInstance.get('/api/users/self/gitlab-token');
+    return typeof res.data === 'string' ? res.data : (res.data?.gitlabToken ?? null);
   } catch {
     return null;
   }
 };
 
-export const saveGitLabTokenToBackend = async (userId: number, token: string): Promise<void> => {
-  await axiosInstance.put(`/api/users/${userId}/gitlab-token`, { gitlabToken: token.trim() });
+export const saveGitLabTokenToBackend = async (token: string): Promise<void> => {
+  await axiosInstance.put('/api/users/self/gitlab-token', { gitlabToken: token.trim() });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

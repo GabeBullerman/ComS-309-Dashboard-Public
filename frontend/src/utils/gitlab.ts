@@ -8,27 +8,20 @@ const TOKEN_KEY = 'gitlab_token';
  * Gets the GitLab token — tries backend API first (if userId provided),
  * falls back to AsyncStorage for cross-platform persistence.
  */
-export async function getGitLabToken(userId?: number): Promise<string | null> {
-  if (userId) {
-    const backendToken = await getGitLabTokenFromBackend(userId);
-    if (backendToken) {
-      // Cache locally so subsequent calls don't need a network hit
-      await AsyncStorage.setItem(TOKEN_KEY, backendToken);
-      return backendToken;
-    }
+export async function getGitLabToken(): Promise<string | null> {
+  // Try backend first (cross-platform), fall back to AsyncStorage
+  const backendToken = await getGitLabTokenFromBackend();
+  if (backendToken) {
+    await AsyncStorage.setItem(TOKEN_KEY, backendToken);
+    return backendToken;
   }
   return AsyncStorage.getItem(TOKEN_KEY);
 }
 
-/**
- * Saves the GitLab token — persists to backend (if userId provided) and AsyncStorage.
- */
-export async function saveGitLabToken(token: string, userId?: number): Promise<void> {
+export async function saveGitLabToken(token: string): Promise<void> {
   const trimmed = token.trim();
   await AsyncStorage.setItem(TOKEN_KEY, trimmed);
-  if (userId) {
-    await saveGitLabTokenToBackend(userId, trimmed).catch(() => {});
-  }
+  await saveGitLabTokenToBackend(trimmed).catch(() => {});
 }
 
 /** Extracts and URL-encodes the project path from any GitLab web URL */
