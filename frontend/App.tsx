@@ -1,6 +1,8 @@
 import "nativewind/global.css";
 import { Platform } from "react-native";
 import React, { useState, useEffect } from 'react';
+import { useFonts } from 'expo-font';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -13,7 +15,8 @@ import SidebarLayout from "./src/components/SidebarLayout";
 import TeamDetailScreen from "./src/screens/TeamDetail";
 import { logout as apiLogout } from './src/utils/auth';
 import type { UserRole } from './src/utils/auth';
-import { Team } from "@/data/teams";
+import { Team, TeamMember } from "@/data/teams";
+import TeamMemberDetail from "@/screens/TeamMemberDetail";
 
 if (Platform.OS === "web") {
   import("./nativewind/output.css"); // Use the built file
@@ -23,6 +26,7 @@ if (Platform.OS === "web") {
 export type RootStackParamList = {
   Home: undefined;
   TeamDetail: { team: Team; userRole: UserRole };
+  TeamMemberDetail: {member: TeamMember};
   Teams: {userRole: UserRole};
   TAManager: undefined;
   Courses: undefined;
@@ -34,6 +38,7 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  const [fontsLoaded] = useFonts({ ...Ionicons.font });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userEmail, setUserEmail] = useState('');
   const [userRole, setUserRole] = useState<UserRole>('Student');
@@ -94,6 +99,8 @@ export default function App() {
     }
   };
 
+  if (!fontsLoaded) return null;
+
   return (
     <NavigationContainer>
       <Stack.Navigator>
@@ -109,6 +116,7 @@ export default function App() {
             <Stack.Screen name="SidebarLayout" component={SidebarLayout} options={{ headerShown: false, title: 'Dashboard' }} initialParams={{ userRole, onLogout: handleLogout }} />
             <Stack.Screen name="TAManager" component={TAManager} options={{ headerShown: false }} />
             <Stack.Screen name="TeamDetail" component={TeamDetailScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="TeamMemberDetail" component={TeamMemberDetail} options={{ headerShown: false }} />
             <Stack.Screen name="Courses" component={CoursesScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Landing" options={{ headerShown: false }}>
               {(props) => <LandingPage {...props} userEmail={userEmail} onLogout={handleLogout} />}

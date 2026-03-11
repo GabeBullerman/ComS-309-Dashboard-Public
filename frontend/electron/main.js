@@ -1,4 +1,5 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, Menu } = require('electron');
+Menu.setApplicationMenu(null);
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
@@ -70,6 +71,7 @@ async function createWindow() {
     minWidth: 800,
     minHeight: 600,
     title: 'Instructor Dashboard',
+    icon: path.join(__dirname, '../src/Images/Iowa_State_Cyclones_logo.png'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -79,7 +81,7 @@ async function createWindow() {
   if (isDev) {
     // Requires `npm run web` (expo start --web) to be running on port 8081
     await win.loadURL('http://localhost:8081');
-    win.webContents.openDevTools();
+    // win.webContents.openDevTools();
   } else {
     const distPath = path.join(__dirname, '..', 'dist');
     const port = await startStaticServer(distPath);
