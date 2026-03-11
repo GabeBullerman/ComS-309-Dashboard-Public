@@ -176,6 +176,19 @@ public class UserController {
         return userService.getUserById(id);
     }
 
+    // TESTING/DEBUGGING ONLY. REMOVE IN PRODUCTION.
+    @PutMapping("/testing/hashAllPasswords")
+    public void hashAllPasswords(){
+        List<User> list = userRepository.findAll();
+        for (User user : list) {
+            String password = user.getPassword();
+            if(!isBCryptHash(password)){
+                user.setPassword(passwordEncoder.encode(password));
+                userRepository.save(user);
+            }
+        }
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
@@ -196,4 +209,10 @@ public class UserController {
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }
+
+    private boolean isBCryptHash(String password) {
+    return password.startsWith("$2a$") ||
+           password.startsWith("$2b$") ||
+           password.startsWith("$2y$");
+}
 }
