@@ -49,6 +49,21 @@ export interface GitLabCommit {
   created_at: string; // ISO 8601
 }
 
+export interface GitLabMember {
+  id: number;
+  username: string; // = netid on ISU GitLab
+  name: string;     // GitLab profile display name
+}
+
+export async function fetchProjectMembers(gitlabUrl: string, token: string): Promise<GitLabMember[]> {
+  const path = extractProjectPath(gitlabUrl);
+  if (!path) throw new Error('Invalid GitLab URL');
+  return gitlabFetch<GitLabMember[]>(
+    `${GITLAB_BASE}/projects/${path}/members/all?per_page=100`,
+    token
+  );
+}
+
 export async function fetchContributors(gitlabUrl: string, token: string): Promise<GitLabContributor[]> {
   const path = extractProjectPath(gitlabUrl);
   if (!path) throw new Error('Invalid GitLab URL');
@@ -72,6 +87,55 @@ export async function fetchRecentCommits(
   );
 }
 
+/**
+ * Matches contributors to team members using GitLab project membership (username = netid).
+ * Falls back to fuzzy name matching if a member isn't found in the project members list.
+ * Merges duplicate contributor entries (different git configs) per person.
+ */
+export function matchContributors(
+  contributors: GitLabContributor[],
+  gitlabMembers: GitLabMember[],
+  teamMembers: { netid?: string; name: string }[]
+): GitLabContributor[] {
+  const norm = (s: string) => s.trim().toLowerCase();
+
+  // Build a map of netid → GitLab profile name
+  const netidToGitLabName: Record<string, string> = {};
+  for (const m of gitlabMembers) {
+    netidToGitLabName[m.username.toLowerCase()] = m.name;
+  }
+
+  const result: GitLabContributor[] = [];
+
+  for (const member of teamMembers) {
+    const netid = member.netid?.toLowerCase();
+    const gitlabProfileName = netid ? netidToGitLabName[netid] : undefined;
+
+    // Find contributor entries: exact match on GitLab profile name first,
+    // then fuzzy fallback on DB display name
+    const matches = contributors.filter((c) => {
+      const cName = norm(c.name);
+      if (gitlabProfileName && cName === norm(gitlabProfileName)) return true;
+      // Fallback: any name part of the DB name appears in the contributor name
+      return norm(member.name).split(/\s+/).some(
+        (part) => part.length > 2 && cName.includes(part)
+      );
+    });
+
+    if (matches.length === 0) continue;
+
+    result.push({
+      name: member.name, // always display the DB name
+      email: matches[0].email,
+      commits: matches.reduce((sum, c) => sum + c.commits, 0),
+      additions: matches.reduce((sum, c) => sum + c.additions, 0),
+      deletions: matches.reduce((sum, c) => sum + c.deletions, 0),
+    });
+  }
+
+  return result.sort((a, b) => b.commits - a.commits);
+}
+
 /** Groups commits into weekly buckets (most recent first) */
 export function groupCommitsByWeek(
   commits: GitLabCommit[],
@@ -88,5 +152,5 @@ export function groupCommitsByWeek(
     }).length;
     return { label, count };
   });
-  return buckets.reverse(); // oldest first
+  return buckets; // oldest first
 }

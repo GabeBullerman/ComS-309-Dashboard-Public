@@ -20,9 +20,11 @@ import { getTeam, updateTeamInfo, setUserProjectRole } from '../utils/auth';
 import {
   fetchContributors,
   fetchRecentCommits,
+  fetchProjectMembers,
   getGitLabToken,
   saveGitLabToken,
   groupCommitsByWeek,
+  matchContributors,
   GitLabContributor,
   GitLabCommit,
 } from '../utils/gitlab';
@@ -102,10 +104,11 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     Promise.all([
       fetchContributors(gitlab, glToken),
       fetchRecentCommits(gitlab, glToken, 42),
+      fetchProjectMembers(gitlab, glToken),
     ])
-      .then(([contribs, commits]) => {
+      .then(([contribs, commits, glMembers]) => {
         if (cancelled) return;
-        setContributors(contribs);
+        setContributors(matchContributors(contribs, glMembers, team.members));
         setWeeklyCommits(groupCommitsByWeek(commits as GitLabCommit[], 6));
       })
       .catch((e: Error) => { if (!cancelled) setGlError(e.message); })
