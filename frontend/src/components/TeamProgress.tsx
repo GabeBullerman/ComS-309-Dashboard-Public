@@ -1,4 +1,4 @@
-import { View, Text, TextInput, ScrollView, Image, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from "react";
 type ProgressLevel = "good" | "moderate" | "poor" | "ungraded";

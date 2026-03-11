@@ -66,7 +66,7 @@ export default function MemberAttendance() {
   const CELL = 70; // cell size for calendar grid. Can be changed if you would like to scale calendar size
 
   return (
-    <View className="bg-white rounded-xl shadow mt-6 mb-12 overflow-hidden">
+    <View className="bg-white rounded-xl shadow mt-6 mb-2 overflow-hidden">
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
         <Ionicons name="calendar-outline" size={16} color="#be123c" />

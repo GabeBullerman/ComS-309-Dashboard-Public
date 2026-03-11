@@ -7,7 +7,7 @@ export default function MemberComments() {
     const [statusOpen, setStatusOpen] = useState(false);
 
     return (
-        <View className="bg-white rounded-xl shadow mt-6 mb-12 overflow-hidden">
+        <View className="bg-white rounded-xl shadow mt-6 mb-3 overflow-hidden">
         
         {/* Header */}
         <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
