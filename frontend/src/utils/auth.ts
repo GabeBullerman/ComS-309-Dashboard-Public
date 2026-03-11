@@ -50,12 +50,16 @@ export const setApiBaseUrl = (url: string) => {
   axiosInstance.defaults.baseURL = apiBaseUrl;
 };
 
-const axiosInstance = axios.create({ baseURL: apiBaseUrl });
+const axiosInstance = axios.create({
+  baseURL: apiBaseUrl,
+  withCredentials: true, // send/receive cookies (refresh token) on web
+});
 
-// Attach token to outgoing requests if present (skip for login so a stale token doesn't block re-authentication)
+// Attach access token to outgoing requests
 axiosInstance.interceptors.request.use(async (config) => {
   try {
-    if (config.url === '/api/auth/login') return config;
+    const skipAuth = ['/api/auth/login', '/api/auth/refresh', '/api/users/testing/hashAllPasswords'];
+    if (skipAuth.some((u) => config.url?.startsWith(u))) return config;
     const token = await AsyncStorage.getItem(TOKEN_KEY);
     if (token && config.headers) {
       config.headers['Authorization'] = `Bearer ${token}`;
@@ -65,6 +69,55 @@ axiosInstance.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+// 401 interceptor — attempt token refresh then retry original request
+let isRefreshing = false;
+let refreshQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = [];
+
+const drainQueue = (err: unknown, token?: string) => {
+  refreshQueue.forEach((cb) => (err ? cb.reject(err) : cb.resolve(token!)));
+  refreshQueue = [];
+};
+
+axiosInstance.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = error.config;
+    const skipRefresh = ['/api/auth/login', '/api/auth/refresh'];
+    if (
+      error.response?.status === 401 &&
+      !original._retry &&
+      !skipRefresh.some((u) => original.url?.startsWith(u))
+    ) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          refreshQueue.push({ resolve, reject });
+        }).then((token) => {
+          original.headers['Authorization'] = `Bearer ${token}`;
+          return axiosInstance(original);
+        });
+      }
+      original._retry = true;
+      isRefreshing = true;
+      try {
+        const res = await axiosInstance.post('/api/auth/refresh');
+        const newToken: string = res.data;
+        await storeToken(newToken);
+        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+        drainQueue(null, newToken);
+        original.headers['Authorization'] = `Bearer ${newToken}`;
+        return axiosInstance(original);
+      } catch (refreshErr) {
+        drainQueue(refreshErr);
+        await clearToken();
+        return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const storeToken = async (token: string) => {
   await AsyncStorage.setItem(TOKEN_KEY, token);
@@ -281,6 +334,21 @@ export const deleteTask = async (id: number): Promise<void> => {
 export const getUsersByRole = async (role: string): Promise<UserSummary[]> => {
   const res = await axiosInstance.get(`/api/users/role/${encodeURIComponent(role)}`);
   return Array.isArray(res.data) ? res.data : (res.data?.content ?? []);
+};
+
+// ── GitLab token (backend-stored per user) ───────────────────────────────────
+
+export const getGitLabTokenFromBackend = async (userId: number): Promise<string | null> => {
+  try {
+    const res = await axiosInstance.get(`/api/users/${userId}/gitlab-token`);
+    return res.data?.gitlabToken ?? res.data ?? null;
+  } catch {
+    return null;
+  }
+};
+
+export const saveGitLabTokenToBackend = async (userId: number, token: string): Promise<void> => {
+  await axiosInstance.put(`/api/users/${userId}/gitlab-token`, { gitlabToken: token.trim() });
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
