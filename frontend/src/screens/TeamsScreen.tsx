@@ -7,9 +7,11 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Team, TeamMember, teamsData } from '../data/teams';
+import { Team, TeamMember } from '../types/Teams';
 import { TeamCard } from '../components/TeamCard';
-import { getCurrentUser, getTeams, getUserPermissions, normalizeRole, TeamApiResponse, UserRole } from '../utils/auth';
+import { getUserPermissions, normalizeRole, UserRole } from '../utils/auth';
+import { getCurrentUser } from '../api/users';
+import { getTeams, TeamApiResponse } from '../api/teams';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
@@ -31,10 +33,9 @@ export default function ClassTeamsScreen({ userRole }: Props) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
   const [semesterFilter, setSemesterFilter] = useState<SemesterFilter>('All');
   const [sectionFilter, setSectionFilter] = useState<string>('All');
-  const [teams, setTeams] = useState<Team[]>(teamsData);
+  const [teams, setTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [selectedTeam, setSelectedTeam] = useState<typeof teamsData[0] | null>(null);
 
   useEffect(() => {
     const toInitials = (name?: string) => {
@@ -296,8 +297,7 @@ export default function ClassTeamsScreen({ userRole }: Props) {
           }}
           renderItem={({ item }) => (
             <View style={{ width: '24.5%' }}>
-              <TeamCard {...item} onPress={() => {  
-                setSelectedTeam(item);
+              <TeamCard {...item} onPress={() => {
                 navigation.navigate('TeamDetail', { team: item, userRole: effectiveRole });
               }}/>
             </View>

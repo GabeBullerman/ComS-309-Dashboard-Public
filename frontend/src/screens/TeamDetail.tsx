@@ -15,8 +15,9 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../App';
-import { TeamMember } from '../data/teams';
-import { getTeam, updateTeamInfo, setUserProjectRole } from '../utils/auth';
+import { TeamMember } from '../types/Teams';
+import { getTeam, updateTeamInfo } from '../api/teams';
+import { setUserProjectRole } from '../api/users';
 import {
   fetchContributors,
   fetchRecentCommits,

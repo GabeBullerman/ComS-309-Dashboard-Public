@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getGitLabTokenFromBackend, saveGitLabTokenToBackend } from './auth';
+import { getGitLabTokenFromBackend, saveGitLabTokenToBackend } from '../api/users';
 
 const GITLAB_BASE = 'https://git.las.iastate.edu/api/v4';
 const TOKEN_KEY = 'gitlab_token';

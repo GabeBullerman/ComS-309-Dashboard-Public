@@ -1,11 +1,30 @@
-export type TeamStatus = "Active" | "Pending" | "Completed";
+import { Image } from 'react-native';
+
+export interface Demo {
+  name: string;
+  result: string;
+  contribution: string;
+}
+
+export interface TeamMember {
+  id?: number;
+  name: string;
+  netid?: string;
+  initials: string;
+  color: string;
+  photo: ReturnType<typeof Image.resolveAssetSource> | string;
+  demoResults?: Demo[];
+}
 
 export interface Team {
-  id: string;
+  id?: number;
   name: string;
-  project: string;
-  members: number;
-  status: TeamStatus;
+  description: string;
+  memberCount: number;
   semester: string;
-  lastActive: string;
+  ta: string;
+  section: number;
+  status: 'Good' | 'Moderate' | 'Poor';
+  members: TeamMember[];
+  gitlab?: string;
 }
