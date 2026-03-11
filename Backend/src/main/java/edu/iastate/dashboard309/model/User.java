@@ -25,6 +25,9 @@ public class User {
     @Column(name = "id")
     private Long id;
 
+    @Column(name = "google_id")
+    private String googleId;
+
     @Column(name = "name", nullable = false)
     private String name;
 
@@ -55,12 +58,25 @@ public class User {
     @OneToMany(mappedBy = "assignedBy")
     private Set<Task> createdTasks;
 
+    @OneToMany(mappedBy = "user")
+    private Set<RefreshToken> refreshTokens;
+
+    private String gitlabToken;
+
     public Long getId() {
         return id;
     }
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getGoogleId(){
+        return googleId;
+    }
+
+    public void setGoogleId(String id){
+        googleId = id;
     }
 
     public String getName() {
@@ -137,6 +153,26 @@ public class User {
 
     public void setContributions(Integer contributions) {
         this.contributions = contributions;
+    }
+
+    public Set<RefreshToken> getRefreshTokens(){
+        return refreshTokens;
+    }
+
+    public void addRefreshToken(RefreshToken r){
+        refreshTokens.add(r);
+    }
+
+    public void removeRefreshToken(RefreshToken r){
+        refreshTokens.remove(r);
+    }
+
+    public String getGitlabToken(){
+        return gitlabToken;
+    }
+
+    public void setGitlabToken(String token){
+        gitlabToken = token;
     }
 
     @Column(name = "project_role")

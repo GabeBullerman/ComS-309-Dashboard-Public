@@ -45,6 +45,14 @@ public class UserService {
         // String roleName = user.getRole().isEmpty() ? "UNASSIGNED" : user.getRole().get(0).getRoleName();
         return userToRequest(user);
     }
+
+    @Transactional
+    public UserRequest getUserByGoogleId(String googleId){
+        User user = userRepository.findByGoogleId(googleId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        // String roleName = user.getRole().isEmpty() ? "UNASSIGNED" : user.getRole().get(0).getRoleName();
+        return userToRequest(user);
+    }
     
     @Transactional 
     public List<UserRequest> getAllUsers(){
