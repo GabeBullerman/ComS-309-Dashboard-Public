@@ -157,6 +157,16 @@ export default function TeamProgressScreen({navigation, route}: TeamMemberDetail
 
   {/* MEMBER COMMENTS */}
   <View className="bg-white rounded-xl shadow mt-6 mb-12 overflow-hidden">
+    {/* Header */}
+    <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
+      <Ionicons name="chatbubble-outline" size={18} color="#be123c" />
+      <Text className="text-lg font-semibold ml-2">Member Attendance</Text>
+    </View>
+    {/* Body */}
+  </View>
+
+  {/* MEMBER COMMENTS */}
+  <View className="bg-white rounded-xl shadow mt-6 mb-12 overflow-hidden">
   
   {/* Header */}
   <View className="flex-row items-center px-4 py-3 border-b border-gray-200">

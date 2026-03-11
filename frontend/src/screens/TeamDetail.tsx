@@ -236,7 +236,27 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       />
 
     <View className="bg-white rounded-xl shadow my-4 overflow-hidden pb-4">
-    {/* Header */}
+      {/* Team Repo Header */}
+      <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
+        <Ionicons name="chatbubble-outline" size={18} color="#be123c" />
+        <Text className="text-lg font-semibold ml-2">Team Repo</Text>
+      </View>
+
+      {/* Repo URL */} 
+      <View className="px-4 py-3 border-b border-gray-200 flex-row items-center mb-4">
+        <Text className="text-lg text-gray-600">Repo URL:</Text>
+        <Text className="text-sm ml-2">repo</Text>
+      </View>
+
+      {/* Go To Repo */}
+      <View className="px-4 py-3 border-b border-gray-200 flex-row items-center mb-4">
+
+      </View>
+    </View>
+
+    <View className="bg-white rounded-xl shadow my-4 overflow-hidden pb-4">
+
+    {/* Team Results Header */}
     <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
       <Ionicons name="chatbubble-outline" size={18} color="#be123c" />
       <Text className="text-lg font-semibold ml-2">Team Results</Text>
