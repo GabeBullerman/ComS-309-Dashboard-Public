@@ -1,5 +1,6 @@
 package edu.iastate.dashboard309.controller;
 
+import edu.iastate.dashboard309.dto.GitlabTokenRequest;
 import edu.iastate.dashboard309.dto.TeamRequest;
 import edu.iastate.dashboard309.dto.UserRequest;
 import edu.iastate.dashboard309.model.Role;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,11 +29,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.bind.annotation.RequestParam;
 
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
+
+    private final PasswordEncoder passwordEncoder;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final UserService userService;
@@ -40,11 +45,12 @@ public class UserController {
     public UserController(UserRepository userRepository,
                           RoleRepository roleRepository,
                           UserService userService,
-                          TeamService teamService) {
+                          TeamService teamService, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userService = userService;
         this.teamService = teamService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @GetMapping
@@ -77,6 +83,13 @@ public class UserController {
         return teamService.getTeamByUserId(id);
     }
 
+    @GetMapping("/{id}/gitlab-token")
+    public String getGitlabToken(@PathVariable Long id){
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return user.getGitlabToken();
+    }
+
     @GetMapping("/role/{role}")
     public List<UserRequest> getUsersWithRole(@PathVariable String role){
         return userService.getUsersWithRoleName(role);
@@ -98,7 +111,8 @@ public class UserController {
         User user = new User();
         user.setName(request.name());
         user.setNetid(request.netid());
-        user.setPassword(request.password());
+        // Hash password
+        user.setPassword(passwordEncoder.encode(request.password()));
         System.out.println(request.role());
         for(String roleName : request.role()){
             Role role = roleRepository.findByRoleName(roleName)
@@ -143,6 +157,14 @@ public class UserController {
         }
         userRepository.save(user);
         return userService.getUserById(user.getId());
+    }
+
+    @PutMapping("/{id}/gitlab-token")
+    public void updateGitlabToken(@PathVariable Long id, @Valid @RequestBody GitlabTokenRequest request ){
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        user.setGitlabToken(request.gitlabToken());
+        userRepository.save(user);
     }
 
     @PutMapping("/{id}/project-role")
