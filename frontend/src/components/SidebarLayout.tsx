@@ -1,11 +1,12 @@
-import { View, Text, TouchableOpacity, Image, Animated, Dimensions, Platform } from "react-native";
+import { View, Text, TouchableOpacity, Image, Animated, Dimensions } from "react-native";
 import CoursesScreen from "../screens/Courses";
 import TeamsScreen from "../screens/TeamsScreen";
 import TAManager from "../screens/TAManager";
 import TaskAssignmentScreen from "../screens/TaskAssignmentScreen";
 import AssignmentsScreen from "../screens/AssignmentsScreen";
 import { useEffect, useState } from "react";
-import { getCurrentUser, getUserPermissions } from "../utils/auth";
+import { getUserPermissions } from "../utils/auth";
+import { getCurrentUser } from "../api/users";
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { Ionicons } from "@expo/vector-icons";

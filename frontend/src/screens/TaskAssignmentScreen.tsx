@@ -10,18 +10,10 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  getCurrentUser,
-  getTeams,
-  getUsersByRole,
-  getTasksAssignedBy,
-  createTask,
-  deleteTask,
-  normalizeRole,
-  TaskApiResponse,
-  UserSummary,
-  TeamApiResponse,
-} from '../utils/auth';
+import { normalizeRole, UserSummary } from '../utils/auth';
+import { getCurrentUser, getUsersByRole } from '../api/users';
+import { getTeams, TeamApiResponse } from '../api/teams';
+import { getTasksAssignedBy, createTask, deleteTask, TaskApiResponse } from '../api/tasks';
 
 type RecipientType = 'specific-ta' | 'all-tas' | 'specific-team' | 'all-my-teams' | 'all-students';
 

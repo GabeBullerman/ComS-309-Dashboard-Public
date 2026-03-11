@@ -7,14 +7,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  getCurrentUser,
-  getUserByNetid,
-  getTasksAssignedTo,
-  TaskApiResponse,
-  UserSummary,
-  normalizeRole,
-} from '../utils/auth';
+import { normalizeRole, UserSummary } from '../utils/auth';
+import { getCurrentUser, getUserByNetid } from '../api/users';
+import { getTasksAssignedTo, TaskApiResponse } from '../api/tasks';
 
 const roleLabel = (role?: string): string => {
   switch (normalizeRole(role)) {

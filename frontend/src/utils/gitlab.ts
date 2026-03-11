@@ -1,14 +1,27 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getGitLabTokenFromBackend, saveGitLabTokenToBackend } from '../api/users';
 
 const GITLAB_BASE = 'https://git.las.iastate.edu/api/v4';
 const TOKEN_KEY = 'gitlab_token';
 
+/**
+ * Gets the GitLab token — tries backend API first (if userId provided),
+ * falls back to AsyncStorage for cross-platform persistence.
+ */
 export async function getGitLabToken(): Promise<string | null> {
+  // Try backend first (cross-platform), fall back to AsyncStorage
+  const backendToken = await getGitLabTokenFromBackend();
+  if (backendToken) {
+    await AsyncStorage.setItem(TOKEN_KEY, backendToken);
+    return backendToken;
+  }
   return AsyncStorage.getItem(TOKEN_KEY);
 }
 
 export async function saveGitLabToken(token: string): Promise<void> {
-  await AsyncStorage.setItem(TOKEN_KEY, token.trim());
+  const trimmed = token.trim();
+  await AsyncStorage.setItem(TOKEN_KEY, trimmed);
+  await saveGitLabTokenToBackend(trimmed).catch(() => {});
 }
 
 /** Extracts and URL-encodes the project path from any GitLab web URL */
