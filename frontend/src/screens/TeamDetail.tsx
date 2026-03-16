@@ -62,6 +62,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   // GitLab API state
   const [glToken, setGlToken] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState('');
+  const [editingToken, setEditingToken] = useState(false);
   const [contributors, setContributors] = useState<GitLabContributor[]>([]);
   const [weeklyCommits, setWeeklyCommits] = useState<{ label: string; count: number }[]>([]);
   const [glLoading, setGlLoading] = useState(false);
@@ -122,6 +123,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     await saveGitLabToken(tokenInput.trim());
     setGlToken(tokenInput.trim());
     setTokenInput('');
+    setEditingToken(false);
   };
 
   const handleOpenRepo = () => {
@@ -323,25 +325,6 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       />
 
     <View className="bg-white rounded-xl shadow my-4 overflow-hidden pb-4">
-      {/* Team Repo Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
-        <Ionicons name="chatbubble-outline" size={18} color="#be123c" />
-        <Text className="text-lg font-semibold ml-2">Team Repo</Text>
-      </View>
-
-      {/* Repo URL */} 
-      <View className="px-4 py-3 border-b border-gray-200 flex-row items-center mb-4">
-        <Text className="text-lg text-gray-600">Repo URL:</Text>
-        <Text className="text-sm ml-2">repo</Text>
-      </View>
-
-      {/* Go To Repo */}
-      <View className="px-4 py-3 border-b border-gray-200 flex-row items-center mb-4">
-
-      </View>
-    </View>
-
-    <View className="bg-white rounded-xl shadow my-4 overflow-hidden pb-4">
 
     {/* Team Results Header */}
     <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
@@ -365,10 +348,12 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           ))}
         </View>
 
-        {/* Token setup prompt — shown when no token is set and gitlab URL exists */}
-        {!glToken && gitlab && (
+        {/* Token prompt — shown when no token, or when editing an existing token */}
+        {(!glToken || editingToken) && gitlab && (
           <View style={{ backgroundColor: '#FEF9C3', borderRadius: 8, padding: 12, marginBottom: 12 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E', marginBottom: 6 }}>GitLab personal access token required</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E', marginBottom: 6 }}>
+              {editingToken ? 'Update GitLab Token' : 'GitLab personal access token required'}
+            </Text>
             <Text style={{ fontSize: 12, color: '#78350F', marginBottom: 8 }}>Generate one at git.las.iastate.edu → Settings → Access Tokens (scope: read_api)</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TextInput
@@ -384,8 +369,24 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
               <TouchableOpacity onPress={handleSaveToken} style={{ backgroundColor: '#C8102E', borderRadius: 6, paddingHorizontal: 14, justifyContent: 'center' }}>
                 <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Save</Text>
               </TouchableOpacity>
+              {editingToken && (
+                <TouchableOpacity onPress={() => { setEditingToken(false); setTokenInput(''); }} style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 6, paddingHorizontal: 10, justifyContent: 'center', backgroundColor: 'white' }}>
+                  <Text style={{ color: '#6B7280', fontWeight: '600', fontSize: 13 }}>Cancel</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
+        )}
+
+        {/* Edit token button — shown when token is set and not currently editing */}
+        {glToken && !editingToken && gitlab && (
+          <TouchableOpacity
+            onPress={() => { setTokenInput(''); setEditingToken(true); }}
+            style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', marginBottom: 8, gap: 4 }}
+          >
+            <Ionicons name="key-outline" size={13} color="#6B7280" />
+            <Text style={{ fontSize: 12, color: '#6B7280' }}>Edit token</Text>
+          </TouchableOpacity>
         )}
 
         <View className="p-4 bg-gray-100 rounded-lg min-h-[200px]">
