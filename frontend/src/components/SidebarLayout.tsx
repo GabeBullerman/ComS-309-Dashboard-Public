@@ -4,6 +4,7 @@ import TeamsScreen from "../screens/TeamsScreen";
 import TAManager from "../screens/TAManager";
 import TaskAssignmentScreen from "../screens/TaskAssignmentScreen";
 import AssignmentsScreen from "../screens/AssignmentsScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 import { useEffect, useState } from "react";
 import { getUserPermissions } from "../utils/auth";
 import { getCurrentUser } from "../api/users";
@@ -77,6 +78,8 @@ export default function SidebarLayout({route}: Props) {
         return <TAManager />;
       case "Tasks":
         return <AssignmentsScreen />;
+      case "Profile":
+        return <ProfileScreen userRole={role} />;
       default:
         return <TeamsScreen userRole={route.params.userRole} />;
     }
@@ -130,22 +133,29 @@ export default function SidebarLayout({route}: Props) {
 
       {/* User Section */}
       <View className="mt-auto pt-6 border-t border-white/10">
-        <View className="flex-row items-center gap-3">
+        <TouchableOpacity
+          className="flex-row items-center gap-3"
+          onPress={() => {
+            setActiveScreen('Profile');
+            if (isMobile) toggleDrawer();
+          }}
+        >
           <View className="w-10 h-10 rounded-full bg-[#F1BE48] items-center justify-center">
             <Text className="text-gray-800 font-semibold">
               {initials}
             </Text>
           </View>
 
-          <View>
+          <View style={{ flex: 1 }}>
             <Text className="font-semibold text-sm text-white">
               {displayName}
             </Text>
             <Text className="text-xs text-white/70">
-              {role}
+              {role} · Profile
             </Text>
           </View>
-        </View>
+          <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.5)" />
+        </TouchableOpacity>
 
         <TouchableOpacity
           onPress={route.params.onLogout}
