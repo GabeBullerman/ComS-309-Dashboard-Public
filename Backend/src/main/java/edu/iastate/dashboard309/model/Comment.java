@@ -30,8 +30,12 @@ public class Comment {
     private User sender;
 
     @ManyToOne
-    @JoinColumn(name = "receiver_id", nullable = false)
+    @JoinColumn(name = "receiver_id")
     private User receiver;
+
+    @ManyToOne
+    @JoinColumn(name = "receiver_team_id")
+    private Team receiverTeam;
 
     @ManyToOne
     @JoinColumn(name = "team_id", nullable = false)
@@ -86,6 +90,14 @@ public class Comment {
 
     public void setTeam(Team team) {
         this.team = team;
+    }
+
+    public Team getReceiverTeam() {
+        return receiverTeam;
+    }
+
+    public void setReceiverTeam(Team receiverTeam) {
+        this.receiverTeam = receiverTeam;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import edu.iastate.dashboard309.dto.CommentRequest;
+import edu.iastate.dashboard309.dto.TeamCommentCreateRequest;
 import edu.iastate.dashboard309.model.Comment;
 import edu.iastate.dashboard309.model.Team;
 import edu.iastate.dashboard309.model.User;
@@ -53,6 +54,11 @@ public class CommentController {
         return commentService.getCommentsByTeamAndReceiver(teamId, receiverNetid);
     }
 
+    @GetMapping("/team/{teamId}/general")
+    public List<CommentRequest> listGeneralByTeam(@PathVariable Long teamId) {
+        return commentService.getGeneralCommentsByTeamId(teamId);
+    }
+
     @GetMapping("/{id}")
     public CommentRequest get(@PathVariable Long id) {
         return commentService.getCommentById(id);
@@ -61,18 +67,16 @@ public class CommentController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CommentRequest create(@Valid @RequestBody CommentRequest request, Authentication authentication) {
-        User sender = userRepository.findByNetid(authentication.getName())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sender not found"));
+        User sender = getSender(authentication);
+
+        if (request.receiverNetid() == null || request.receiverNetid().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "receiverNetid is required");
+        }
 
         User receiver = userRepository.findByNetid(request.receiverNetid())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Receiver not found"));
 
-        Team team = teamRepository.findById(request.teamId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
-
-        if (team.getTa() == null || !team.getTa().getId().equals(sender.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the team TA can create comments");
-        }
+        Team team = getTeamAndAuthorizeTa(request.teamId(), sender);
 
         if (receiver.getTeam() == null || !receiver.getTeam().getId().equals(team.getId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Receiver is not in the specified team");
@@ -83,10 +87,52 @@ public class CommentController {
         comment.setStatus(request.status());
         comment.setSender(sender);
         comment.setReceiver(receiver);
+        comment.setReceiverTeam(null);
         comment.setTeam(team);
         comment.setCreatedAt(LocalDateTime.now());
         commentRepository.save(comment);
 
         return commentService.getCommentById(comment.getId());
+    }
+
+    @PostMapping("/team/{teamId}/general")
+    @ResponseStatus(HttpStatus.CREATED)
+    public CommentRequest createGeneralComment(@PathVariable Long teamId,
+                                               @Valid @RequestBody TeamCommentCreateRequest request,
+                                               Authentication authentication) {
+        User sender = getSender(authentication);
+        Team team = getTeamAndAuthorizeTa(teamId, sender);
+
+        Comment comment = new Comment();
+        comment.setCommentBody(request.commentBody());
+        comment.setStatus(request.status());
+        comment.setSender(sender);
+        comment.setReceiver(null);
+        comment.setReceiverTeam(team);
+        comment.setTeam(team);
+        comment.setCreatedAt(LocalDateTime.now());
+        commentRepository.save(comment);
+
+        // Keep ta_notes as a transition summary while frontend migrates to comments history.
+        team.setTaNotes(request.commentBody());
+        teamRepository.save(team);
+
+        return commentService.getCommentById(comment.getId());
+    }
+
+    private User getSender(Authentication authentication) {
+        return userRepository.findByNetid(authentication.getName())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sender not found"));
+    }
+
+    private Team getTeamAndAuthorizeTa(Long teamId, User sender) {
+        Team team = teamRepository.findById(teamId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+
+        if (team.getTa() == null || !team.getTa().getId().equals(sender.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the team TA can create comments");
+        }
+
+        return team;
     }
 }

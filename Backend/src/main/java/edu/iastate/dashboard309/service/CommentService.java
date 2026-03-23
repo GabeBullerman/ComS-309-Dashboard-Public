@@ -60,12 +60,34 @@ public class CommentService {
     }
 
     @Transactional
+    public List<CommentRequest> getGeneralCommentsByTeamId(Long teamId) {
+        if (!teamRepository.existsById(teamId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found");
+        }
+
+        return commentRepository.findByTeamIdAndReceiverTeamIdOrderByCreatedAtDesc(teamId, teamId).stream()
+            .map(this::toRequest)
+            .toList();
+    }
+
+    @Transactional
     private CommentRequest toRequest(Comment comment) {
+        String receiverNetid = null;
+        Long receiverTeamId = null;
+
+        if (comment.getReceiver() != null) {
+            receiverNetid = comment.getReceiver().getNetid();
+        }
+        if (comment.getReceiverTeam() != null) {
+            receiverTeamId = comment.getReceiverTeam().getId();
+        }
+
         return new CommentRequest(
             comment.getId(),
             comment.getCommentBody(),
             comment.getStatus(),
-            comment.getReceiver().getNetid(),
+            receiverNetid,
+            receiverTeamId,
             comment.getTeam().getId(),
             comment.getSender().getNetid(),
             comment.getCreatedAt()

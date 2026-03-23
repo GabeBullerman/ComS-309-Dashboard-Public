@@ -12,6 +12,7 @@ public record CommentRequest(
         @NotBlank String commentBody,
         @NotNull @Min(0) @Max(2) Integer status,
         @NotBlank String receiverNetid,
+        Long receiverTeamId,
         @NotNull Long teamId,
         String senderNetid,
         LocalDateTime createdAt
