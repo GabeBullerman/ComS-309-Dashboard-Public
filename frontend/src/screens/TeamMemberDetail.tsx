@@ -1,4 +1,4 @@
-import { View, Text, TextInput, ScrollView, Image, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, Image, TouchableOpacity } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from "App";
 import MemberAttendance from "@/components/MemberAttendance";

@@ -59,6 +59,9 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   const [editName, setEditName] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Per-member weekly commit analytics: memberKey → { thisWeek, lastWeek }
+  const [memberAnalytics, setMemberAnalytics] = useState<Record<string, { thisWeek: number; lastWeek: number }>>({});
+
   // GitLab API state
   const [glToken, setGlToken] = useState<string | null>(null);
   const [tokenInput, setTokenInput] = useState('');
@@ -110,8 +113,38 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     ])
       .then(([contribs, commits, glMembers]) => {
         if (cancelled) return;
-        setContributors(matchContributors(contribs, glMembers, team.members));
+        const matched = matchContributors(contribs, glMembers, team.members);
+        setContributors(matched.length > 0 ? matched : contribs);
         setWeeklyCommits(groupCommitsByWeek(commits as GitLabCommit[], 6));
+
+        // Compute per-member week-over-week commit counts.
+        // ISU GitLab username === netid, so author_email will contain the netid.
+        // Falls back to partial name matching if no netid is available.
+        const now = Date.now();
+        const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+        const twoWeeksAgo = now - 14 * 24 * 60 * 60 * 1000;
+        const recentCommits = (commits as GitLabCommit[]).filter(
+          (c) => new Date(c.created_at).getTime() >= twoWeeksAgo
+        );
+
+        const analytics: Record<string, { thisWeek: number; lastWeek: number }> = {};
+        for (const member of team.members) {
+          const key = member.netid || member.name;
+          const mine = recentCommits.filter((c) => {
+            if (member.netid && c.author_email.toLowerCase().includes(member.netid.toLowerCase())) return true;
+            const authorLower = c.author_name.toLowerCase();
+            return member.name.toLowerCase().split(/\s+/)
+              .filter((p) => p.length > 2)
+              .some((part) => authorLower.includes(part));
+          });
+          const thisWeek = mine.filter((c) => new Date(c.created_at).getTime() >= weekAgo).length;
+          const lastWeek = mine.filter((c) => {
+            const t = new Date(c.created_at).getTime();
+            return t >= twoWeeksAgo && t < weekAgo;
+          }).length;
+          analytics[key] = { thisWeek, lastWeek };
+        }
+        setMemberAnalytics(analytics);
       })
       .catch((e: Error) => { if (!cancelled) setGlError(e.message); })
       .finally(() => { if (!cancelled) setGlLoading(false); });
@@ -285,7 +318,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           const isSelected = selectedKey === memberKey;
           return (
             <TouchableOpacity
-              onPress={() => navigation.navigate('TeamMemberDetail', { member: item.member })}
+              onPress={() => navigation.navigate('TeamMemberDetail', { member: item.member, gitlabUrl: gitlab || undefined })}
               style={{ marginRight: 16, alignItems: 'center' }}
             >
               <View style={{
