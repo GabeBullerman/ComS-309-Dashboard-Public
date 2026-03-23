@@ -76,7 +76,7 @@ export default function TeamProgress() {
   ));
 };
     return (
-        <View className="bg-white rounded-xl p-4 shadow">
+        <View className="bg-white rounded-xl p-4 mb-2 shadow">
 
         {/* HEADER */}
         <View className="flex-row justify-between items-center mb-4">

@@ -4,6 +4,7 @@ import { RootStackParamList } from "App";
 import MemberAttendance from "@/components/MemberAttendance";
 import MemberComments from "@/components/Comments";
 import TeamProgress from "@/components/TeamProgress";
+import GitLabStatsPanel from "@/components/GitlabStats";
 import { NativeStackScreenProps } from "node_modules/@react-navigation/native-stack/lib/typescript/src/types";
 
 const INNER = 128;
@@ -23,6 +24,7 @@ export default function TeamProgressScreen({navigation, route}: TeamMemberDetail
         </TouchableOpacity>
         <Text className="text-xl text-center font-bold flex-1">{member.name}</Text>
       </View>
+
       {/* Header */}
       <View className="flex-row items-center pl-10 py-4">
         <View className="flex-1 items-center">
@@ -33,14 +35,21 @@ export default function TeamProgressScreen({navigation, route}: TeamMemberDetail
         </View>
       </View>
 
-  {/* TEAM PROGRESS CARD */}
-    <TeamProgress />
+      {/* TEAM PROGRESS CARD */}
+      <TeamProgress />
 
-  {/* MEMBER ATTENDANCE */}
-    <MemberAttendance />
+      {/* MEMBER ATTENDANCE + GITLAB STATS */}
+      <View className="flex-row gap-4 mt-4">
+        <View className="flex-1">
+          <MemberAttendance />
+        </View>
+        <View className="flex-1">
+          <GitLabStatsPanel />
+        </View>
+      </View>
 
-  {/* MEMBER COMMENTS */}
-    <MemberComments />
-  </ScrollView>
+      {/* MEMBER COMMENTS */}
+      <MemberComments />
+    </ScrollView>
   );
 }
