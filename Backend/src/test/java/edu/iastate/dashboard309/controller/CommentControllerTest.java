@@ -22,6 +22,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -120,6 +122,24 @@ class CommentControllerTest {
         mockMvc.perform(get("/api/comments/team/10/general"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].commentBody").value("Team needs better coordination"));
+    }
+
+    @Test
+    void get_returnsNotFoundWhenCommentMissing() throws Exception {
+        when(commentService.getCommentById(999L))
+            .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
+
+        mockMvc.perform(get("/api/comments/999"))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void listByTeam_returnsNotFoundWhenTeamMissing() throws Exception {
+        when(commentService.getCommentsByTeamId(999L))
+            .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+
+        mockMvc.perform(get("/api/comments/team/999"))
+            .andExpect(status().isNotFound());
     }
 
     @Test
@@ -236,6 +256,143 @@ class CommentControllerTest {
     }
 
     @Test
+    void create_returnsBadRequestWhenStatusOutOfRange() throws Exception {
+        CommentRequest request = new CommentRequest(
+            null,
+            "Invalid status comment",
+            3,
+            "stud1",
+            null,
+            10L,
+            null,
+            null
+        );
+
+        Authentication auth = new UsernamePasswordAuthenticationToken("ta1", "pw");
+
+        mockMvc.perform(post("/api/comments")
+                .principal(auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void create_returnsNotFoundWhenReceiverMissing() throws Exception {
+        CommentRequest request = new CommentRequest(
+            null,
+            "Missing receiver",
+            1,
+            "missing",
+            null,
+            10L,
+            null,
+            null
+        );
+
+        User sender = new User();
+        sender.setId(1L);
+        sender.setNetid("ta1");
+        sender.setName("TA One");
+        sender.setPassword("pw");
+
+        when(userRepository.findByNetid("ta1")).thenReturn(Optional.of(sender));
+        when(userRepository.findByNetid("missing")).thenReturn(Optional.empty());
+
+        Authentication auth = new UsernamePasswordAuthenticationToken("ta1", "pw");
+
+        mockMvc.perform(post("/api/comments")
+                .principal(auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void create_returnsNotFoundWhenTeamMissing() throws Exception {
+        CommentRequest request = new CommentRequest(
+            null,
+            "Missing team",
+            1,
+            "stud1",
+            null,
+            999L,
+            null,
+            null
+        );
+
+        User sender = new User();
+        sender.setId(1L);
+        sender.setNetid("ta1");
+        sender.setName("TA One");
+        sender.setPassword("pw");
+
+        User receiver = new User();
+        receiver.setId(2L);
+        receiver.setNetid("stud1");
+        receiver.setName("Student One");
+        receiver.setPassword("pw");
+
+        when(userRepository.findByNetid("ta1")).thenReturn(Optional.of(sender));
+        when(userRepository.findByNetid("stud1")).thenReturn(Optional.of(receiver));
+        when(teamRepository.findById(999L)).thenReturn(Optional.empty());
+
+        Authentication auth = new UsernamePasswordAuthenticationToken("ta1", "pw");
+
+        mockMvc.perform(post("/api/comments")
+                .principal(auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void create_returnsBadRequestWhenReceiverIsInDifferentTeam() throws Exception {
+        CommentRequest request = new CommentRequest(
+            null,
+            "Wrong team receiver",
+            1,
+            "stud1",
+            null,
+            10L,
+            null,
+            null
+        );
+
+        User sender = new User();
+        sender.setId(1L);
+        sender.setNetid("ta1");
+        sender.setName("TA One");
+        sender.setPassword("pw");
+
+        Team requestTeam = new Team();
+        requestTeam.setId(10L);
+        requestTeam.setTa(sender);
+
+        Team differentTeam = new Team();
+        differentTeam.setId(11L);
+
+        User receiver = new User();
+        receiver.setId(2L);
+        receiver.setNetid("stud1");
+        receiver.setName("Student One");
+        receiver.setPassword("pw");
+        receiver.setTeam(differentTeam);
+
+        when(userRepository.findByNetid("ta1")).thenReturn(Optional.of(sender));
+        when(userRepository.findByNetid("stud1")).thenReturn(Optional.of(receiver));
+        when(teamRepository.findById(10L)).thenReturn(Optional.of(requestTeam));
+
+        Authentication auth = new UsernamePasswordAuthenticationToken("ta1", "pw");
+
+        mockMvc.perform(post("/api/comments")
+                .principal(auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void createGeneralComment_returnsCreatedAndUpdatesTaNotes() throws Exception {
         TeamCommentCreateRequest request = new TeamCommentCreateRequest(
             "Team is progressing steadily",
@@ -283,5 +440,40 @@ class CommentControllerTest {
         verify(teamRepository).save(argThat(savedTeam ->
             savedTeam.getId().equals(10L)
                 && "Team is progressing steadily".equals(savedTeam.getTaNotes())));
+    }
+
+    @Test
+    void createGeneralComment_returnsForbiddenWhenSenderIsNotTeamTa() throws Exception {
+        TeamCommentCreateRequest request = new TeamCommentCreateRequest(
+            "General note",
+            1
+        );
+
+        User sender = new User();
+        sender.setId(99L);
+        sender.setNetid("ta2");
+        sender.setName("TA Two");
+        sender.setPassword("pw");
+
+        User teamTa = new User();
+        teamTa.setId(1L);
+        teamTa.setNetid("ta1");
+        teamTa.setName("TA One");
+        teamTa.setPassword("pw");
+
+        Team team = new Team();
+        team.setId(10L);
+        team.setTa(teamTa);
+
+        when(userRepository.findByNetid("ta2")).thenReturn(Optional.of(sender));
+        when(teamRepository.findById(10L)).thenReturn(Optional.of(team));
+
+        Authentication auth = new UsernamePasswordAuthenticationToken("ta2", "pw");
+
+        mockMvc.perform(post("/api/comments/team/10/general")
+                .principal(auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isForbidden());
     }
 }
