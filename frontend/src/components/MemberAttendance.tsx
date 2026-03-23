@@ -68,7 +68,7 @@ export default function MemberAttendance() {
   return (
     <View className="bg-white rounded-xl shadow mt-6 mb-2 overflow-hidden">
       {/* Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
+      <View className="flex-row items-center px-4 py-3 border-b border-gray-200 mt-3">
         <Ionicons name="calendar-outline" size={16} color="#be123c" />
         <Text className="text-base font-semibold ml-2">Member Attendance</Text>
       </View>
@@ -141,7 +141,7 @@ export default function MemberAttendance() {
         <View className="w-px bg-gray-200 my-1" />
 
         {/* RIGHT: Status Controls */}
-        <View className="w-24 pt-1">
+        <View className="absolute right-6 w-24 pt-1">
           <Text className="text-xs font-semibold text-gray-700 text-center mb-2">
             {selectedDay
               ? new Date(currentYear, currentMonth, selectedDay).toLocaleDateString("default", { month: "short", day: "numeric" })
