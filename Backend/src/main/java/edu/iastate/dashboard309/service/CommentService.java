@@ -35,6 +35,13 @@ public class CommentService {
     }
 
     @Transactional
+    public List<CommentRequest> getAllComments() {
+        return commentRepository.findAll().stream()
+            .map(this::toRequest)
+            .toList();
+    }
+
+    @Transactional
     public List<CommentRequest> getCommentsByTeamId(Long teamId) {
         if (!teamRepository.existsById(teamId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found");

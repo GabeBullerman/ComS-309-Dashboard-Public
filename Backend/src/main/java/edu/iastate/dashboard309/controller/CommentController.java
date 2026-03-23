@@ -43,6 +43,11 @@ public class CommentController {
         this.commentService = commentService;
     }
 
+    @GetMapping
+    public List<CommentRequest> listAll() {
+        return commentService.getAllComments();
+    }
+
     @GetMapping("/team/{teamId}")
     public List<CommentRequest> listByTeam(@PathVariable Long teamId) {
         return commentService.getCommentsByTeamId(teamId);
