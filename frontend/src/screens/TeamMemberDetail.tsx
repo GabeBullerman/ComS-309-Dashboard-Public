@@ -44,7 +44,7 @@ export default function TeamProgressScreen({navigation, route}: TeamMemberDetail
           <MemberAttendance />
         </View>
         <View className="flex-1">
-          <GitLabStatsPanel />
+          <GitLabStatsPanel gitlabUrl={route.params.gitlabUrl} memberNetid={member.netid} memberName={member.name} />
         </View>
       </View>
 
