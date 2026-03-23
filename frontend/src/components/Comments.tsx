@@ -1,10 +1,66 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-export default function MemberComments() {
+import {
+    getMemberComments,
+    getTeamComments,
+    createMemberComment,
+    createTeamComment,
+    MemberComment,
+    TeamComment,
+    CommentStatus,
+} from "@/api/comments";
+
+// Pass recipientNetid for a member page, teamId for a team page.
+// The component uses whichever is provided to load and submit the right comment type.
+interface CommentsProps {
+    recipientNetid?: string;
+    teamId?: number;
+    authorNetid?: string;  // the currently logged-in user writing the comment
+}
+
+export default function MemberComments({ recipientNetid, teamId, authorNetid }: CommentsProps) {
     const [commentText, setCommentText] = useState("");
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
     const [statusOpen, setStatusOpen] = useState(false);
+    const [comments, setComments] = useState<(MemberComment | TeamComment)[]>([]);
+
+    // Load comments for the current context (member or team) on mount / when context changes
+    useEffect(() => {
+        if (recipientNetid) {
+            getMemberComments(recipientNetid).then(setComments).catch(() => {});
+        } else if (teamId !== undefined) {
+            getTeamComments(teamId).then(setComments).catch(() => {});
+        }
+    }, [recipientNetid, teamId]);
+
+    const handleSubmit = async () => {
+        if (!commentText.trim() || !selectedStatus || !authorNetid) return;
+        const status = selectedStatus as CommentStatus;
+        try {
+            if (recipientNetid) {
+                const created = await createMemberComment({
+                    message: commentText.trim(),
+                    status,
+                    authorNetid,
+                    recipientNetid,
+                });
+                setComments((prev) => [created, ...prev]);
+            } else if (teamId !== undefined) {
+                const created = await createTeamComment({
+                    message: commentText.trim(),
+                    status,
+                    authorNetid,
+                    teamId,
+                });
+                setComments((prev) => [created, ...prev]);
+            }
+            setCommentText("");
+            setSelectedStatus(null);
+        } catch {
+            // TODO: surface error to user once API is live
+        }
+    };
 
     return (
         <View className="bg-white rounded-xl shadow mt-6 mb-3 overflow-hidden">
@@ -76,7 +132,7 @@ export default function MemberComments() {
         </View>
 
         {/* Submit */}
-        <TouchableOpacity className="bg-red-700 rounded-lg py-3 items-center">
+        <TouchableOpacity className="bg-red-700 rounded-lg py-3 items-center" onPress={handleSubmit}>
             <Text className="text-white font-semibold text-sm">Submit Comment</Text>
         </TouchableOpacity>
         </View>
