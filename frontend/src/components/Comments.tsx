@@ -9,6 +9,7 @@ import {
     Comment,
     CommentStatus,
 } from "@/api/comments";
+import { getUserByNetid } from "@/api/users";
 
 const STATUS_COLOR: Record<CommentStatus, string> = {
     Good: "#15803d",
@@ -29,15 +30,26 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid }: 
     const [selectedStatus, setSelectedStatus] = useState<CommentStatus | null>(null);
     const [statusOpen, setStatusOpen] = useState(false);
     const [comments, setComments] = useState<Comment[]>([]);
+    const [senderInfo, setSenderInfo] = useState<Record<string, { name: string; role: string }>>({});
     const [loading, setLoading] = useState(false);
+
+    const loadSenderInfo = async (loaded: Comment[]) => {
+        const netids = [...new Set(loaded.map((c) => c.senderNetid))];
+        const entries = await Promise.all(
+            netids.map(async (netid) => {
+                const user = await getUserByNetid(netid).catch(() => null);
+                return [netid, { name: user?.name ?? netid, role: user?.role ?? '' }] as const;
+            })
+        );
+        setSenderInfo(Object.fromEntries(entries));
+    };
 
     useEffect(() => {
         if (teamId === undefined) return;
-        if (recipientNetid) {
-            getMemberComments(teamId, recipientNetid).then(setComments).catch(() => {});
-        } else {
-            getTeamComments(teamId).then(setComments).catch(() => {});
-        }
+        const fetch = recipientNetid
+            ? getMemberComments(teamId, recipientNetid)
+            : getTeamComments(teamId);
+        fetch.then((data) => { setComments(data); loadSenderInfo(data); }).catch(() => {});
     }, [recipientNetid, teamId]);
 
     const handleSubmit = async () => {
@@ -94,7 +106,11 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid }: 
                         {comments.map((c) => (
                             <View key={c.id} className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
                                 <View className="flex-row items-center justify-between mb-1">
-                                    <Text className="text-xs font-semibold text-gray-600">{c.senderNetid}</Text>
+                                    <Text className="text-xs font-semibold text-gray-600">
+                                        {senderInfo[c.senderNetid]
+                                            ? `${senderInfo[c.senderNetid].name} (${senderInfo[c.senderNetid].role})`
+                                            : c.senderNetid}
+                                    </Text>
                                     <Text
                                         className="text-xs font-bold"
                                         style={{ color: STATUS_COLOR[c.status] }}
