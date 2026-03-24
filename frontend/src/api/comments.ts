@@ -1,83 +1,62 @@
 import axiosInstance from './client';
 
+// Backend status: 0 = Good, 1 = Moderate, 2 = Poor
 export type CommentStatus = 'Good' | 'Moderate' | 'Poor';
 
-// A comment targeting a specific team member (individual comment)
-export interface MemberComment {
+const STATUS_TO_INT: Record<CommentStatus, number> = { Good: 0, Moderate: 1, Poor: 2 };
+const INT_TO_STATUS: Record<number, CommentStatus> = { 0: 'Good', 1: 'Moderate', 2: 'Poor' };
+
+export interface Comment {
   id: number;
-  message: string;
+  commentBody: string;
   status: CommentStatus;
-  authorNetid: string;       // who wrote the comment (TA / Instructor)
-  recipientNetid: string;    // the student this comment is about
-  createdAt: string;         // ISO 8601
-}
-
-// A comment targeting a whole team (team comment)
-export interface TeamComment {
-  id: number;
-  message: string;
-  status: CommentStatus;
-  authorNetid: string;       // who wrote the comment
-  teamId: number;            // the team this comment is about
-  createdAt: string;         // ISO 8601
-}
-
-export interface CreateMemberCommentRequest {
-  message: string;
-  status: CommentStatus;
-  authorNetid: string;
-  recipientNetid: string;
-}
-
-export interface CreateTeamCommentRequest {
-  message: string;
-  status: CommentStatus;
-  authorNetid: string;
+  senderNetid: string;
+  receiverNetid: string | null;   // null for general team comments
+  receiverTeamId: number | null;  // set for general team comments
   teamId: number;
+  createdAt: string;
 }
 
-// --- Individual (member) comments ---
+function mapComment(raw: Record<string, unknown>): Comment {
+  return { ...(raw as Omit<Comment, 'status'>), status: INT_TO_STATUS[raw.status as number] ?? 'Good' };
+}
 
-// GET /api/comments/user/{netid}
-// Returns all comments written about a specific student
-export const getMemberComments = async (netid: string): Promise<MemberComment[]> => {
-  // TODO: wire up once Brandon adds the endpoint
-  // const res = await axiosInstance.get(`/api/comments/user/${netid}`);
-  // return res.data;
-  return [];
+// GET /api/comments/team/{teamId}/user/{receiverNetid}
+export const getMemberComments = async (teamId: number, receiverNetid: string): Promise<Comment[]> => {
+  const res = await axiosInstance.get(`/api/comments/team/${teamId}/user/${receiverNetid}`);
+  return (res.data as Record<string, unknown>[]).map(mapComment);
 };
 
-// POST /api/comments/user
-// Creates a new comment about a specific student
-export const createMemberComment = async (data: CreateMemberCommentRequest): Promise<MemberComment> => {
-  // TODO: wire up once Brandon adds the endpoint
-  // const res = await axiosInstance.post('/api/comments/user', data);
-  // return res.data;
-  throw new Error('Not implemented');
+// GET /api/comments/team/{teamId}/general
+export const getTeamComments = async (teamId: number): Promise<Comment[]> => {
+  const res = await axiosInstance.get(`/api/comments/team/${teamId}/general`);
+  return (res.data as Record<string, unknown>[]).map(mapComment);
 };
 
-// --- Team comments ---
-
-// GET /api/comments/team/{teamId}
-// Returns all comments written about a specific team
-export const getTeamComments = async (teamId: number): Promise<TeamComment[]> => {
-  // TODO: wire up once Brandon adds the endpoint
-  // const res = await axiosInstance.get(`/api/comments/team/${teamId}`);
-  // return res.data;
-  return [];
+// POST /api/comments  (sender must be the team's assigned TA)
+export const createMemberComment = async (data: {
+  commentBody: string;
+  status: CommentStatus;
+  receiverNetid: string;
+  teamId: number;
+}): Promise<Comment> => {
+  const res = await axiosInstance.post('/api/comments', {
+    commentBody: data.commentBody,
+    status: STATUS_TO_INT[data.status],
+    receiverNetid: data.receiverNetid,
+    teamId: data.teamId,
+  });
+  return mapComment(res.data as Record<string, unknown>);
 };
 
-// POST /api/comments/team
-// Creates a new comment about a specific team
-export const createTeamComment = async (data: CreateTeamCommentRequest): Promise<TeamComment> => {
-  // TODO: wire up once Brandon adds the endpoint
-  // const res = await axiosInstance.post('/api/comments/team', data);
-  // return res.data;
-  throw new Error('Not implemented');
-};
-
-// DELETE /api/comments/{id}
-export const deleteComment = async (id: number): Promise<void> => {
-  // TODO: wire up once Brandon adds the endpoint
-  // await axiosInstance.delete(`/api/comments/${id}`);
+// POST /api/comments/team/{teamId}/general  (sender must be the team's assigned TA)
+export const createTeamComment = async (teamId: number, data: {
+  commentBody: string;
+  status: CommentStatus;
+}): Promise<Comment> => {
+  const res = await axiosInstance.post(`/api/comments/team/${teamId}/general`, {
+    commentBody: data.commentBody,
+    status: STATUS_TO_INT[data.status],
+  });
+  return mapComment(res.data as Record<string, unknown>);
 };

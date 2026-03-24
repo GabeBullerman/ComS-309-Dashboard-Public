@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { View, Text, ScrollView, Image, TouchableOpacity } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from "App";
@@ -6,6 +7,7 @@ import MemberComments from "@/components/Comments";
 import TeamProgress from "@/components/TeamProgress";
 import GitLabStatsPanel from "@/components/GitlabStats";
 import { NativeStackScreenProps } from "node_modules/@react-navigation/native-stack/lib/typescript/src/types";
+import { getCurrentUser } from "@/api/users";
 
 const INNER = 128;
 const RADIUS_INNER = 32;
@@ -13,7 +15,12 @@ const RADIUS_INNER = 32;
 type TeamMemberDetailProps = NativeStackScreenProps<RootStackParamList, 'TeamMemberDetail'>;
 
 export default function TeamProgressScreen({navigation, route}: TeamMemberDetailProps) {
-  const { member } = route.params;
+  const { member, teamId } = route.params;
+  const [authorNetid, setAuthorNetid] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    getCurrentUser().then((u) => { if (u?.netid) setAuthorNetid(u.netid); });
+  }, []);
 
   return (
     <ScrollView className="flex-1 bg-gray-100 p-4 pt-16">
@@ -49,7 +56,7 @@ export default function TeamProgressScreen({navigation, route}: TeamMemberDetail
       </View>
 
       {/* MEMBER COMMENTS */}
-      <MemberComments />
+      <MemberComments recipientNetid={member.netid} teamId={teamId} authorNetid={authorNetid} />
     </ScrollView>
   );
 }
