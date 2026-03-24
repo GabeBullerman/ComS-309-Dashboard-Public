@@ -81,7 +81,7 @@ public class CommentController {
         User receiver = userRepository.findByNetid(request.receiverNetid())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Receiver not found"));
 
-        Team team = getTeamAndAuthorizeTa(request.teamId(), sender);
+        Team team = getTeamAndAuthorizeTa(request.teamId(), sender, authentication);
 
         if (receiver.getTeam() == null || !receiver.getTeam().getId().equals(team.getId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Receiver is not in the specified team");
@@ -106,7 +106,7 @@ public class CommentController {
                                                @Valid @RequestBody TeamCommentCreateRequest request,
                                                Authentication authentication) {
         User sender = getSender(authentication);
-        Team team = getTeamAndAuthorizeTa(teamId, sender);
+        Team team = getTeamAndAuthorizeTa(teamId, sender, authentication);
 
         Comment comment = new Comment();
         comment.setCommentBody(request.commentBody());
@@ -130,12 +130,12 @@ public class CommentController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sender not found"));
     }
 
-    private Team getTeamAndAuthorizeTa(Long teamId, User sender) {
+    private Team getTeamAndAuthorizeTa(Long teamId, User sender, Authentication authentication) {
         Team team = teamRepository.findById(teamId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
 
-        boolean isElevated = sender.getRoleNames().stream()
-            .anyMatch(r -> r.equalsIgnoreCase("INSTRUCTOR") || r.equalsIgnoreCase("HTA"));
+        boolean isElevated = authentication.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equalsIgnoreCase("INSTRUCTOR") || a.getAuthority().equalsIgnoreCase("HTA"));
         boolean isAssignedTa = team.getTa() != null && team.getTa().getId().equals(sender.getId());
 
         if (!isElevated && !isAssignedTa) {
