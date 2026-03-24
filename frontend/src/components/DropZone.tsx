@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useCallback } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   Platform,
 } from "react-native";
 
-const ACCEPTED_EXTENSIONS: string[] = [".pdf", ".png", ".jpg", ".jpeg", ".csv", ".xlsx"];
+const ACCEPTED_EXTENSIONS: string[] = [".pdf", ".csv"];
 
 interface UploadedFile {
   name: string;
@@ -66,7 +66,7 @@ export default function DropZone({
     <View
       className={`rounded-2xl border-2 border-dashed transition-all overflow-hidden ${
         isDragging
-          ? "border-amber-400 bg-amber-400/5"
+          ? "border-yellow-400 bg-yellow-400/5"
           : "border-zinc-600 bg-zinc-800/30"
       }`}
     >
@@ -81,7 +81,7 @@ export default function DropZone({
             {/* Upload icon */}
             <View
               className={`w-16 h-16 rounded-2xl items-center justify-center ${
-                isDragging ? "bg-amber-400/20" : "bg-zinc-700/50"
+                isDragging ? "bg-yellow-400/20" : "bg-zinc-700/50"
               }`}
             >
               <Text className="text-4xl">{isDragging ? "📂" : "☁️"}</Text>
@@ -89,23 +89,26 @@ export default function DropZone({
 
             {/* Heading */}
             <View className="items-center gap-1">
-              <Text className="text-zinc-100 text-lg font-semibold text-center">
+              <Text className="text-base text-lg font-semibold text-center">
                 {isDragging ? "Release to upload" : "Drop files here"}
               </Text>
               <Text className="text-zinc-500 text-sm text-center">
                 or{" "}
                 <Text
-                  className="text-amber-400 font-semibold"
+                  className="text-yellow-400 font-semibold"
                   onPress={handleBrowse}
                   style={{ cursor: "pointer" }}
                 >
-                  browse your computer
+                  browse your device
                 </Text>
               </Text>
             </View>
 
             {/* Accepted types */}
             <View className="flex-row flex-wrap gap-1.5 justify-center mt-1">
+                <Text className="text-zinc-500 text-xs w-full text-center mb-1">
+                    Accepted file types:
+                </Text>
               {ACCEPTED_EXTENSIONS.map((ext) => (
                 <View key={ext} className="px-2 py-0.5 bg-zinc-700/60 rounded-md">
                   <Text className="text-zinc-400 text-xs font-mono">{ext}</Text>

@@ -2,6 +2,7 @@ import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   ScrollView,
 } from "react-native";
@@ -56,14 +57,19 @@ export default function UploadScreen(): React.JSX.Element {
         {/* Header */}
         <View className="mb-8">
           <Text className="text-base text-xl font-bold mb-2">
-            File Manager
-          </Text>
-          <Text className="text-base text-3xl font-bold tracking-tight">
-            Upload Files
+            Upload Teams
           </Text>
           <Text className="text-zinc-500 text-sm mt-1.5">
             Drag and drop or browse to attach your documents.
           </Text>
+        </View>
+
+        {/* Required Upload Format */}
+        <View className="mb-6 p-4 bg-gray-400/20 rounded-xl">
+            {/* <Image
+                source={require('../Images/Iowa_State_Cyclones_logo.png')}
+                className="w-full h-40 object-contain"
+            /> */}
         </View>
 
         {/* Drop Zone */}
@@ -122,7 +128,7 @@ export default function UploadScreen(): React.JSX.Element {
         {files.length > 0 && (
           <TouchableOpacity
             className={`mt-6 rounded-2xl py-4 items-center ${
-              invalidCount === 0 && validCount > 0 ? "bg-amber-400" : "bg-zinc-700"
+              invalidCount === 0 && validCount > 0 ? "bg-yellow-400" : "bg-zinc-700"
             }`}
             disabled={invalidCount > 0 || validCount === 0}
           >

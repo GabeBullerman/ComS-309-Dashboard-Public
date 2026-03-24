@@ -7,18 +7,12 @@ import {
 
 const ACCEPTED_TYPES: string[] = [
   "application/pdf",
-  "image/png",
-  "image/jpeg",
-  "image/jpg",
   "text/csv",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
 
 const FILE_TYPE_LABELS: Record<string, string> = {
   "application/pdf": "PDF",
-  "image/png": "PNG",
-  "image/jpeg": "JPEG",
-  "image/jpg": "JPEG",
   "text/csv": "CSV",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
 };
@@ -99,9 +93,9 @@ export default function FileCard({ file, onRemove }: FileCardProps): React.JSX.E
           {file.name}
         </Text>
         <View className="flex-row items-center gap-2">
-          <Text className="text-zinc-500 text-xs">{formatBytes(file.size)}</Text>
-          <Text className="text-zinc-600 text-xs">·</Text>
-          <Text className="text-zinc-500 text-xs">{typeLabel}</Text>
+          <Text className="text-base text-xs">{formatBytes(file.size)}</Text>
+          <Text className="text-base text-xs">·</Text>
+          <Text className="text-base text-xs">{typeLabel}</Text>
         </View>
       </View>
 
