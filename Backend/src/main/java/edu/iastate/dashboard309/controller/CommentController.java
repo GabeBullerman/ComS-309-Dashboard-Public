@@ -134,8 +134,12 @@ public class CommentController {
         Team team = teamRepository.findById(teamId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
 
-        if (team.getTa() == null || !team.getTa().getId().equals(sender.getId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the team TA can create comments");
+        boolean isElevated = sender.getRoleNames().stream()
+            .anyMatch(r -> r.equalsIgnoreCase("INSTRUCTOR") || r.equalsIgnoreCase("HTA"));
+        boolean isAssignedTa = team.getTa() != null && team.getTa().getId().equals(sender.getId());
+
+        if (!isElevated && !isAssignedTa) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the team TA, an Instructor, or an HTA can create comments");
         }
 
         return team;
