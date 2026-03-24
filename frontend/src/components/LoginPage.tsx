@@ -1,15 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+import axiosInstance from '@/api/client';
+import { storeToken } from '@/utils/auth';
 
-interface LoginRegisterPageProps {
+WebBrowser.maybeCompleteAuthSession();
+
+interface LoginPageProps {
   onLogin: (email: string, role?: string) => void;
 }
 
-const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loginError, setLoginError] = useState('');
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: '124195890479-kh157q1foah7sc96ckjbvdvrdt9esu0q.apps.googleusercontent.com',
+    androidClientId: '124195890479-a2kov09e17k3bs73unu1g2u81bgd5ei8.apps.googleusercontent.com',
+    iosClientId: '124195890479-ajdf86d36ik5mfv6262ujrlga2ghrail.apps.googleusercontent.com',
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const idToken = response.authentication?.idToken;
+      if (!idToken) { setLoginError('Google sign-in failed: no ID token'); setGoogleLoading(false); return; }
+      axiosInstance.post('/api/auth/login/google', { tokenId: idToken })
+        .then(({ data }) => {
+          // data is a raw JWT string (same as regular login)
+          storeToken(data);
+          // Decode role from JWT payload
+          const payload = JSON.parse(atob(data.split('.')[1]));
+          const role = Array.isArray(payload.roles) ? payload.roles[0] : payload.roles ?? '';
+          onLogin('', role);
+        })
+        .catch(() => { setLoginError('Google sign-in failed. Make sure your @iastate.edu account is linked.'); setGoogleLoading(false); });
+    } else if (response?.type === 'error' || response?.type === 'dismiss') {
+      setGoogleLoading(false);
+    }
+  }, [response]);
 
   // Iowa State email regex
   const iaStateEmailRegex = /^[a-zA-Z0-9._-]+@iastate\.edu$/;
@@ -42,7 +74,7 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
       const netid = email.includes('@') ? email.split('@')[0] : email;
       import('../utils/auth').then(({ login }) => {
         login(netid, password)
-          .then(({ token, user }) => {
+          .then(({ user }) => {
             // Handle role which might be a string or array
             let userRole = user?.role;
             if (Array.isArray(userRole)) {
@@ -51,7 +83,7 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
             setLoginError('');
             onLogin(email, userRole);
           })
-          .catch((err) => {
+          .catch(() => {
             setLoginError('Incorrect Username or Password, Try Again');
           });
       });
@@ -113,6 +145,29 @@ const LoginRegisterPage: React.FC<LoginRegisterPageProps> = ({ onLogin }) => {
 
         <TouchableOpacity style={styles.button} onPress={handleSubmit}>
           <Text style={styles.buttonText}>Login</Text>
+        </TouchableOpacity>
+
+        {/* Divider */}
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* Google Sign-In */}
+        <TouchableOpacity
+          style={styles.googleButton}
+          onPress={() => { setGoogleLoading(true); setLoginError(''); promptAsync(); }}
+          disabled={!request || googleLoading}
+          activeOpacity={0.8}
+        >
+          <Image
+            source={{ uri: 'https://www.google.com/favicon.ico' }}
+            style={styles.googleIcon}
+          />
+          <Text style={styles.googleButtonText}>
+            {googleLoading ? 'Signing in...' : 'Sign in with Google'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -216,6 +271,48 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e2e8f0',
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    fontSize: 13,
+    color: '#94a3b8',
+    fontWeight: '500',
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 8,
+    paddingVertical: 11,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  googleIcon: {
+    width: 18,
+    height: 18,
+    marginRight: 10,
+  },
+  googleButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
 });
 
-export default LoginRegisterPage;
+export default LoginPage;

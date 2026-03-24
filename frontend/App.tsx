@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import LoginRegisterPage from './src/components/LoginRegisterPage';
+import LoginPage from './src/components/LoginPage';
 import LandingPage from './src/components/LandingPage';
 import TAManager from "./src/screens/TAManager";
 import TeamsScreen from './src/screens/TeamsScreen';
@@ -109,7 +109,7 @@ export default function App() {
             name="Login"
             options={{ headerShown: false }}
           >
-            {(props) => <LoginRegisterPage {...props} onLogin={handleLogin} />}
+            {(props) => <LoginPage {...props} onLogin={handleLogin} />}
           </Stack.Screen>
         ) : (
           <>

@@ -23,9 +23,10 @@ interface CommentsProps {
     recipientNetid?: string;  // member context
     teamId?: number;          // required for both contexts
     authorNetid?: string;     // logged-in user (TA/Instructor)
+    isStudent?: boolean;
 }
 
-export default function MemberComments({ recipientNetid, teamId, authorNetid }: CommentsProps) {
+export default function MemberComments({ recipientNetid, teamId, authorNetid, isStudent = false }: CommentsProps) {
     const [commentText, setCommentText] = useState("");
     const [selectedStatus, setSelectedStatus] = useState<CommentStatus | null>(null);
     const [statusOpen, setStatusOpen] = useState(false);
@@ -95,7 +96,7 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid }: 
         <View className="flex-row">
 
             {/* LEFT: Comment History */}
-            <View className="flex-1 p-4 border-r border-gray-200">
+            <View className={`flex-1 p-4 ${!isStudent ? "border-r border-gray-200" : ""}`}>
                 <Text className="text-sm font-semibold text-gray-700 mb-3">Comment History</Text>
                 {comments.length === 0 ? (
                     <View className="items-center justify-center py-8">
@@ -129,7 +130,7 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid }: 
             </View>
 
             {/* RIGHT: Add Comment */}
-            <View className="flex-1 p-4">
+            {!isStudent && <View className="flex-1 p-4">
                 <Text className="text-sm font-semibold text-gray-700 mb-3">Add Comment</Text>
 
                 <Text className="text-xs text-gray-600 mb-1">Comment</Text>
@@ -184,7 +185,7 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid }: 
                         {loading ? "Submitting…" : "Submit Comment"}
                     </Text>
                 </TouchableOpacity>
-            </View>
+            </View>}
         </View>
         </View>
     );
