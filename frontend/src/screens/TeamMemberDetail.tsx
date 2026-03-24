@@ -17,9 +17,13 @@ type TeamMemberDetailProps = NativeStackScreenProps<RootStackParamList, 'TeamMem
 export default function TeamProgressScreen({navigation, route}: TeamMemberDetailProps) {
   const { member, teamId } = route.params;
   const [authorNetid, setAuthorNetid] = useState<string | undefined>(undefined);
+  const [isStudent, setIsStudent] = useState(false);
 
   useEffect(() => {
-    getCurrentUser().then((u) => { if (u?.netid) setAuthorNetid(u.netid); });
+    getCurrentUser().then((u) => {
+      if (u?.netid) setAuthorNetid(u.netid);
+      if (u?.role?.toLowerCase() === 'student') setIsStudent(true);
+    });
   }, []);
 
   return (
@@ -48,7 +52,7 @@ export default function TeamProgressScreen({navigation, route}: TeamMemberDetail
       {/* MEMBER ATTENDANCE + GITLAB STATS */}
       <View className="flex-row gap-4 mt-4">
         <View className="flex-1">
-          <MemberAttendance />
+          <MemberAttendance readOnly={isStudent} />
         </View>
         <View className="flex-1">
           <GitLabStatsPanel gitlabUrl={route.params.gitlabUrl} memberNetid={member.netid} memberName={member.name} />
@@ -56,7 +60,7 @@ export default function TeamProgressScreen({navigation, route}: TeamMemberDetail
       </View>
 
       {/* MEMBER COMMENTS */}
-      <MemberComments recipientNetid={member.netid} teamId={teamId} authorNetid={authorNetid} />
+      <MemberComments recipientNetid={member.netid} teamId={teamId} authorNetid={authorNetid} isStudent={isStudent} />
     </ScrollView>
   );
 }
