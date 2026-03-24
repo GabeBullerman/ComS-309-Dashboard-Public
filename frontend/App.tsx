@@ -9,7 +9,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginRegisterPage from './src/components/LoginRegisterPage';
 import LandingPage from './src/components/LandingPage';
 import TAManager from "./src/screens/TAManager";
-import TeamsScreen from './src/screens/TeamsScreen';
+import UploadScreen from "./src/screens/UploadScreen";
 import CoursesScreen from "./src/screens/Courses";
 import SidebarLayout from "./src/components/SidebarLayout";
 import TeamDetailScreen from "./src/screens/TeamDetail";
@@ -30,6 +30,7 @@ export type RootStackParamList = {
   Teams: {userRole: UserRole};
   TAManager: undefined;
   Courses: undefined;
+  Upload: undefined;
   Landing: { userEmail: string; onLogout: () => void };
   Login: { onLogin: (email: string, role?: string) => void };
   SidebarLayout: { userRole: UserRole; onLogout: () => void };
@@ -118,6 +119,7 @@ export default function App() {
             <Stack.Screen name="TeamDetail" component={TeamDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen name="TeamMemberDetail" component={TeamMemberDetail} options={{ headerShown: false }} />
             <Stack.Screen name="Courses" component={CoursesScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Upload" component={UploadScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Landing" options={{ headerShown: false }}>
               {(props) => <LandingPage {...props} userEmail={userEmail} onLogout={handleLogout} />}
             </Stack.Screen>

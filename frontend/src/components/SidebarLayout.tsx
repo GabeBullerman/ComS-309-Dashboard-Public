@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, Image, Animated, Dimensions } from "react-native";
 import CoursesScreen from "../screens/Courses";
+import UploadScreen from "../screens/UploadScreen";
 import TeamsScreen from "../screens/TeamsScreen";
 import TAManager from "../screens/TAManager";
 import TaskAssignmentScreen from "../screens/TaskAssignmentScreen";
@@ -72,6 +73,8 @@ export default function SidebarLayout({route}: Props) {
         return <TeamsScreen userRole={route.params.userRole} />;
       case "Courses":
         return <CoursesScreen />;
+      case "Upload Teams":
+        return <UploadScreen />;
       case "Assign Tasks":
         return <TaskAssignmentScreen />;
       case "TA Manager":
@@ -102,9 +105,11 @@ export default function SidebarLayout({route}: Props) {
         </Text>
       </View>
 
+      {/* Role-based menu items */}
       {[
         "Teams",
         ...(role === 'TA' || role === 'HTA' || role === 'Instructor' ? ["Assign Tasks"] : []),
+        ...(role === 'HTA' || role === 'Instructor' ? ["Upload Teams"] : []),
         ...(permissions.canManageTAs ? ["TA Manager"] : []),
         ...(role !== 'Instructor' ? ["Tasks"] : []),
         ...(permissions.canAccessCourses ? ["Courses"] : []),
