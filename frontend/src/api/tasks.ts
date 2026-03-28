@@ -38,6 +38,15 @@ export const createTask = async (data: TaskCreateRequest): Promise<TaskApiRespon
   return res.data;
 };
 
+export const updateTask = async (id: number, data: Partial<Pick<TaskCreateRequest, 'title' | 'description' | 'dueDate'>>): Promise<TaskApiResponse> => {
+  const payload = {
+    ...data,
+    dueDate: data.dueDate ? `${data.dueDate}T00:00:00` : undefined,
+  };
+  const res = await axiosInstance.put(`/api/tasks/${id}`, payload);
+  return res.data;
+};
+
 export const deleteTask = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/api/tasks/${id}`);
 };

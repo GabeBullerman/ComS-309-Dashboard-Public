@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { normalizeRole, UserSummary } from '../utils/auth';
 import { getCurrentUser, getUsersByRole } from '../api/users';
 import { getTeams, TeamApiResponse } from '../api/teams';
-import { getTasksAssignedBy, createTask, deleteTask, TaskApiResponse } from '../api/tasks';
+import { getTasksAssignedBy, createTask, updateTask, deleteTask, TaskApiResponse } from '../api/tasks';
 
 type RecipientType = 'specific-ta' | 'all-tas' | 'specific-team' | 'all-my-teams' | 'all-students';
 
@@ -27,6 +27,8 @@ export default function TaskAssignmentScreen() {
   const [taskLabelMap, setTaskLabelMap] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState({ title: '', description: '', dueDate: '' });
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -34,6 +36,25 @@ export default function TaskAssignmentScreen() {
   const [recipientType, setRecipientType] = useState<RecipientType>('specific-ta');
   const [selectedTANetid, setSelectedTANetid] = useState<string | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+
+  const handleSaveEdit = async (ids: number[]) => {
+    if (!editDraft.title.trim()) return;
+    try {
+      await Promise.allSettled(ids.map((id) => updateTask(id, {
+        title: editDraft.title.trim(),
+        description: editDraft.description.trim() || undefined,
+        dueDate: editDraft.dueDate || undefined,
+      })));
+      setMyTasks((prev) => prev.map((t) =>
+        ids.includes(t.id)
+          ? { ...t, title: editDraft.title.trim(), description: editDraft.description.trim() || undefined, dueDate: editDraft.dueDate ? `${editDraft.dueDate}T00:00:00` : undefined }
+          : t
+      ));
+      setEditingId(null);
+    } catch {
+      Alert.alert('Error', 'Failed to update task.');
+    }
+  };
 
   const isHtaOrInstructor = role === 'HTA' || role === 'Instructor';
 
@@ -326,21 +347,71 @@ export default function TaskAssignmentScreen() {
                   const dateOnly = g.rep.dueDate ? g.rep.dueDate.split('T')[0] : null;
                   const recipientLabel = taskLabelMap[g.rep.id]
                     ?? (g.netids.length === 1 ? g.netids[0] : `${g.netids.length} recipients`);
+                  const isEditing = editingId === g.rep.id;
                   return (
-                    <View style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                    <View style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: isEditing ? '#C8102E' : '#e5e7eb' }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <Text style={{ fontWeight: '600', color: '#111827', flex: 1, marginRight: 8 }}>{g.rep.title}</Text>
-                        <TouchableOpacity onPress={() => handleDeleteGroup(g.ids)}>
-                          <Ionicons name="trash-outline" size={16} color="#DC2626" />
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <TouchableOpacity onPress={() => {
+                            if (isEditing) { setEditingId(null); return; }
+                            setEditDraft({ title: g.rep.title, description: g.rep.description ?? '', dueDate: dateOnly ?? '' });
+                            setEditingId(g.rep.id);
+                          }}>
+                            <Ionicons name={isEditing ? 'close-outline' : 'pencil-outline'} size={16} color={isEditing ? '#6b7280' : '#6b7280'} />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handleDeleteGroup(g.ids)}>
+                            <Ionicons name="trash-outline" size={16} color="#DC2626" />
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                      {g.rep.description ? (
-                        <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 2 }}>{g.rep.description}</Text>
-                      ) : null}
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-                        <Text style={{ fontSize: 12, color: '#94a3b8' }}>→ {recipientLabel}</Text>
-                        {dateOnly && <Text style={{ fontSize: 12, color: '#6b7280' }}>Due: {dateOnly}</Text>}
-                      </View>
+
+                      {isEditing ? (
+                        <View style={{ marginTop: 8, gap: 6 }}>
+                          <TextInput
+                            value={editDraft.title}
+                            onChangeText={(t) => setEditDraft((p) => ({ ...p, title: t }))}
+                            placeholder="Title"
+                            style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13 }}
+                          />
+                          <TextInput
+                            value={editDraft.description}
+                            onChangeText={(t) => setEditDraft((p) => ({ ...p, description: t }))}
+                            placeholder="Description (optional)"
+                            style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13 }}
+                          />
+                          {Platform.OS === 'web'
+                            ? React.createElement('input', {
+                                type: 'date', value: editDraft.dueDate,
+                                onChange: (e: any) => setEditDraft((p) => ({ ...p, dueDate: e.target.value })),
+                                style: { border: '1px solid #D1D5DB', borderRadius: 6, padding: '6px 10px', fontSize: 13, width: '100%', boxSizing: 'border-box' },
+                              })
+                            : <TextInput
+                                value={editDraft.dueDate}
+                                onChangeText={(t) => setEditDraft((p) => ({ ...p, dueDate: t }))}
+                                placeholder="YYYY-MM-DD"
+                                style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13 }}
+                              />
+                          }
+                          <TouchableOpacity
+                            onPress={() => handleSaveEdit(g.ids)}
+                            disabled={!editDraft.title.trim()}
+                            style={{ backgroundColor: editDraft.title.trim() ? '#C8102E' : '#e5e7eb', borderRadius: 6, paddingVertical: 8, alignItems: 'center' }}
+                          >
+                            <Text style={{ color: editDraft.title.trim() ? 'white' : '#9ca3af', fontSize: 13, fontWeight: '600' }}>Save</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <>
+                          {g.rep.description ? (
+                            <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 2 }}>{g.rep.description}</Text>
+                          ) : null}
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
+                            <Text style={{ fontSize: 12, color: '#94a3b8' }}>→ {recipientLabel}</Text>
+                            {dateOnly && <Text style={{ fontSize: 12, color: '#6b7280' }}>Due: {dateOnly}</Text>}
+                          </View>
+                        </>
+                      )}
                     </View>
                   );
                 }}

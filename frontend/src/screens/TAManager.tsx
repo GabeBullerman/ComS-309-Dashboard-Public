@@ -18,6 +18,7 @@ type StaffRole = 'TA' | 'HTA';
 export default function TAManagerScreen() {
   const [staff, setStaff] = useState<UserSummary[]>([]);
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'role'>('role');
   const [loading, setLoading] = useState(true);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -51,11 +52,21 @@ export default function TAManagerScreen() {
 
   const filteredStaff = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return staff;
-    return staff.filter((m) =>
-      m.name?.toLowerCase().includes(q) || m.netid?.toLowerCase().includes(q)
-    );
-  }, [staff, search]);
+    const result = q
+      ? staff.filter((m) => m.name?.toLowerCase().includes(q) || m.netid?.toLowerCase().includes(q))
+      : [...staff];
+    if (sortBy === 'name') {
+      result.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+    } else {
+      result.sort((a, b) => {
+        const aHTA = normalizeRole(String(a.role)) === 'HTA';
+        const bHTA = normalizeRole(String(b.role)) === 'HTA';
+        if (aHTA !== bHTA) return aHTA ? -1 : 1;
+        return (a.name ?? '').localeCompare(b.name ?? '');
+      });
+    }
+    return result;
+  }, [staff, search, sortBy]);
 
   const handleCreate = async () => {
     if (!inviteForm.netid.trim() || !inviteForm.name.trim() || !inviteForm.password.trim()) {
@@ -238,17 +249,30 @@ export default function TAManagerScreen() {
         <ActivityIndicator size="large" color="#C8102E" style={{ marginTop: 40 }} />
       ) : (
         <>
-          <View className="flex-row items-center bg-white rounded-lg px-3 py-2 mb-4 border border-gray-200">
-            <Ionicons name="search-outline" size={16} color="#9CA3AF" style={{ marginRight: 8 }} />
-            <TextInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search by name or NetID..."
-              placeholderTextColor="#9CA3AF"
-              autoCapitalize="none"
-              autoCorrect={false}
-              className="flex-1 text-sm text-gray-800"
-            />
+          <View className="flex-row items-center gap-2 mb-4">
+            <View className="flex-1 flex-row items-center bg-white rounded-lg px-3 py-2 border border-gray-200">
+              <Ionicons name="search-outline" size={16} color="#9CA3AF" style={{ marginRight: 8 }} />
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search by name or NetID..."
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="none"
+                autoCorrect={false}
+                className="flex-1 text-sm text-gray-800"
+              />
+            </View>
+            {(['name', 'role'] as const).map((opt) => (
+              <TouchableOpacity
+                key={opt}
+                onPress={() => setSortBy(opt)}
+                className={`px-3 py-2 rounded-lg border ${sortBy === opt ? 'bg-red-700 border-red-700' : 'bg-white border-gray-200'}`}
+              >
+                <Text className={`text-xs font-semibold ${sortBy === opt ? 'text-white' : 'text-gray-600'}`}>
+                  {opt === 'name' ? 'A–Z' : 'Role'}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           <Text className="text-base font-semibold mb-3 text-gray-700">
