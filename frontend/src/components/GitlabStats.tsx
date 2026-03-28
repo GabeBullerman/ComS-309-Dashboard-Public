@@ -293,8 +293,11 @@ export default function GitLabStatsPanel({
           }))
         )
       );
-      const statsBySha: Record<string, { additions: number; deletions: number }> =
-        Object.fromEntries(details.map((d: { id: string; stats: { additions: number; deletions: number } }) => [d.id, d.stats]));
+      const statsBySha: Record<string, { additions: number; deletions: number; files: number }> =
+        Object.fromEntries(details.map((d: { id: string; stats: { additions: number; deletions: number }; diffs?: { new_path: string }[] }) => [
+          d.id,
+          { ...d.stats, files: d.diffs?.length ?? 0 },
+        ]));
 
       // Group into weekly buckets
       const sizeData: CommitSizeWeek[] = buckets.map((bucket) => {
@@ -307,7 +310,7 @@ export default function GitLabStatsPanel({
           label: bucket.label,
           additions: weekCommits.reduce((sum: number, c: { id: string }) => sum + (statsBySha[c.id]?.additions ?? 0), 0),
           deletions: weekCommits.reduce((sum: number, c: { id: string }) => sum + (statsBySha[c.id]?.deletions ?? 0), 0),
-          files: 0,
+          files: weekCommits.reduce((sum: number, c: { id: string }) => sum + (statsBySha[c.id]?.files ?? 0), 0),
         };
       });
       setCommitSizeData(sizeData);

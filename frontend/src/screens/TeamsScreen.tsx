@@ -5,6 +5,7 @@ import {
   TextInput,
   FlatList,
   ActivityIndicator,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Team, TeamMember } from '../types/Teams';
@@ -26,6 +27,8 @@ interface Props {
 
 export default function ClassTeamsScreen({ userRole }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { width } = useWindowDimensions();
+  const numColumns = width < 640 ? 1 : width < 960 ? 2 : width < 1280 ? 3 : 4;
   const effectiveRole = normalizeRole(String(userRole));
   const permissions = getUserPermissions(effectiveRole);
 
@@ -287,16 +290,17 @@ export default function ClassTeamsScreen({ userRole }: Props) {
 
         {/* Teams List */}
         <FlatList
+          key={numColumns}
           data={filteredTeams}
           keyExtractor={(_, index) => index.toString()}
-          numColumns={4}
-          columnWrapperStyle={{ gap: 8 }}   // spacing between columns
+          numColumns={numColumns}
+          columnWrapperStyle={numColumns > 1 ? { gap: 8 } : undefined}
           contentContainerStyle={{
             paddingBottom: 40,
-            gap: 8,                          // spacing between rows
+            gap: 8,
           }}
           renderItem={({ item }) => (
-            <View style={{ width: '24.5%' }}>
+            <View style={{ width: `${(100 / numColumns) - 0.5}%` }}>
               <TeamCard {...item} onPress={() => {
                 navigation.navigate('TeamDetail', { team: item, userRole: effectiveRole });
               }}/>
