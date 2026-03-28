@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ type StaffRole = 'TA' | 'HTA';
 
 export default function TAManagerScreen() {
   const [staff, setStaff] = useState<UserSummary[]>([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -47,6 +48,14 @@ export default function TAManagerScreen() {
   };
 
   useEffect(() => { loadStaff(); }, []);
+
+  const filteredStaff = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return staff;
+    return staff.filter((m) =>
+      m.name?.toLowerCase().includes(q) || m.netid?.toLowerCase().includes(q)
+    );
+  }, [staff, search]);
 
   const handleCreate = async () => {
     if (!inviteForm.netid.trim() || !inviteForm.name.trim() || !inviteForm.password.trim()) {
@@ -229,11 +238,24 @@ export default function TAManagerScreen() {
         <ActivityIndicator size="large" color="#C8102E" style={{ marginTop: 40 }} />
       ) : (
         <>
+          <View className="flex-row items-center bg-white rounded-lg px-3 py-2 mb-4 border border-gray-200">
+            <Ionicons name="search-outline" size={16} color="#9CA3AF" style={{ marginRight: 8 }} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search by name or NetID..."
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+              autoCorrect={false}
+              className="flex-1 text-sm text-gray-800"
+            />
+          </View>
+
           <Text className="text-base font-semibold mb-3 text-gray-700">
-            Staff ({staff.length})
+            Staff ({filteredStaff.length}{search ? ` of ${staff.length}` : ''})
           </Text>
           <FlatList
-            data={staff}
+            data={filteredStaff}
             keyExtractor={(item) => String(item.id ?? item.netid)}
             renderItem={renderItem}
             scrollEnabled={false}
