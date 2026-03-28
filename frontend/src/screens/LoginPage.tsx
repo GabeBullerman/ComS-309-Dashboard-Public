@@ -5,7 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import axiosInstance, { apiBaseUrl } from '@/api/client';
 import { storeToken } from '@/utils/auth';
 
-WebBrowser.maybeCompleteAuthSession();
+if (Platform.OS === 'web') WebBrowser.maybeCompleteAuthSession();
 
 interface LoginPageProps {
   onLogin: (email: string, role?: string) => void;
@@ -30,9 +30,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       if (!idToken) { setLoginError('Google sign-in failed: no ID token'); setGoogleLoading(false); return; }
       axiosInstance.post('/api/auth/login/google', { tokenId: idToken })
         .then(({ data }) => {
-          // data is a raw JWT string (same as regular login)
           storeToken(data);
-          // Decode role from JWT payload
           const payload = JSON.parse(atob(data.split('.')[1]));
           const role = Array.isArray(payload.roles) ? payload.roles[0] : payload.roles ?? '';
           onLogin('', role);

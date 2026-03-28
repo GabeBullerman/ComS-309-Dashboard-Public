@@ -206,12 +206,24 @@ In your web application credential, add these to **Authorized redirect URIs**:
 - `http://localhost:8080/login/oauth2/code/google`
 - `http://coms-4020-006.class.las.iastate.edu:8080/login/oauth2/code/google`
 
-### Frontend
+### Frontend (`.env.local` — gitignored, optional)
 
-API base URL is set in `frontend/src/utils/auth.ts`:
-```typescript
-let apiBaseUrl = 'http://coms-4020-006.class.las.iastate.edu:8080';
+By default the app points to the VM backend. For local development, create
+`frontend/.env.local` to override:
+
 ```
+# Android emulator → host machine's localhost
+EXPO_PUBLIC_API_URL=http://10.0.2.2:8080
+
+# iOS simulator → host machine's localhost
+# EXPO_PUBLIC_API_URL=http://localhost:8080
+
+# Comment out entirely when testing on web (web uses localhost directly)
+```
+
+> **Note:** `.env.local` is baked into the Metro bundle at build time.
+> After changing it you must restart Metro (`npx expo start --clear`) or
+> rebuild for Android (`npx expo run:android --clear`).
 
 ## CORS Configuration
 

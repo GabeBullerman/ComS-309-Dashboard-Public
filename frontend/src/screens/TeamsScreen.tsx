@@ -6,6 +6,8 @@ import {
   FlatList,
   ActivityIndicator,
   useWindowDimensions,
+  TouchableOpacity,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Team, TeamMember } from '../types/Teams';
@@ -25,10 +27,47 @@ interface Props {
   userRole: UserRole;
 }
 
+function CycleChip<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: T[];
+  onChange: (v: T) => void;
+}) {
+  const idx = options.indexOf(value);
+  const next = () => onChange(options[(idx + 1) % options.length]);
+  const isActive = value !== options[0];
+  return (
+    <TouchableOpacity
+      onPress={next}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: isActive ? '#b91c1c' : '#f3f4f6',
+        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        gap: 4,
+      }}
+      activeOpacity={0.7}
+    >
+      <Text style={{ fontSize: 12, color: isActive ? '#fff' : '#374151', fontWeight: '500' }}>
+        {label}: {value}
+      </Text>
+      <Ionicons name="chevron-down" size={11} color={isActive ? '#fff' : '#6B7280'} />
+    </TouchableOpacity>
+  );
+}
+
 export default function ClassTeamsScreen({ userRole }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { width } = useWindowDimensions();
   const numColumns = width < 640 ? 1 : width < 960 ? 2 : width < 1280 ? 3 : 4;
+  const isMobile = width < 640;
   const effectiveRole = normalizeRole(String(userRole));
   const permissions = getUserPermissions(effectiveRole);
 
@@ -172,11 +211,10 @@ export default function ClassTeamsScreen({ userRole }: Props) {
       const matchesSection =
         !canFilterSection || sectionFilter === 'All' || String(team.section) === sectionFilter;
 
-      // Role-based filtering
       const matchesRole =
         effectiveRole === 'Student'
           ? true
-          : permissions.canViewPastSemesters || team.semester === 'Spring 2026'; // Others can see past if allowed
+          : permissions.canViewPastSemesters || team.semester === 'Spring 2026';
 
       return matchesSearch && matchesStatus && matchesSemester && matchesSection && matchesRole;
     });
@@ -197,144 +235,181 @@ export default function ClassTeamsScreen({ userRole }: Props) {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
         <ActivityIndicator size="large" color="#C8102E" />
-        <Text className="text-gray-500 mt-3">Loading teams...</Text>
+        <Text style={{ color: '#6B7280', marginTop: 12 }}>Loading teams...</Text>
       </View>
     );
   }
 
   if (errorMessage) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50 px-6">
-        <Text className="text-lg font-semibold text-red-600">Unable to load teams</Text>
-        <Text className="text-gray-500 mt-2 text-center">{errorMessage}</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', paddingHorizontal: 24 }}>
+        <Text style={{ fontSize: 18, fontWeight: '600', color: '#DC2626' }}>Unable to load teams</Text>
+        <Text style={{ color: '#6B7280', marginTop: 8, textAlign: 'center' }}>{errorMessage}</Text>
       </View>
     );
   }
 
-
   return (
-    <View className="flex-row flex-1 bg-gray-50">
-      {/* Main Content */}
-      <View className="flex-1 p-6">
-        <Text className="text-3xl font-bold">
+    <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+      <View style={{ flex: 1, paddingHorizontal: isMobile ? 12 : 24, paddingTop: isMobile ? 12 : 24 }}>
+        <Text style={{ fontSize: isMobile ? 22 : 28, fontWeight: 'bold', color: '#111827', marginBottom: 10 }}>
           Class Teams
         </Text>
-        <View className="mb-4" />
-
 
         {!isStudentView && (
           <>
             {/* Search */}
-            <View className="flex-row items-center bg-white rounded-lg px-4 py-2 mb-3">
-              <Ionicons name="search" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 10, paddingVertical: 8, marginBottom: 8 }}>
+              <Ionicons name="search" size={16} color="#9CA3AF" style={{ marginRight: 6 }} />
               <TextInput
                 placeholder={searchPlaceholder}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                className="w-full pl-3 pr-4 py-3 bg-white border border-gray-300 rounded-lg"
+                style={{ flex: 1, fontSize: 14, color: '#1e293b' }}
+                placeholderTextColor="#9CA3AF"
               />
             </View>
 
-            {/* Filters */}
-            <View className="flex-row mb-4">
-              <Text className="text-sm text-gray-600 mb-2 mr-2 my-2">Status</Text>
-              <View className="flex-row flex-wrap gap-2">
-                <Picker
-                  selectedValue={statusFilter}
-                  onValueChange={(value: string) => setStatusFilter(value as StatusFilter)}
-                  dropdownIconColor="#000"
-                  style={{ height: 44, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}
-                >
-                  {(['All', 'Poor', 'Moderate', 'Good'] as StatusFilter[]).map((status) => (
-                    <Picker.Item key={status} label={status} value={status} />
-                  ))}
-                </Picker>
+            {/* Filters — native: chip row | web: row of pickers */}
+            {Platform.OS !== 'web' ? (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                <CycleChip
+                  label="Status"
+                  value={statusFilter}
+                  options={['All', 'Poor', 'Moderate', 'Good'] as StatusFilter[]}
+                  onChange={setStatusFilter}
+                />
+                {canFilterSection && (
+                  <CycleChip
+                    label="Section"
+                    value={sectionFilter}
+                    options={sectionOptions}
+                    onChange={setSectionFilter}
+                  />
+                )}
+                {canFilterSemester && (
+                  <CycleChip
+                    label="Semester"
+                    value={semesterFilter}
+                    options={['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]}
+                    onChange={setSemesterFilter}
+                  />
+                )}
               </View>
-
-              {canFilterSection && (
-                <>
-                  <Text className="text-sm text-gray-600 mx-2 my-2 mb-2">Section</Text>
-                  <View className="flex-row flex-wrap gap-2">
+            ) : (
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                {/* Status */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                  <Text style={{ fontSize: 14, color: '#4B5563', width: 64 }}>Status</Text>
+                  <View style={{ flex: 1, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}>
                     <Picker
-                      selectedValue={sectionFilter}
-                      onValueChange={(value: string) => setSectionFilter(value)}
+                      selectedValue={statusFilter}
+                      onValueChange={(value: string) => setStatusFilter(value as StatusFilter)}
                       dropdownIconColor="#000"
-                      style={{ height: 44, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}
+                      style={{ height: 44 }}
                     >
-                      {sectionOptions.map((section) => (
-                        <Picker.Item key={section} label={section} value={section} />
+                      {(['All', 'Poor', 'Moderate', 'Good'] as StatusFilter[]).map((status) => (
+                        <Picker.Item key={status} label={status} value={status} />
                       ))}
                     </Picker>
                   </View>
-                </>
-              )}
+                </View>
 
-              {canFilterSemester && (
-                <>
-                  <Text className="text-sm text-gray-600 mx-2 my-2 mb-2">Semester</Text>
-                  <View className="flex-row flex-wrap gap-2">
-                    <Picker
-                      selectedValue={semesterFilter}
-                      onValueChange={(value: string) => setSemesterFilter(value as SemesterFilter)}
-                      dropdownIconColor="#000"
-                      style={{ height: 44, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}
-                    >
-                      {(['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map((semester) => (
-                        <Picker.Item key={semester} label={semester} value={semester} />
-                      ))}
-                    </Picker>
+                {canFilterSection && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <Text style={{ fontSize: 14, color: '#4B5563', width: 64 }}>Section</Text>
+                    <View style={{ flex: 1, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}>
+                      <Picker
+                        selectedValue={sectionFilter}
+                        onValueChange={(value: string) => setSectionFilter(value)}
+                        dropdownIconColor="#000"
+                        style={{ height: 44 }}
+                      >
+                        {sectionOptions.map((section) => (
+                          <Picker.Item key={section} label={section} value={section} />
+                        ))}
+                      </Picker>
+                    </View>
                   </View>
-                </>
-              )}
+                )}
 
-            </View>
-          </>
-        )}
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
-        <Text className="text-gray-500">
-          Showing {filteredTeams.length} teams
-        </Text>
-        {!isStudentView && teams.length > 0 && (
-          <>
-            {[
-              { label: 'Total',      value: teamStats.total,      color: '#1e3a8a', bg: '#eff6ff' },
-              { label: 'Good',       value: teamStats.good,       color: '#15803d', bg: '#f0fdf4' },
-              { label: 'Moderate',   value: teamStats.moderate,   color: '#92400E', bg: '#fefce8' },
-              { label: 'Poor',       value: teamStats.poor,       color: '#B91C1C', bg: '#fef2f2' },
-              { label: 'Unassigned', value: teamStats.unassigned, color: '#6B7280', bg: '#f9fafb' },
-            ].map((stat) => (
-              <View key={stat.label} style={{ backgroundColor: stat.bg, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: stat.color }}>{stat.value}</Text>
-                <Text style={{ fontSize: 13, color: stat.color, opacity: 0.8 }}>{stat.label}</Text>
+                {canFilterSemester && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <Text style={{ fontSize: 14, color: '#4B5563', width: 64 }}>Semester</Text>
+                    <View style={{ flex: 1, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}>
+                      <Picker
+                        selectedValue={semesterFilter}
+                        onValueChange={(value: string) => setSemesterFilter(value as SemesterFilter)}
+                        dropdownIconColor="#000"
+                        style={{ height: 44 }}
+                      >
+                        {(['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map((semester) => (
+                          <Picker.Item key={semester} label={semester} value={semester} />
+                        ))}
+                      </Picker>
+                    </View>
+                  </View>
+                )}
               </View>
-            ))}
+            )}
           </>
         )}
-      </View>
 
-        {/* Teams List */}
-        <FlatList
-          key={numColumns}
-          data={filteredTeams}
-          keyExtractor={(_, index) => index.toString()}
-          numColumns={numColumns}
-          columnWrapperStyle={numColumns > 1 ? { gap: 8 } : undefined}
-          contentContainerStyle={{
-            paddingBottom: 40,
-            gap: 8,
-          }}
-          renderItem={({ item }) => (
-            <View style={{ width: `${(100 / numColumns) - 0.5}%` }}>
-              <TeamCard {...item} onPress={() => {
-                navigation.navigate('TeamDetail', { team: item, userRole: effectiveRole });
-              }}/>
-            </View>
+        {/* Stats row */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+          <Text style={{ fontSize: 13, color: '#6B7280' }}>
+            Showing {filteredTeams.length} teams
+          </Text>
+          {!isStudentView && teams.length > 0 && (
+            <>
+              {[
+                { label: 'Total',      value: teamStats.total,      color: '#1e3a8a', bg: '#eff6ff' },
+                { label: 'Good',       value: teamStats.good,       color: '#15803d', bg: '#f0fdf4' },
+                { label: 'Moderate',   value: teamStats.moderate,   color: '#92400E', bg: '#fefce8' },
+                { label: 'Poor',       value: teamStats.poor,       color: '#B91C1C', bg: '#fef2f2' },
+                { label: 'Unassigned', value: teamStats.unassigned, color: '#6B7280', bg: '#f9fafb' },
+              ].map((stat) => (
+                <View key={stat.label} style={{ backgroundColor: stat.bg, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: stat.color }}>{stat.value}</Text>
+                  <Text style={{ fontSize: 12, color: stat.color, opacity: 0.8 }}>{stat.label}</Text>
+                </View>
+              ))}
+            </>
           )}
-          showsVerticalScrollIndicator={false}
-        />
+        </View>
+
+        {/* Teams List — pad last row so all cards stay equal width */}
+        {(() => {
+          const remainder = numColumns > 1 ? filteredTeams.length % numColumns : 0;
+          const padded: (Team | null)[] = remainder === 0
+            ? filteredTeams
+            : [...filteredTeams, ...Array(numColumns - remainder).fill(null)];
+          return (
+            <FlatList
+              style={{ flex: 1 }}
+              key={numColumns}
+              data={padded}
+              keyExtractor={(_, index) => index.toString()}
+              numColumns={numColumns}
+              columnWrapperStyle={numColumns > 1 ? { gap: 8, alignItems: 'stretch' } : undefined}
+              contentContainerStyle={{ paddingBottom: 24, gap: 8 }}
+              renderItem={({ item }) =>
+                item === null ? (
+                  <View style={{ flex: 1 }} />
+                ) : (
+                  <View style={{ flex: 1 }}>
+                    <TeamCard {...item} onPress={() => {
+                      navigation.navigate('TeamDetail', { team: item, userRole: effectiveRole });
+                    }} />
+                  </View>
+                )
+              }
+              showsVerticalScrollIndicator={false}
+            />
+          );
+        })()}
       </View>
     </View>
   );

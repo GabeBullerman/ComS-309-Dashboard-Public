@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCurrentUser } from '../api/users';
@@ -14,9 +15,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Props {
   userRole: string;
+  onLogout?: () => void;
 }
 
-export default function ProfileScreen({ userRole }: Props) {
+export default function ProfileScreen({ userRole, onLogout }: Props) {
   const [displayName, setDisplayName] = useState('');
   const [netid, setNetid] = useState('');
   const [glToken, setGlToken] = useState<string | null>(null);
@@ -183,6 +185,17 @@ export default function ProfileScreen({ userRole }: Props) {
           </View>
         )}
       </View>
+
+      {/* Logout — mobile only, below GitLab token */}
+      {Platform.OS !== 'web' && onLogout && (
+        <TouchableOpacity
+          onPress={onLogout}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#b91c1c', borderRadius: 10, paddingVertical: 13, marginTop: 16 }}
+        >
+          <Ionicons name="log-out-outline" size={18} color="white" />
+          <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>Logout</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

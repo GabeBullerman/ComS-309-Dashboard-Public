@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 export const TOKEN_KEY = 'auth_token';
 
@@ -9,7 +10,7 @@ export const apiBaseUrl =
 
 const axiosInstance = axios.create({
   baseURL: apiBaseUrl,
-  withCredentials: true, // sends/receives cookies (refresh token) on web
+  withCredentials: Platform.OS === 'web', // cookies only relevant on web
 });
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
