@@ -4,13 +4,15 @@ import {
   Text,
   Image,
   TouchableOpacity,
-  FlatList,
   Modal,
   TextInput,
   Linking,
   ActivityIndicator,
   Alert,
   ScrollView,
+  useWindowDimensions,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,7 +26,6 @@ import {
   fetchRecentCommits,
   fetchProjectMembers,
   getGitLabToken,
-  saveGitLabToken,
   groupCommitsByWeek,
   matchContributors,
   GitLabContributor,
@@ -40,15 +41,12 @@ const PROJECT_ROLES: ProjectRole[] = ['Frontend', 'Backend'];
 
 export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps) {
   const { team, userRole } = route.params;
-  const [selectedKey, setSelectedKey] = useState<string>('team');
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
   const [authorNetid, setAuthorNetid] = useState<string | undefined>(undefined);
   useEffect(() => {
     getCurrentUser().then((u) => { if (u?.netid) setAuthorNetid(u.netid); });
   }, []);
-  const selectedMember =
-    selectedKey === 'team'
-      ? team.members[0]
-      : (team.members.find((m) => (m.netid || m.name) === selectedKey) ?? team.members[0]);
   const [activeTab, setActiveTab] = useState<TabKey>('contributions');
   const [gitlab, setGitlab] = useState<string>(team.gitlab || '');
   const [teamName, setTeamName] = useState(team.name);
@@ -61,13 +59,9 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   const [editName, setEditName] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Per-member weekly commit analytics: memberKey → { thisWeek, lastWeek }
-  const [memberAnalytics, setMemberAnalytics] = useState<Record<string, { thisWeek: number; lastWeek: number }>>({});
 
   // GitLab API state
   const [glToken, setGlToken] = useState<string | null>(null);
-  const [tokenInput, setTokenInput] = useState('');
-  const [editingToken, setEditingToken] = useState(false);
   const [contributors, setContributors] = useState<GitLabContributor[]>([]);
   const [weeklyCommits, setWeeklyCommits] = useState<{ label: string; count: number }[]>([]);
   const [glLoading, setGlLoading] = useState(false);
@@ -146,20 +140,12 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           }).length;
           analytics[key] = { thisWeek, lastWeek };
         }
-        setMemberAnalytics(analytics);
       })
       .catch((e: Error) => { if (!cancelled) setGlError(e.message); })
       .finally(() => { if (!cancelled) setGlLoading(false); });
     return () => { cancelled = true; };
   }, [gitlab, glToken]);
 
-  const handleSaveToken = async () => {
-    if (!tokenInput.trim()) return;
-    await saveGitLabToken(tokenInput.trim());
-    setGlToken(tokenInput.trim());
-    setTokenInput('');
-    setEditingToken(false);
-  };
 
   const handleOpenRepo = () => {
     if (!gitlab) return;
@@ -229,202 +215,140 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     { key: 'demoResults', label: 'Demo Results' },
   ];
 
+  const pad = isMobile ? 12 : 20;
+  const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+
   return (
-    <ScrollView className="flex-1 bg-gray-100 p-4 pt-16">
+    <ScrollView
+      style={{ flex: 1, backgroundColor: '#F3F4F6', paddingTop: statusBarHeight + (isMobile ? 12 : 24) }}
+      contentContainerStyle={{ paddingBottom: 40 }}
+    >
       {/* Header */}
-      <View className="flex-row items-center px-4">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="pr-4">
-          <Ionicons name="arrow-back" size={24} color="black" />
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: pad, marginBottom: 4 }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 12 }}>
+          <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
-        <View className="flex-1 items-center mr-10">
-          <Text className="text-xl font-bold">{teamName}</Text>
-        </View>
+        <Text style={{ flex: 1, fontSize: 20, fontWeight: '700', color: '#111827' }}>{teamName}</Text>
       </View>
 
       {/* Repo / Edit Button */}
-      <View className="px-4 pt-3 pb-1 mt-1">
+      <View style={{ paddingHorizontal: pad, paddingTop: 10, paddingBottom: 4 }}>
         {canEditRepo ? (
           gitlab ? (
-            // Split button: View Project (left) | Edit Info (right)
-            <View className="flex-row rounded-lg overflow-hidden" style={{ backgroundColor: '#C8102E' }}>
-              <TouchableOpacity
-                onPress={handleOpenRepo}
-                className="flex-1 flex-row items-center justify-center py-3 px-4"
-              >
+            <View style={{ flexDirection: 'row', borderRadius: 8, overflow: 'hidden', backgroundColor: '#C8102E' }}>
+              <TouchableOpacity onPress={handleOpenRepo} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, paddingHorizontal: 16 }}>
                 <Ionicons name="git-branch-outline" size={16} color="white" />
-                <Text className="ml-2 text-white font-semibold">View Project</Text>
+                <Text style={{ marginLeft: 8, color: 'white', fontWeight: '600' }}>View Project</Text>
               </TouchableOpacity>
               <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.4)', marginVertical: 8 }} />
-              <TouchableOpacity
-                onPress={handleEditPress}
-                className="flex-row items-center justify-center py-3 px-5"
-              >
+              <TouchableOpacity onPress={handleEditPress} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, paddingHorizontal: 20 }}>
                 <Ionicons name="pencil-outline" size={15} color="white" />
-                <Text className="ml-1 text-white font-semibold">Edit Info</Text>
+                <Text style={{ marginLeft: 6, color: 'white', fontWeight: '600' }}>Edit Info</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            // Full-width Edit Team Info button
-            <TouchableOpacity
-              onPress={handleEditPress}
-              className="flex-row items-center justify-center rounded-lg py-3 px-4"
-              style={{ backgroundColor: '#C8102E' }}
-            >
+            <TouchableOpacity onPress={handleEditPress} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 8, paddingVertical: 12, backgroundColor: '#C8102E' }}>
               <Ionicons name="create-outline" size={16} color="white" />
-              <Text className="ml-2 text-white font-semibold">Edit Team Info</Text>
+              <Text style={{ marginLeft: 8, color: 'white', fontWeight: '600' }}>Edit Team Info</Text>
             </TouchableOpacity>
           )
         ) : gitlab ? (
-          // Students: View Project only
-          <TouchableOpacity
-            onPress={handleOpenRepo}
-            className="flex-row items-center justify-center rounded-lg py-3 px-4"
-            style={{ backgroundColor: '#C8102E' }}
-          >
+          <TouchableOpacity onPress={handleOpenRepo} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 8, paddingVertical: 12, backgroundColor: '#C8102E' }}>
             <Ionicons name="git-branch-outline" size={16} color="white" />
-            <Text className="ml-2 text-white font-semibold">View Project</Text>
+            <Text style={{ marginLeft: 8, color: 'white', fontWeight: '600' }}>View Project</Text>
           </TouchableOpacity>
         ) : null}
       </View>
 
       {/* Team Members */}
-      <FlatList
-        horizontal
-        data={[
-          { type: 'team' as const },
-          ...team.members.map((m) => ({ type: 'member' as const, member: m })),
-        ]}
-        keyExtractor={(item) => item.type === 'team' ? 'team' : (item.member.netid || item.member.name)}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 20, paddingHorizontal: 16 }}
-        renderItem={({ item }) => {
-          // Shared container size — 128 inner + 3 border + 2 padding on each side = 136 total
-          const TILE = 136;
-          const INNER = 128;
-          const RADIUS_OUTER = 35;
-          const RADIUS_INNER = 32;
-
-          if (item.type === 'team') {
-
-            return (
-              <TouchableOpacity
-                onPress={() => setSelectedKey('team')}
-                style={{ marginRight: 16, alignItems: 'center' }}
-              >
-              </TouchableOpacity>
-            );
-          }
-
-          const memberKey = item.member.netid || item.member.name;
+      {/* Member tiles — wrapping row on mobile, horizontal scroll on desktop */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: pad, gap: 12 }}>
+        {team.members.map((m) => {
+          const TILE = isMobile ? 72 : 136;
+          const INNER = isMobile ? 64 : 128;
+          const RADIUS = isMobile ? 20 : 35;
+          const memberKey = m.netid || m.name;
           const role = memberRoles[memberKey];
-          const isSelected = selectedKey === memberKey;
           return (
             <TouchableOpacity
-              onPress={() => navigation.navigate('TeamMemberDetail', { member: item.member, gitlabUrl: gitlab || undefined, teamId: team.id })}
-              style={{ marginRight: 16, alignItems: 'center' }}
+              key={memberKey}
+              onPress={() => navigation.navigate('TeamMemberDetail', { member: m, gitlabUrl: gitlab || undefined, teamId: team.id })}
+              style={{ alignItems: 'center', width: isMobile ? 80 : 152 }}
             >
+              {/* Role badge — above photo, always same position */}
+              {canEditRepo ? (
+                <TouchableOpacity
+                  ref={(ref) => { if (ref) badgeRefs.current[memberKey] = ref; }}
+                  onPress={(e) => { e.stopPropagation(); handleBadgePress(memberKey); }}
+                  style={{ backgroundColor: '#C8102E', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
+                >
+                  <Text style={{ color: 'white', fontSize: 11, fontWeight: '500' }}>{role ?? 'Set Role'}</Text>
+                  <Ionicons name="chevron-down" size={10} color="white" style={{ marginLeft: 3 }} />
+                </TouchableOpacity>
+              ) : role ? (
+                <View style={{ backgroundColor: '#C8102E', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, marginBottom: 6 }}>
+                  <Text style={{ color: 'white', fontSize: 11, fontWeight: '500' }}>{role}</Text>
+                </View>
+              ) : (
+                <View style={{ height: isMobile ? 22 : 24, marginBottom: 6 }} />
+              )}
               <View style={{
                 width: TILE, height: TILE,
-                borderRadius: RADIUS_OUTER,
+                borderRadius: RADIUS,
                 borderWidth: 3,
-                borderColor: isSelected ? '#F1BE48' : 'transparent',
+                borderColor: 'transparent',
                 padding: 2,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}>
                 <Image
-                  source={typeof item.member.photo === 'string' ? { uri: item.member.photo } : item.member.photo}
-                  style={{ width: INNER, height: INNER, borderRadius: RADIUS_INNER }}
+                  source={typeof m.photo === 'string' ? { uri: m.photo } : m.photo}
+                  style={{ width: INNER, height: INNER, borderRadius: RADIUS - 4 }}
                 />
               </View>
-              <Text style={{ marginTop: 8, fontSize: 14, fontWeight: isSelected ? '700' : '400' }}>
-                {item.member.name}
+              <Text style={{ marginTop: 6, fontSize: isMobile ? 11 : 14, textAlign: 'center', lineHeight: isMobile ? 16 : 22 }} numberOfLines={2}>
+                {m.name}
               </Text>
-              {canEditRepo ? (
-                <TouchableOpacity
-                  ref={(ref) => { if (ref) badgeRefs.current[memberKey] = ref; }}
-                  onPress={(e) => { e.stopPropagation(); handleBadgePress(memberKey); }}
-                  style={{ backgroundColor: '#C8102E', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, flexDirection: 'row', alignItems: 'center', marginTop: 4 }}
-                >
-                  <Text style={{ color: 'white', fontSize: 12, fontWeight: '500' }}>{role ?? 'Set Role'}</Text>
-                  <Ionicons name="chevron-down" size={10} color="white" style={{ marginLeft: 3 }} />
-                </TouchableOpacity>
-              ) : role ? (
-                <View style={{ backgroundColor: '#C8102E', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, marginTop: 4 }}>
-                  <Text style={{ color: 'white', fontSize: 12, fontWeight: '500' }}>{role}</Text>
-                </View>
-              ) : null}
             </TouchableOpacity>
           );
-        }}
-      />
+        })}
+      </View>
 
-    <View className="bg-white rounded-xl shadow my-4 overflow-hidden pb-4">
+    <View style={{ backgroundColor: 'white', borderRadius: 12, marginHorizontal: pad, marginVertical: 12, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
 
     {/* Team Results Header */}
-    <View className="flex-row items-center px-4 py-3 border-b border-gray-200">
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
       <Ionicons name="chatbubble-outline" size={18} color="#be123c" />
-      <Text className="text-lg font-semibold ml-2">Team Results</Text>
+      <Text style={{ fontSize: 16, fontWeight: '600', marginLeft: 8, color: '#111827' }}>Team Results</Text>
     </View>
 
       {/* Tab Panel */}
-      <View className="flex-1 px-4 pt-4">
-        <View className="flex-row justify-around mb-4">
+      <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginBottom: 16 }}>
           {tabs.map(({ key, label }) => (
             <TouchableOpacity
               key={key}
-              className={`py-2 px-4 rounded-lg ${activeTab === key ? 'bg-yellow-400' : 'bg-gray-200'}`}
               onPress={() => setActiveTab(key)}
+              style={{ paddingVertical: 8, paddingHorizontal: isMobile ? 10 : 16, borderRadius: 8, backgroundColor: activeTab === key ? '#F1BE48' : '#E5E7EB' }}
             >
-              <Text className={activeTab === key ? 'text-white font-bold' : 'text-gray-700'}>
+              <Text style={{ color: activeTab === key ? '#111827' : '#374151', fontWeight: activeTab === key ? '700' : '400', fontSize: isMobile ? 12 : 14 }}>
                 {label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Token prompt — shown when no token, or when editing an existing token */}
-        {(!glToken || editingToken) && gitlab && (
+        {/* Token prompt — only shown when no token is set */}
+        {!glToken && gitlab && (
           <View style={{ backgroundColor: '#FEF9C3', borderRadius: 8, padding: 12, marginBottom: 12 }}>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E', marginBottom: 6 }}>
-              {editingToken ? 'Update GitLab Token' : 'GitLab personal access token required'}
+              GitLab personal access token required
             </Text>
-            <Text style={{ fontSize: 12, color: '#78350F', marginBottom: 8 }}>Generate one at git.las.iastate.edu → Settings → Access Tokens (scope: read_api)</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TextInput
-                value={tokenInput}
-                onChangeText={setTokenInput}
-                placeholder="glpat-xxxxxxxxxxxx"
-                placeholderTextColor="#9ca3af"
-                autoCapitalize="none"
-                autoCorrect={false}
-                secureTextEntry
-                style={{ flex: 1, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, backgroundColor: 'white' }}
-              />
-              <TouchableOpacity onPress={handleSaveToken} style={{ backgroundColor: '#C8102E', borderRadius: 6, paddingHorizontal: 14, justifyContent: 'center' }}>
-                <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Save</Text>
-              </TouchableOpacity>
-              {editingToken && (
-                <TouchableOpacity onPress={() => { setEditingToken(false); setTokenInput(''); }} style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 6, paddingHorizontal: 10, justifyContent: 'center', backgroundColor: 'white' }}>
-                  <Text style={{ color: '#6B7280', fontWeight: '600', fontSize: 13 }}>Cancel</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+            <Text style={{ fontSize: 12, color: '#78350F', marginBottom: 8 }}>Generate one at git.las.iastate.edu → Settings → Access Tokens (scope: read_api), then add it in your Profile.</Text>
           </View>
         )}
 
-        {/* Edit token button — shown when token is set and not currently editing */}
-        {glToken && !editingToken && gitlab && (
-          <TouchableOpacity
-            onPress={() => { setTokenInput(''); setEditingToken(true); }}
-            style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', marginBottom: 8, gap: 4 }}
-          >
-            <Ionicons name="key-outline" size={13} color="#6B7280" />
-            <Text style={{ fontSize: 12, color: '#6B7280' }}>Edit token</Text>
-          </TouchableOpacity>
-        )}
-
-        <View className="p-4 bg-gray-100 rounded-lg min-h-[200px]">
+        <View style={{ padding: 16, backgroundColor: '#F3F4F6', borderRadius: 8, minHeight: 160, marginBottom: 16 }}>
           {activeTab === 'contributions' && (() => {
             if (!gitlab) return <Text style={{ color: '#9ca3af', fontSize: 13 }}>No GitLab repo linked.</Text>;
             if (!glToken) return <Text style={{ color: '#9ca3af', fontSize: 13 }}>Enter your GitLab token above to load contributions.</Text>;
@@ -438,7 +362,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                   <View key={c.email}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
                       <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>{c.name}</Text>
-                      <Text style={{ fontSize: 12, color: '#6B7280' }}>{c.commits} commits · +{c.additions} −{c.deletions}</Text>
+                      <Text style={{ fontSize: 12, color: '#6B7280' }}>{c.commits} commits</Text>
                     </View>
                     <View style={{ height: 6, backgroundColor: '#E5E7EB', borderRadius: 3 }}>
                       <View style={{ height: 6, width: `${Math.round((c.commits / max) * 100)}%`, backgroundColor: '#C8102E', borderRadius: 3 }} />
@@ -450,7 +374,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           })()}
 
           {activeTab === 'demoResults' && (
-            <Text>{selectedMember.demoResults?.map((d) => `${d.name}: ${d.result}`).join('\n')}</Text>
+            <Text>{team.members[0]?.demoResults?.map((d: any) => `${d.name}: ${d.result}`).join('\n')}</Text>
           )}
 
           {activeTab === 'Push frequency' && (() => {
@@ -488,63 +412,40 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View
-          className="flex-1 items-center justify-center px-6"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-        >
-          <View className="bg-white rounded-2xl w-full" style={{ maxHeight: '85%' }}>
-            {/* Modal Header */}
-            <View className="px-6 pt-6 pb-4 border-b border-gray-100">
-              <Text className="text-lg font-bold">Edit Team Info</Text>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ backgroundColor: 'white', borderRadius: 16, width: '100%', maxHeight: '85%' }}>
+            <View style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827' }}>Edit Team Info</Text>
             </View>
 
-            <ScrollView className="px-6" contentContainerStyle={{ paddingVertical: 16 }}>
-              {/* Team Name */}
-              <Text className="text-sm font-semibold text-gray-700 mb-1">Team Name</Text>
+            <ScrollView style={{ paddingHorizontal: 24 }} contentContainerStyle={{ paddingVertical: 16 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 4 }}>Team Name</Text>
               <TextInput
                 value={editName}
                 onChangeText={setEditName}
                 placeholder="Team name"
-                className="border border-gray-300 rounded-lg px-3 py-2 mb-5 text-gray-800"
                 autoCorrect={false}
+                style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 16, fontSize: 14, color: '#111827' }}
               />
 
-              {/* Repo URL */}
-              <Text className="text-sm font-semibold text-gray-700 mb-1">Repo URL</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 4 }}>Repo URL</Text>
               <TextInput
                 value={editUrl}
                 onChangeText={setEditUrl}
                 placeholder="https://gitlab.com/..."
-                className="border border-gray-300 rounded-lg px-3 py-2 mb-5 text-gray-800"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"
+                style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 16, fontSize: 14, color: '#111827' }}
               />
-
             </ScrollView>
 
-            {/* Modal Footer */}
-            <View
-              className="px-6 py-4 border-t border-gray-100 flex-row justify-end"
-              style={{ gap: 8 }}
-            >
-              <TouchableOpacity
-                onPress={() => setModalVisible(false)}
-                className="px-4 py-2 rounded-lg bg-gray-200"
-              >
-                <Text className="text-gray-700 font-semibold">Cancel</Text>
+            <View style={{ paddingHorizontal: 24, paddingVertical: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6', flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: 8, backgroundColor: '#E5E7EB' }}>
+                <Text style={{ color: '#374151', fontWeight: '600' }}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSave}
-                disabled={saving}
-                className="px-4 py-2 rounded-lg"
-                style={{ backgroundColor: '#C8102E' }}
-              >
-                {saving ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <Text className="text-white font-semibold">Save</Text>
-                )}
+              <TouchableOpacity onPress={handleSave} disabled={saving} style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: 8, backgroundColor: '#C8102E' }}>
+                {saving ? <ActivityIndicator size="small" color="white" /> : <Text style={{ color: 'white', fontWeight: '600' }}>Save</Text>}
               </TouchableOpacity>
             </View>
           </View>
