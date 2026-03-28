@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Platform, View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
-import axiosInstance from '@/api/client';
+import axiosInstance, { apiBaseUrl } from '@/api/client';
 import { storeToken } from '@/utils/auth';
-
-const BACKEND_URL = 'http://localhost:8080';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -162,7 +160,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           onPress={() => {
             setLoginError('');
             if (Platform.OS === 'web') {
-              window.location.href = `${BACKEND_URL}/oauth2/authorization/google`;
+              window.location.href = `${apiBaseUrl}/oauth2/authorization/google`;
             } else {
               setGoogleLoading(true);
               promptAsync();

@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const TOKEN_KEY = 'auth_token';
 
-const apiBaseUrl =
+export const apiBaseUrl =
   process.env.EXPO_PUBLIC_API_URL ??
   'http://coms-4020-006.class.las.iastate.edu:8080';
 
