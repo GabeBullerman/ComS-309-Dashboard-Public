@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axiosInstance, { storeToken, clearToken } from '../api/client';
+import axiosInstance, { storeToken, clearToken, apiBaseUrl } from '../api/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -78,8 +78,16 @@ export const getUserPermissions = (role: UserRole): UserPermissions => {
 // ── Auth operations ───────────────────────────────────────────────────────────
 
 export const login = async (netid: string, password: string): Promise<{ token: string; user?: UserSummary }> => {
-  const res = await axiosInstance.post('/api/auth/login', { netid, password });
-  const token: string = res.data;
+  // Use raw fetch to avoid AxiosError._wrapNativeSuper(Error) crash on Hermes
+  const res = await fetch(`${apiBaseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ netid, password }),
+  });
+  if (!res.ok) {
+    throw new Error(`Login failed: ${res.status}`);
+  }
+  const token: string = await res.text();
   await storeToken(token);
 
   const role = getRoleFromToken(token);
