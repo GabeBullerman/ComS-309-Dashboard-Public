@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,120 +7,149 @@ import {
   FlatList,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { UserSummary, normalizeRole } from '../utils/auth';
+import { getUsersByRole, createUser, updateUser, deleteUser } from '../api/users';
 
-interface TA {
-  id: string;
-  name: string;
-  email: string;
-  role: 'TA' | 'HTA';
-  courses: string[];
-}
-
-const mockTAs: TA[] = [
-  { id: '1', name: 'John Smith', email: 'john.smith@iastate.edu', role: 'HTA', courses: ['CS 309', 'CS 319'] },
-  { id: '2', name: 'Alice Brown', email: 'alice.brown@iastate.edu', role: 'TA', courses: ['CS 309'] },
-  { id: '3', name: 'Michael Lee', email: 'michael.lee@iastate.edu', role: 'TA', courses: ['CS 319'] },
-];
-
-const COURSES = ['CS 309', 'CS 319', 'CS 229'];
+type StaffRole = 'TA' | 'HTA';
 
 export default function TAManagerScreen() {
-  const [tas, setTAs] = useState<TA[]>(mockTAs);
+  const [staff, setStaff] = useState<UserSummary[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showInviteForm, setShowInviteForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [inviteForm, setInviteForm] = useState({
+    netid: '',
     name: '',
-    email: '',
-    role: 'TA' as 'TA' | 'HTA',
-    courses: [] as string[],
+    password: '',
+    role: 'TA' as StaffRole,
   });
 
-  const handleInviteTA = () => {
-    if (!inviteForm.name || !inviteForm.email) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
+  const loadStaff = async () => {
+    setLoading(true);
+    try {
+      const [tas, htas] = await Promise.all([
+        getUsersByRole('TA'),
+        getUsersByRole('HTA'),
+      ]);
+      const combined = [...htas, ...tas].map((u) => ({
+        ...u,
+        role: normalizeRole(String(u.role)),
+      }));
+      setStaff(combined);
+    } catch {
+      Alert.alert('Error', 'Failed to load staff.');
+    } finally {
+      setLoading(false);
     }
-
-    const newTA: TA = {
-      id: Date.now().toString(),
-      ...inviteForm,
-    };
-
-    setTAs(prev => [...prev, newTA]);
-    setInviteForm({ name: '', email: '', role: 'TA', courses: [] });
-    setShowInviteForm(false);
-    Alert.alert('Success', 'TA invitation sent successfully!');
   };
 
-  const handleRemoveTA = (taId: string) => {
+  useEffect(() => { loadStaff(); }, []);
+
+  const handleCreate = async () => {
+    if (!inviteForm.netid.trim() || !inviteForm.name.trim() || !inviteForm.password.trim()) {
+      Alert.alert('Error', 'NetID, name, and password are required.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createUser({
+        netid: inviteForm.netid.trim(),
+        name: inviteForm.name.trim(),
+        password: inviteForm.password.trim(),
+        role: [inviteForm.role],
+      });
+      setInviteForm({ netid: '', name: '', password: '', role: 'TA' });
+      setShowInviteForm(false);
+      await loadStaff();
+    } catch (e: any) {
+      const msg = e?.response?.status === 409
+        ? 'A user with that NetID already exists.'
+        : 'Failed to create user.';
+      Alert.alert('Error', msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleRole = (member: UserSummary) => {
+    if (!member.id) return;
+    const newRole: StaffRole = normalizeRole(String(member.role)) === 'TA' ? 'HTA' : 'TA';
+    const label = normalizeRole(String(member.role)) === 'TA' ? 'Head TA' : 'TA';
     Alert.alert(
-      'Remove TA',
-      'Are you sure you want to remove this TA?',
+      'Change Role',
+      `Promote ${member.name ?? member.netid} to ${label}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => setTAs(prev => prev.filter(ta => ta.id !== taId))
+          text: 'Confirm',
+          onPress: async () => {
+            try {
+              await updateUser(member.id!, { role: [newRole] });
+              setStaff((prev) =>
+                prev.map((m) => m.id === member.id ? { ...m, role: newRole } : m)
+              );
+            } catch {
+              Alert.alert('Error', 'Failed to update role.');
+            }
+          },
         },
       ]
     );
   };
 
-  const handleUpdateRole = (taId: string, newRole: 'TA' | 'HTA') => {
-    setTAs(prev => prev.map(ta =>
-      ta.id === taId ? { ...ta, role: newRole } : ta
-    ));
+  const handleRemove = (member: UserSummary) => {
+    if (!member.id) return;
+    Alert.alert(
+      'Remove Staff',
+      `Remove ${member.name ?? member.netid} from the system?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteUser(member.id!);
+              setStaff((prev) => prev.filter((m) => m.id !== member.id));
+            } catch {
+              Alert.alert('Error', 'Failed to remove user.');
+            }
+          },
+        },
+      ]
+    );
   };
 
-  const toggleCourse = (course: string) => {
-    setInviteForm(prev => ({
-      ...prev,
-      courses: prev.courses.includes(course)
-        ? prev.courses.filter(c => c !== course)
-        : [...prev.courses, course]
-    }));
-  };
-
-  const renderTAItem = ({ item }: { item: TA }) => (
-    <View className="bg-white p-4 rounded-lg mb-3 border border-gray-200">
-      <View className="flex-row justify-between items-start mb-2">
-        <View className="flex-1">
-          <Text className="text-lg font-semibold text-gray-800">{item.name}</Text>
-          <Text className="text-gray-600">{item.email}</Text>
-        </View>
-        <View className="flex-row items-center">
-          <TouchableOpacity
-            onPress={() => handleUpdateRole(item.id, item.role === 'TA' ? 'HTA' : 'TA')}
-            className={`px-3 py-1 rounded-full mr-2 ${
-              item.role === 'HTA' ? 'bg-yellow-100' : 'bg-blue-100'
-            }`}
-          >
-            <Text className={`text-xs font-medium ${
-              item.role === 'HTA' ? 'text-yellow-800' : 'text-blue-800'
-            }`}>
-              {item.role}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => handleRemoveTA(item.id)}
-            className="p-1"
-          >
-            <Ionicons name="trash-outline" size={20} color="#ef4444" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View className="flex-row flex-wrap">
-        {item.courses.map(course => (
-          <View key={course} className="bg-gray-100 px-2 py-1 rounded mr-2 mb-1">
-            <Text className="text-xs text-gray-700">{course}</Text>
+  const renderItem = ({ item }: { item: UserSummary }) => {
+    const role = normalizeRole(String(item.role));
+    const isHTA = role === 'HTA';
+    return (
+      <View className="bg-white p-4 rounded-lg mb-3 border border-gray-200">
+        <View className="flex-row justify-between items-center">
+          <View className="flex-1">
+            <Text className="text-base font-semibold text-gray-800">{item.name ?? '—'}</Text>
+            <Text className="text-gray-500 text-sm">{item.netid}</Text>
           </View>
-        ))}
+          <View className="flex-row items-center gap-2">
+            <TouchableOpacity
+              onPress={() => handleToggleRole(item)}
+              className={`px-3 py-1 rounded-full ${isHTA ? 'bg-yellow-100' : 'bg-blue-100'}`}
+            >
+              <Text className={`text-xs font-semibold ${isHTA ? 'text-yellow-800' : 'text-blue-800'}`}>
+                {isHTA ? 'Head TA' : 'TA'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleRemove(item)} className="p-1">
+              <Ionicons name="trash-outline" size={18} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <ScrollView className="flex-1 bg-gray-50 p-4">
@@ -132,88 +161,88 @@ export default function TAManagerScreen() {
         >
           <Ionicons name="person-add" size={16} color="white" />
           <Text className="text-white font-medium ml-2">
-            {showInviteForm ? 'Cancel' : 'Invite TA'}
+            {showInviteForm ? 'Cancel' : 'Add TA'}
           </Text>
         </TouchableOpacity>
       </View>
 
       {showInviteForm && (
         <View className="bg-white p-4 rounded-lg mb-6 border border-gray-200">
-          <Text className="text-lg font-semibold mb-4">Invite New TA</Text>
+          <Text className="text-lg font-semibold mb-4">Add New TA</Text>
 
+          <Text className="text-xs font-semibold text-gray-600 mb-1">NetID *</Text>
           <TextInput
-            placeholder="Full Name"
-            value={inviteForm.name}
-            onChangeText={(text) => setInviteForm(prev => ({ ...prev, name: text }))}
-            className="border border-gray-300 rounded-lg px-3 py-2 mb-3"
-          />
-
-          <TextInput
-            placeholder="Email Address"
-            value={inviteForm.email}
-            onChangeText={(text) => setInviteForm(prev => ({ ...prev, email: text }))}
-            keyboardType="email-address"
+            placeholder="e.g. jsmith"
+            value={inviteForm.netid}
+            onChangeText={(text) => setInviteForm((prev) => ({ ...prev, netid: text }))}
             autoCapitalize="none"
+            autoCorrect={false}
             className="border border-gray-300 rounded-lg px-3 py-2 mb-3"
           />
 
-          <Text className="text-sm font-medium mb-2">Role:</Text>
-          <View className="flex-row mb-3">
-            {(['TA', 'HTA'] as const).map(role => (
-              <TouchableOpacity
-                key={role}
-                onPress={() => setInviteForm(prev => ({ ...prev, role }))}
-                className={`px-4 py-2 rounded-lg mr-2 ${
-                  inviteForm.role === role ? 'bg-red-700' : 'bg-gray-200'
-                }`}
-              >
-                <Text className={`font-medium ${
-                  inviteForm.role === role ? 'text-white' : 'text-gray-700'
-                }`}>
-                  {role}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text className="text-xs font-semibold text-gray-600 mb-1">Full Name *</Text>
+          <TextInput
+            placeholder="e.g. Jane Smith"
+            value={inviteForm.name}
+            onChangeText={(text) => setInviteForm((prev) => ({ ...prev, name: text }))}
+            className="border border-gray-300 rounded-lg px-3 py-2 mb-3"
+          />
 
-          <Text className="text-sm font-medium mb-2">Assign to Courses:</Text>
-          <View className="flex-row flex-wrap mb-4">
-            {COURSES.map(course => (
+          <Text className="text-xs font-semibold text-gray-600 mb-1">Temporary Password *</Text>
+          <TextInput
+            placeholder="Set a temporary password"
+            value={inviteForm.password}
+            onChangeText={(text) => setInviteForm((prev) => ({ ...prev, password: text }))}
+            secureTextEntry
+            className="border border-gray-300 rounded-lg px-3 py-2 mb-4"
+          />
+
+          <Text className="text-xs font-semibold text-gray-600 mb-2">Role</Text>
+          <View className="flex-row mb-4">
+            {(['TA', 'HTA'] as StaffRole[]).map((r) => (
               <TouchableOpacity
-                key={course}
-                onPress={() => toggleCourse(course)}
-                className={`px-3 py-1 rounded-full mr-2 mb-2 ${
-                  inviteForm.courses.includes(course) ? 'bg-red-700' : 'bg-gray-200'
-                }`}
+                key={r}
+                onPress={() => setInviteForm((prev) => ({ ...prev, role: r }))}
+                className={`px-4 py-2 rounded-lg mr-2 ${inviteForm.role === r ? 'bg-red-700' : 'bg-gray-200'}`}
               >
-                <Text className={`text-xs ${
-                  inviteForm.courses.includes(course) ? 'text-white' : 'text-gray-700'
-                }`}>
-                  {course}
+                <Text className={`font-medium ${inviteForm.role === r ? 'text-white' : 'text-gray-700'}`}>
+                  {r === 'HTA' ? 'Head TA' : 'TA'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
           <TouchableOpacity
-            onPress={handleInviteTA}
+            onPress={handleCreate}
+            disabled={submitting}
             className="bg-red-700 px-4 py-2 rounded-lg"
           >
-            <Text className="text-white font-medium text-center">Send Invitation</Text>
+            {submitting
+              ? <ActivityIndicator size="small" color="white" />
+              : <Text className="text-white font-medium text-center">Add to System</Text>
+            }
           </TouchableOpacity>
         </View>
       )}
 
-      <Text className="text-lg font-semibold mb-3">Current TAs ({tas.length})</Text>
-      <FlatList
-        data={tas}
-        keyExtractor={(item) => item.id}
-        renderItem={renderTAItem}
-        scrollEnabled={false}
-        ListEmptyComponent={
-          <Text className="text-center text-gray-500 py-8">No TAs assigned yet</Text>
-        }
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color="#C8102E" style={{ marginTop: 40 }} />
+      ) : (
+        <>
+          <Text className="text-base font-semibold mb-3 text-gray-700">
+            Staff ({staff.length})
+          </Text>
+          <FlatList
+            data={staff}
+            keyExtractor={(item) => String(item.id ?? item.netid)}
+            renderItem={renderItem}
+            scrollEnabled={false}
+            ListEmptyComponent={
+              <Text className="text-center text-gray-500 py-8">No TAs found.</Text>
+            }
+          />
+        </>
+      )}
     </ScrollView>
   );
 }

@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { normalizeRole, UserSummary } from '../utils/auth';
@@ -190,13 +191,25 @@ export default function TaskAssignmentScreen() {
           />
 
           <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151', marginBottom: 4 }}>Due Date</Text>
-          <TextInput
-            value={dueDate}
-            onChangeText={setDueDate}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor="#9ca3af"
-            style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 16, fontSize: 14 }}
-          />
+          {Platform.OS === 'web'
+            ? React.createElement('input', {
+                type: 'date',
+                value: dueDate,
+                onChange: (e: any) => setDueDate(e.target.value),
+                style: {
+                  border: '1px solid #D1D5DB', borderRadius: 8,
+                  padding: '8px 12px', marginBottom: 16, fontSize: 14,
+                  width: '100%', boxSizing: 'border-box', color: '#111827',
+                },
+              })
+            : <TextInput
+                value={dueDate}
+                onChangeText={setDueDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#9ca3af"
+                style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 16, fontSize: 14 }}
+              />
+          }
 
           <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151', marginBottom: 8 }}>Assign To</Text>
           <View style={{ gap: 6, marginBottom: 12 }}>
