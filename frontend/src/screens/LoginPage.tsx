@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { Platform, View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
-import axiosInstance from '@/api/client';
+import axiosInstance, { apiBaseUrl } from '@/api/client';
 import { storeToken } from '@/utils/auth';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -157,8 +157,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         {/* Google Sign-In */}
         <TouchableOpacity
           style={styles.googleButton}
-          onPress={() => { setGoogleLoading(true); setLoginError(''); promptAsync(); }}
-          disabled={!request || googleLoading}
+          onPress={() => {
+            setLoginError('');
+            if (Platform.OS === 'web') {
+              window.location.href = `${apiBaseUrl}/oauth2/authorization/google`;
+            } else {
+              setGoogleLoading(true);
+              promptAsync();
+            }
+          }}
+          disabled={Platform.OS !== 'web' && (!request || googleLoading)}
           activeOpacity={0.8}
         >
           <Image

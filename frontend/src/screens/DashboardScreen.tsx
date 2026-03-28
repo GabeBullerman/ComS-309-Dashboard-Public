@@ -12,9 +12,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { Ionicons } from "@expo/vector-icons";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'SidebarLayout'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'DashboardScreen'>;
 
-export default function SidebarLayout({route}: Props) {
+export default function DashboardScreen({route}: Props) {
   const [activeScreen, setActiveScreen] = useState("Teams");
   const [displayName, setDisplayName] = useState("User");
   // Get permissions based on role
@@ -102,34 +102,34 @@ export default function SidebarLayout({route}: Props) {
         </Text>
       </View>
 
-      {[
-        "Teams",
-        ...(role === 'TA' || role === 'HTA' || role === 'Instructor' ? ["Assign Tasks"] : []),
-        ...(permissions.canManageTAs ? ["TA Manager"] : []),
-        ...(role !== 'Instructor' ? ["Tasks"] : []),
-        ...(permissions.canAccessCourses ? ["Courses"] : []),
-      ].map((item) => (
-        <TouchableOpacity
-          key={item}
-          onPress={() => {
-            setActiveScreen(item);
-            if (isMobile) toggleDrawer();
-          }}
-          className={`rounded-lg px-4 py-3 mb-2 ${
-            activeScreen === item ? "bg-yellow-400" : ""
-          }`}
-        >
-          <Text
-            className={`font-medium ${
-              activeScreen === item
-                ? "text-yellow-900"
-                : "text-white"
-            }`}
+      {([
+        { label: "Teams",        icon: "people-outline" },
+        ...(role === 'TA' || role === 'HTA' || role === 'Instructor' ? [{ label: "Assign Tasks", icon: "clipboard-outline" }] : []),
+        ...(permissions.canManageTAs ? [{ label: "TA Manager", icon: "shield-outline" }] : []),
+        ...(role !== 'Instructor' ? [{ label: "Tasks", icon: "checkmark-circle-outline" }] : []),
+        ...(permissions.canAccessCourses ? [{ label: "Courses", icon: "book-outline" }] : []),
+      ] as { label: string; icon: string }[]).map((item) => {
+        const isActive = activeScreen === item.label;
+        return (
+          <TouchableOpacity
+            key={item.label}
+            onPress={() => {
+              setActiveScreen(item.label);
+              if (isMobile) toggleDrawer();
+            }}
+            className={`flex-row items-center gap-3 rounded-lg px-4 py-3 mb-2 ${isActive ? "bg-yellow-400" : ""}`}
           >
-            {item}
-          </Text>
-        </TouchableOpacity>
-      ))}
+            <Ionicons
+              name={item.icon as any}
+              size={18}
+              color={isActive ? "#713f12" : "rgba(255,255,255,0.85)"}
+            />
+            <Text className={`font-medium ${isActive ? "text-yellow-900" : "text-white"}`}>
+              {item.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
 
       {/* User Section */}
       <View className="mt-auto pt-6 border-t border-white/10">

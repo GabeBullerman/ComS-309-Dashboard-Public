@@ -53,6 +53,8 @@ SPRING_DATASOURCE_USERNAME=postgres
 SPRING_DATASOURCE_PASSWORD=postgres
 SERVER_PORT=8080
 JWT_SECRET=Pu5XofXF6IEnT0ud+uLJ2rfe96Wyr/OWRoIp7F8A8PM
+GOOGLE_CLIENT_ID=124195890479-kh157q1foah7sc96ckjbvdvrdt9esu0q.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 EOF
 
 # Kill existing backend and restart
@@ -187,7 +189,22 @@ SPRING_DATASOURCE_USERNAME=postgres
 SPRING_DATASOURCE_PASSWORD=postgres
 SERVER_PORT=8080
 JWT_SECRET={base64-encoded-secret}
+
+# Google OAuth (backend-initiated flow)
+GOOGLE_CLIENT_ID=124195890479-kh157q1foah7sc96ckjbvdvrdt9esu0q.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET={secret from Google Cloud Console → web application credentials}
+FRONTEND_URL=http://localhost:8081
 ```
+
+**On the VM**, also set:
+```
+FRONTEND_URL=http://coms-4020-006.class.las.iastate.edu:{frontend port}
+```
+
+**Google Cloud Console — one-time setup:**
+In your web application credential, add these to **Authorized redirect URIs**:
+- `http://localhost:8080/login/oauth2/code/google`
+- `http://coms-4020-006.class.las.iastate.edu:8080/login/oauth2/code/google`
 
 ### Frontend
 

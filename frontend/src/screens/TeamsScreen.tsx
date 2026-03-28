@@ -5,6 +5,7 @@ import {
   TextInput,
   FlatList,
   ActivityIndicator,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Team, TeamMember } from '../types/Teams';
@@ -26,6 +27,8 @@ interface Props {
 
 export default function ClassTeamsScreen({ userRole }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { width } = useWindowDimensions();
+  const numColumns = width < 640 ? 1 : width < 960 ? 2 : width < 1280 ? 3 : 4;
   const effectiveRole = normalizeRole(String(userRole));
   const permissions = getUserPermissions(effectiveRole);
 
@@ -121,6 +124,14 @@ export default function ClassTeamsScreen({ userRole }: Props) {
     loadTeams();
   }, [effectiveRole]);
 
+  const teamStats = useMemo(() => ({
+    total: teams.length,
+    good: teams.filter((t) => t.status === 'Good').length,
+    moderate: teams.filter((t) => t.status === 'Moderate').length,
+    poor: teams.filter((t) => t.status === 'Poor').length,
+    unassigned: teams.filter((t) => t.ta === 'Unassigned').length,
+  }), [teams]);
+
   const isStudentView = effectiveRole === 'Student';
   const isTAView = effectiveRole === 'TA';
   const canFilterSemester = effectiveRole === 'Instructor' || effectiveRole === 'HTA';
@@ -212,6 +223,7 @@ export default function ClassTeamsScreen({ userRole }: Props) {
         </Text>
         <View className="mb-4" />
 
+
         {!isStudentView && (
           <>
             {/* Search */}
@@ -281,22 +293,41 @@ export default function ClassTeamsScreen({ userRole }: Props) {
           </>
         )}
 
-      <Text className="text-gray-500 mb-4">
-        Showing {filteredTeams.length} of {teams.length} teams
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
+        <Text className="text-gray-500">
+          Showing {filteredTeams.length} teams
+        </Text>
+        {!isStudentView && teams.length > 0 && (
+          <>
+            {[
+              { label: 'Total',      value: teamStats.total,      color: '#1e3a8a', bg: '#eff6ff' },
+              { label: 'Good',       value: teamStats.good,       color: '#15803d', bg: '#f0fdf4' },
+              { label: 'Moderate',   value: teamStats.moderate,   color: '#92400E', bg: '#fefce8' },
+              { label: 'Poor',       value: teamStats.poor,       color: '#B91C1C', bg: '#fef2f2' },
+              { label: 'Unassigned', value: teamStats.unassigned, color: '#6B7280', bg: '#f9fafb' },
+            ].map((stat) => (
+              <View key={stat.label} style={{ backgroundColor: stat.bg, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: stat.color }}>{stat.value}</Text>
+                <Text style={{ fontSize: 13, color: stat.color, opacity: 0.8 }}>{stat.label}</Text>
+              </View>
+            ))}
+          </>
+        )}
+      </View>
 
         {/* Teams List */}
         <FlatList
+          key={numColumns}
           data={filteredTeams}
           keyExtractor={(_, index) => index.toString()}
-          numColumns={4}
-          columnWrapperStyle={{ gap: 8 }}   // spacing between columns
+          numColumns={numColumns}
+          columnWrapperStyle={numColumns > 1 ? { gap: 8 } : undefined}
           contentContainerStyle={{
             paddingBottom: 40,
-            gap: 8,                          // spacing between rows
+            gap: 8,
           }}
           renderItem={({ item }) => (
-            <View style={{ width: '24.5%' }}>
+            <View style={{ width: `${(100 / numColumns) - 0.5}%` }}>
               <TeamCard {...item} onPress={() => {
                 navigation.navigate('TeamDetail', { team: item, userRole: effectiveRole });
               }}/>

@@ -152,6 +152,7 @@ export function matchContributors(
 export interface GitLabCommitDetail {
   id: string;
   stats: { additions: number; deletions: number; total: number };
+  diffs?: { new_path: string }[];
 }
 
 export interface GitLabMergeRequest {
@@ -235,7 +236,8 @@ export function filterCommitsByMember(
 }
 
 /**
- * Fetches a single commit with diff stats (additions, deletions).
+ * Fetches a single commit's stats (additions, deletions) and file count.
+ * Calls the stats endpoint and the diff endpoint in parallel.
  */
 export async function fetchCommitDetail(
   gitlabUrl: string,
@@ -244,10 +246,12 @@ export async function fetchCommitDetail(
 ): Promise<GitLabCommitDetail> {
   const path = extractProjectPath(gitlabUrl);
   if (!path) throw new Error('Invalid GitLab URL');
-  return gitlabFetch<GitLabCommitDetail>(
-    `${GITLAB_BASE}/projects/${path}/repository/commits/${sha}`,
-    token
-  );
+  const base = `${GITLAB_BASE}/projects/${path}/repository/commits/${sha}`;
+  const [detail, diffs] = await Promise.all([
+    gitlabFetch<GitLabCommitDetail>(base, token),
+    gitlabFetch<{ new_path: string }[]>(`${base}/diff`, token).catch(() => [] as { new_path: string }[]),
+  ]);
+  return { ...detail, diffs };
 }
 
 /**

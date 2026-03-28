@@ -479,7 +479,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         </View>
       </View>
       </View>
-      <MemberComments teamId={team.id} authorNetid={authorNetid} />
+      <MemberComments teamId={team.id} authorNetid={authorNetid} isStudent={userRole === 'Student'} />
 
       {/* Edit Team Info Modal */}
       <Modal

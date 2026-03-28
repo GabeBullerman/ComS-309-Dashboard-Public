@@ -47,7 +47,7 @@ export default function TeamProgressScreen({navigation, route}: TeamMemberDetail
       </View>
 
       {/* TEAM PROGRESS CARD */}
-      <TeamProgress />
+      <TeamProgress readOnly={isStudent} />
 
       {/* MEMBER ATTENDANCE + GITLAB STATS */}
       <View className="flex-row gap-4 mt-4">
