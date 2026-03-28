@@ -12,9 +12,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { Ionicons } from "@expo/vector-icons";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'SidebarLayout'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'DashboardScreen'>;
 
-export default function SidebarLayout({route}: Props) {
+export default function DashboardScreen({route}: Props) {
   const [activeScreen, setActiveScreen] = useState("Teams");
   const [displayName, setDisplayName] = useState("User");
   // Get permissions based on role

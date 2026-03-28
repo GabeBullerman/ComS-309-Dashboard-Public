@@ -6,14 +6,14 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import LoginPage from './src/components/LoginPage';
-import LandingPage from './src/components/LandingPage';
+import LoginPage from './src/screens/LoginPage';
+import LandingPage from './src/screens/LandingPage';
 import TAManager from "./src/screens/TAManager";
 import TeamsScreen from './src/screens/TeamsScreen';
 import CoursesScreen from "./src/screens/Courses";
-import SidebarLayout from "./src/components/SidebarLayout";
+import DashboardScreen from "./src/screens/DashboardScreen";
 import TeamDetailScreen from "./src/screens/TeamDetail";
-import { logout as apiLogout } from './src/utils/auth';
+import { logout as apiLogout, storeToken, getRoleFromToken, getToken } from './src/utils/auth';
 import type { UserRole } from './src/utils/auth';
 import { Team, TeamMember } from "@/data/teams";
 import TeamMemberDetail from "@/screens/TeamMemberDetail";
@@ -32,7 +32,7 @@ export type RootStackParamList = {
   Courses: undefined;
   Landing: { userEmail: string; onLogout: () => void };
   Login: { onLogin: (email: string, role?: string) => void };
-  SidebarLayout: { userRole: UserRole; onLogout: () => void };
+  DashboardScreen: { userRole: UserRole; onLogout: () => void };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -43,15 +43,43 @@ export default function App() {
   const [userEmail, setUserEmail] = useState('');
   const [userRole, setUserRole] = useState<UserRole>('Student');
 
+  // Handle redirect back from backend Google OAuth (web only)
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const hash = window.location.hash;
+    if (!hash.startsWith('#googleToken=')) return;
+
+    const token = hash.slice('#googleToken='.length);
+    // Clear the token from the URL immediately
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
+    storeToken(token).then(() => {
+      const role = getRoleFromToken(token);
+      handleLogin('', role);
+    }).catch(() => {
+      console.warn('Failed to store Google OAuth token');
+    });
+  }, []);
+
   useEffect(() => {
     // Only auto-login during development to avoid accidental persistence in production
     if (!__DEV__) return;
 
     const loadUser = async () => {
       try {
+        const token = await getToken();
+        if (token) {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const isExpired = payload.exp && (Date.now() / 1000) > payload.exp;
+          if (isExpired) {
+            await AsyncStorage.multiRemove(['userEmail', 'user_role']);
+            return;
+          }
+        }
+
         const email = await AsyncStorage.getItem('userEmail');
         const role = await AsyncStorage.getItem('user_role');
-        if (email) {
+        if (email && token) {
           setUserEmail(email);
           setIsLoggedIn(true);
           if (role) setUserRole(role as UserRole);
@@ -113,7 +141,7 @@ export default function App() {
           </Stack.Screen>
         ) : (
           <>
-            <Stack.Screen name="SidebarLayout" component={SidebarLayout} options={{ headerShown: false, title: 'Dashboard' }} initialParams={{ userRole, onLogout: handleLogout }} />
+            <Stack.Screen name="DashboardScreen" component={DashboardScreen} options={{ headerShown: false, title: 'Dashboard' }} initialParams={{ userRole, onLogout: handleLogout }} />
             <Stack.Screen name="TAManager" component={TAManager} options={{ headerShown: false }} />
             <Stack.Screen name="TeamDetail" component={TeamDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen name="TeamMemberDetail" component={TeamMemberDetail} options={{ headerShown: false }} />
