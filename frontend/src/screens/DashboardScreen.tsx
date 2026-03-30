@@ -11,6 +11,7 @@ import { getCurrentUser } from "../api/users";
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { Ionicons } from "@expo/vector-icons";
+import UploadScreen from "./UploadScreen";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DashboardScreen'>;
 
@@ -51,6 +52,8 @@ export default function DashboardScreen({route}: Props) {
       ? [{ label: "Assign Tasks", mobileLabel: "Assign", icon: "clipboard-outline" }] : []),
     ...(permissions.canManageTAs
       ? [{ label: "TA Manager",   mobileLabel: "TAs",    icon: "shield-outline" }] : []),
+    ...(role == 'Instructor' || role == "HTA"
+      ? [{ label: "Upload",   mobileLabel: "Upload",    icon: "cloud-upload-outline" }] : []),
     ...(role !== 'Instructor'
       ? [{ label: "Tasks",        mobileLabel: "Tasks",  icon: "checkmark-circle-outline" }] : []),
     ...(permissions.canAccessCourses
@@ -64,6 +67,7 @@ export default function DashboardScreen({route}: Props) {
       case "Courses":      return <CoursesScreen />;
       case "Assign Tasks": return <TaskAssignmentScreen />;
       case "TA Manager":   return <TAManager />;
+      case "Upload":       return <UploadScreen/>;
       case "Tasks":        return <AssignmentsScreen />;
       case "Profile":      return <ProfileScreen userRole={role} onLogout={isMobile ? route.params.onLogout : undefined} />;
       default:             return <TeamsScreen userRole={route.params.userRole} />;
