@@ -26,6 +26,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(UserController.class)
@@ -52,6 +53,9 @@ class UserControllerTest {
 
     @MockBean
     private JwtFilter jwtFilter;
+
+    @MockBean
+    private PasswordEncoder passwordEncoder;
 
     @Test
     void list_returnsUsers() throws Exception {
@@ -82,6 +86,7 @@ class UserControllerTest {
         role.setRoleName("TA");
 
         when(userRepository.existsByNetid("alex1")).thenReturn(false);
+        when(passwordEncoder.encode("pw")).thenReturn("encoded-pw");
         when(roleRepository.findByRoleName("TA")).thenReturn(Optional.of(role));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
             User saved = invocation.getArgument(0);
