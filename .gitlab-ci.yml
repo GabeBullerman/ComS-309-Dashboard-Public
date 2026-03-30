@@ -10,6 +10,13 @@ stages:
 default:
   interruptible: true
 
+pipeline-smoke:
+  stage: test
+  image: alpine:3.20
+  script:
+    - echo "Pipeline smoke check"
+    - echo "source=$CI_PIPELINE_SOURCE branch=$CI_COMMIT_REF_NAME sha=$CI_COMMIT_SHORT_SHA"
+
 backend-tests:
   stage: test
   image: maven:3.9.9-eclipse-temurin-17
