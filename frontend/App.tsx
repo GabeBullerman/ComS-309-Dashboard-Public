@@ -8,6 +8,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginPage from './src/screens/LoginPage';
 import TAManager from "./src/screens/TAManager";
+import UploadScreen from "./src/screens/UploadScreen";
 import CoursesScreen from "./src/screens/Courses";
 import DashboardScreen from "./src/screens/DashboardScreen";
 import TeamDetailScreen from "./src/screens/TeamDetail";
@@ -28,6 +29,8 @@ export type RootStackParamList = {
   Teams: {userRole: UserRole};
   TAManager: undefined;
   Courses: undefined;
+  Upload: undefined;
+  Landing: { userEmail: string; onLogout: () => void };
   Login: { onLogin: (email: string, role?: string) => void };
   DashboardScreen: { userRole: UserRole; onLogout: () => void };
 };
@@ -136,6 +139,10 @@ export default function App() {
             <Stack.Screen name="TeamDetail" component={TeamDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen name="TeamMemberDetail" component={TeamMemberDetail} options={{ headerShown: false }} />
             <Stack.Screen name="Courses" component={CoursesScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Upload" component={UploadScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Landing" options={{ headerShown: false }}>
+              {(props) => <LandingPage {...props} userEmail={userEmail} onLogout={handleLogout} />}
+            </Stack.Screen>
           </>
         )}
       </Stack.Navigator>

@@ -141,7 +141,6 @@ export default function TaskAssignmentScreen() {
         .map((r) => r.value);
       const failedCount = results.filter((r) => r.status === 'rejected').length;
       setMyTasks((prev) => [...created, ...prev]);
-      // Store the label for each created task so the display shows the right recipient name
       setTaskLabelMap((prev) => {
         const next = { ...prev };
         for (const t of created) next[t.id] = recipientLabel;
@@ -163,7 +162,6 @@ export default function TaskAssignmentScreen() {
     }
   };
 
-
   const recipientOptions: { key: RecipientType; label: string }[] = isHtaOrInstructor
     ? [
         { key: 'specific-ta', label: 'Specific TA' },
@@ -177,10 +175,28 @@ export default function TaskAssignmentScreen() {
       ];
 
   if (loading) return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+    <View className="flex-1 items-center justify-center">
       <ActivityIndicator size="large" color="#C8102E" />
     </View>
   );
+
+  // ── Task grouping logic ────────────────────────────────────────────────────
+  const taskGroups = (() => {
+    const map = new Map<string, { rep: typeof myTasks[0]; ids: number[]; netids: string[] }>();
+    for (const t of myTasks) {
+      const key = `${t.title}||${t.description ?? ''}||${t.dueDate ?? ''}`;
+      if (!map.has(key)) map.set(key, { rep: t, ids: [], netids: [] });
+      const g = map.get(key)!;
+      g.ids.push(t.id);
+      if (t.assignedToNetid) g.netids.push(t.assignedToNetid);
+    }
+    return [...map.values()].sort((a, b) => (a.rep.dueDate ?? '').localeCompare(b.rep.dueDate ?? ''));
+  })();
+
+  const handleDeleteGroup = async (ids: number[]) => {
+    await Promise.allSettled(ids.map((id) => deleteTask(id)));
+    setMyTasks((prev) => prev.filter((t) => !ids.includes(t.id)));
+  };
 
   const pad = isMobile ? 12 : 24;
 
@@ -188,23 +204,25 @@ export default function TaskAssignmentScreen() {
         <View style={{ width: isMobile ? undefined : 300, backgroundColor: 'white', borderRadius: 12, padding: 20, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: isMobile ? 12 : 0 }}>
           <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 16, color: '#111827' }}>New Task</Text>
 
-          <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151', marginBottom: 4 }}>Title *</Text>
+          {/* Title */}
+          <Text className="text-xs font-semibold text-gray-700 mb-1">Title *</Text>
           <TextInput
             value={title}
             onChangeText={setTitle}
             placeholder="Task title"
             placeholderTextColor="#9ca3af"
-            style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12, fontSize: 14 }}
+            className="border border-gray-300 rounded-lg px-3 py-2 mb-3 text-sm"
           />
 
-          <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151', marginBottom: 4 }}>Description</Text>
+          {/* Description */}
+          <Text className="text-xs font-semibold text-gray-700 mb-1">Description</Text>
           <TextInput
             value={description}
             onChangeText={setDescription}
             placeholder="Optional description"
             placeholderTextColor="#9ca3af"
             multiline
-            style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12, fontSize: 14, height: 72, textAlignVertical: 'top' }}
+            className="border border-gray-300 rounded-lg px-3 py-2 mb-3 text-sm h-18 text-top"
           />
 
           <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151', marginBottom: 4 }}>Due Date</Text>
@@ -228,18 +246,22 @@ export default function TaskAssignmentScreen() {
               />
           }
 
-          <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151', marginBottom: 8 }}>Assign To</Text>
-          <View style={{ gap: 6, marginBottom: 12 }}>
+          {/* Assign To */}
+          <Text className="text-xs font-semibold text-gray-700 mb-2">Assign To</Text>
+          <View className="gap-1.5 mb-3">
             {recipientOptions.map((opt) => (
               <TouchableOpacity
                 key={opt.key}
                 onPress={() => setRecipientType(opt.key)}
-                style={{
-                  paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
-                  backgroundColor: recipientType === opt.key ? '#C8102E' : '#f3f4f6',
-                }}
+                className={`px-3 py-2 rounded-lg ${
+                  recipientType === opt.key ? 'bg-red-700' : 'bg-gray-100'
+                }`}
               >
-                <Text style={{ color: recipientType === opt.key ? 'white' : '#374151', fontSize: 13, fontWeight: '500' }}>
+                <Text
+                  className={`text-sm font-medium ${
+                    recipientType === opt.key ? 'text-white' : 'text-gray-700'
+                  }`}
+                >
                   {opt.label}
                 </Text>
               </TouchableOpacity>
@@ -249,22 +271,31 @@ export default function TaskAssignmentScreen() {
           {/* TA picker */}
           {recipientType === 'specific-ta' && (
             <>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Select TA</Text>
-              <ScrollView style={{ maxHeight: 120, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, marginBottom: 12 }}>
-                {tas.length === 0
-                  ? <Text style={{ padding: 12, color: '#9ca3af', fontSize: 13 }}>No TAs found.</Text>
-                  : tas.map((ta) => (
+              <Text className="text-xs font-semibold text-gray-700 mb-1.5">Select TA</Text>
+              <ScrollView className="max-h-28 border border-gray-200 rounded-lg mb-3">
+                {tas.length === 0 ? (
+                  <Text className="p-3 text-gray-400 text-sm">No TAs found.</Text>
+                ) : (
+                  tas.map((ta) => (
                     <TouchableOpacity
                       key={ta.netid}
                       onPress={() => setSelectedTANetid(ta.netid ?? null)}
-                      style={{ paddingHorizontal: 12, paddingVertical: 8, backgroundColor: selectedTANetid === ta.netid ? '#FEE2E2' : 'transparent' }}
+                      className={`px-3 py-2 ${
+                        selectedTANetid === ta.netid ? 'bg-red-100' : 'bg-transparent'
+                      }`}
                     >
-                      <Text style={{ fontSize: 13, color: selectedTANetid === ta.netid ? '#C8102E' : '#374151', fontWeight: selectedTANetid === ta.netid ? '600' : '400' }}>
+                      <Text
+                        className={`text-sm ${
+                          selectedTANetid === ta.netid
+                            ? 'text-red-700 font-semibold'
+                            : 'text-gray-700 font-normal'
+                        }`}
+                      >
                         {ta.name ?? ta.netid}
                       </Text>
                     </TouchableOpacity>
                   ))
-                }
+                )}
               </ScrollView>
             </>
           )}
@@ -272,35 +303,54 @@ export default function TaskAssignmentScreen() {
           {/* Team picker */}
           {recipientType === 'specific-team' && (
             <>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Select Team</Text>
-              <ScrollView style={{ maxHeight: 120, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, marginBottom: 12 }}>
-                {teams.length === 0
-                  ? <Text style={{ padding: 12, color: '#9ca3af', fontSize: 13 }}>No teams found.</Text>
-                  : teams.map((team) => (
+              <Text className="text-xs font-semibold text-gray-700 mb-1.5">Select Team</Text>
+              <ScrollView className="max-h-28 border border-gray-200 rounded-lg mb-3">
+                {teams.length === 0 ? (
+                  <Text className="p-3 text-gray-400 text-sm">No teams found.</Text>
+                ) : (
+                  teams.map((team) => (
                     <TouchableOpacity
                       key={team.id}
                       onPress={() => setSelectedTeamId(team.id ?? null)}
-                      style={{ paddingHorizontal: 12, paddingVertical: 8, backgroundColor: selectedTeamId === team.id ? '#FEE2E2' : 'transparent' }}
+                      className={`px-3 py-2 ${
+                        selectedTeamId === team.id ? 'bg-red-100' : 'bg-transparent'
+                      }`}
                     >
-                      <Text style={{ fontSize: 13, color: selectedTeamId === team.id ? '#C8102E' : '#374151', fontWeight: selectedTeamId === team.id ? '600' : '400' }}>
+                      <Text
+                        className={`text-sm ${
+                          selectedTeamId === team.id
+                            ? 'text-red-700 font-semibold'
+                            : 'text-gray-700 font-normal'
+                        }`}
+                      >
                         {team.name}{team.section ? ` · Sec ${team.section}` : ''}
                       </Text>
                     </TouchableOpacity>
                   ))
-                }
+                )}
               </ScrollView>
             </>
           )}
 
+          {/* Submit */}
           <TouchableOpacity
             onPress={handleCreate}
             disabled={submitting || !title.trim()}
-            style={{ backgroundColor: !title.trim() ? '#e5e7eb' : '#C8102E', borderRadius: 8, paddingVertical: 12, alignItems: 'center', marginTop: 4 }}
+            className={`rounded-lg py-3 items-center mt-1 ${
+              !title.trim() ? 'bg-gray-200' : 'bg-red-700'
+            }`}
           >
-            {submitting
-              ? <ActivityIndicator size="small" color="white" />
-              : <Text style={{ color: !title.trim() ? '#9ca3af' : 'white', fontWeight: '600', fontSize: 14 }}>Create Task</Text>
-            }
+            {submitting ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Text
+                className={`font-semibold text-sm ${
+                  !title.trim() ? 'text-gray-400' : 'text-white'
+                }`}
+              >
+                Create Task
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
   );
