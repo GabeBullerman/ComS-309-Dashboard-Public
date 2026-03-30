@@ -1,0 +1,47 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+stages:
+  - test
+  - quality
+
+default:
+  interruptible: true
+
+backend-tests:
+  stage: test
+  image: maven:3.9.9-eclipse-temurin-17
+  variables:
+    MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .m2/repository
+  before_script:
+    - cd Backend
+    - chmod +x mvnw
+  script:
+    - ./mvnw --batch-mode test
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+      - Backend/target/surefire-reports/
+      - Backend/target/site/jacoco/
+
+frontend-quality:
+  stage: quality
+  image: node:20
+  allow_failure: true
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - frontend/node_modules/
+  before_script:
+    - cd frontend
+    - npm install
+  script:
+    - npm run lint
+    - npm run type-check
