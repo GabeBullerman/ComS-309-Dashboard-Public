@@ -1,0 +1,207 @@
+import { View, Text, TouchableOpacity, Image, Dimensions, StatusBar, Platform } from "react-native";
+import CoursesScreen from "../screens/Courses";
+import TeamsScreen from "../screens/TeamsScreen";
+import TAManager from "../screens/TAManager";
+import TaskAssignmentScreen from "../screens/TaskAssignmentScreen";
+import AssignmentsScreen from "../screens/AssignmentsScreen";
+import ProfileScreen from "../screens/ProfileScreen";
+import { useEffect, useState } from "react";
+import { getUserPermissions } from "../utils/auth";
+import { getCurrentUser } from "../api/users";
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../App';
+import { Ionicons } from "@expo/vector-icons";
+
+type Props = NativeStackScreenProps<RootStackParamList, 'DashboardScreen'>;
+
+export default function DashboardScreen({route}: Props) {
+  const [activeScreen, setActiveScreen] = useState("Teams");
+  const [displayName, setDisplayName] = useState("User");
+  const permissions = getUserPermissions(route.params.userRole);
+  const screenWidth = Dimensions.get("window").width;
+  const isMobile = screenWidth < 768;
+  const role = route.params.userRole;
+
+  useEffect(() => {
+    let mounted = true;
+    getCurrentUser()
+      .then((user) => {
+        if (!mounted) return;
+        if (user?.name && user.name.trim().length > 0) {
+          setDisplayName(user.name);
+          return;
+        }
+        if (user?.netid && user.netid.trim().length > 0) {
+          setDisplayName(user.netid);
+        }
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
+  const initials = displayName
+    .split(" ")
+    .map((n: string) => n[0])
+    .join("")
+    .toUpperCase();
+
+  const navItems = [
+    { label: "Teams",        mobileLabel: "Teams",  icon: "people-outline" },
+    ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
+      ? [{ label: "Assign Tasks", mobileLabel: "Assign", icon: "clipboard-outline" }] : []),
+    ...(permissions.canManageTAs
+      ? [{ label: "TA Manager",   mobileLabel: "TAs",    icon: "shield-outline" }] : []),
+    ...(role !== 'Instructor'
+      ? [{ label: "Tasks",        mobileLabel: "Tasks",  icon: "checkmark-circle-outline" }] : []),
+    ...(permissions.canAccessCourses
+      ? [{ label: "Courses",      mobileLabel: "Courses",icon: "book-outline" }] : []),
+    { label: "Profile",      mobileLabel: "Profile",icon: "person-circle-outline" },
+  ] as { label: string; mobileLabel: string; icon: string }[];
+
+  const renderScreen = () => {
+    switch (activeScreen) {
+      case "Teams":        return <TeamsScreen userRole={route.params.userRole} />;
+      case "Courses":      return <CoursesScreen />;
+      case "Assign Tasks": return <TaskAssignmentScreen />;
+      case "TA Manager":   return <TAManager />;
+      case "Tasks":        return <AssignmentsScreen />;
+      case "Profile":      return <ProfileScreen userRole={role} onLogout={isMobile ? route.params.onLogout : undefined} />;
+      default:             return <TeamsScreen userRole={route.params.userRole} />;
+    }
+  };
+
+  const renderSidebarContent = () => (
+    <>
+      <View className="p-4 border-b border-white/10">
+        <Image
+          source={require("../Images/Iowa_State_Cyclones_logo.png")}
+          style={{ width: 80, height: 80, transform: [{ scale: 1.2 }], alignSelf: 'center' }}
+          resizeMode="contain"
+        />
+        <Text className="text-white text-lg font-bold text-center mt-1">
+          Class Dashboard
+        </Text>
+        <Text className="text-yellow-200 mb-6 text-center">
+          Iowa State University
+        </Text>
+      </View>
+
+      {navItems.filter(i => i.label !== 'Profile').map((item) => {
+        const isActive = activeScreen === item.label;
+        return (
+          <TouchableOpacity
+            key={item.label}
+            onPress={() => setActiveScreen(item.label)}
+            className={`flex-row items-center gap-3 rounded-lg px-4 py-3 mb-2 ${isActive ? "bg-yellow-400" : ""}`}
+          >
+            <Ionicons
+              name={item.icon as any}
+              size={18}
+              color={isActive ? "#713f12" : "rgba(255,255,255,0.85)"}
+            />
+            <Text className={`font-medium ${isActive ? "text-yellow-900" : "text-white"}`}>
+              {item.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+
+      {/* User Section */}
+      <View className="mt-auto pt-6 border-t border-white/10">
+        <TouchableOpacity
+          className="flex-row items-center gap-3"
+          onPress={() => setActiveScreen('Profile')}
+        >
+          <View className="w-10 h-10 rounded-full bg-[#F1BE48] items-center justify-center">
+            <Text className="text-gray-800 font-semibold">{initials}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text className="font-semibold text-sm text-white">{displayName}</Text>
+            <Text className="text-xs text-white/70">{role} · Profile</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.5)" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={route.params.onLogout}
+          className="mt-4 px-4 py-2 bg-red-600 rounded-lg"
+        >
+          <Text className="text-white text-sm font-medium text-center">Logout</Text>
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+
+  // ── Mobile layout: content + bottom tab bar ───────────────────────────────
+  const TAB_BAR_HEIGHT = Platform.OS === 'android' ? 58 : 72;
+
+  if (isMobile) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+        {/* Push content below Android status bar */}
+        {Platform.OS === 'android' && (
+          <View style={{ height: StatusBar.currentHeight ?? 0, backgroundColor: '#b91c1c' }} />
+        )}
+
+        {/* Screen content — padded so it doesn't hide behind the fixed tab bar */}
+        <View style={{ flex: 1, paddingBottom: TAB_BAR_HEIGHT }}>
+          {renderScreen()}
+        </View>
+
+        {/* Bottom tab bar — absolutely pinned to the bottom */}
+        <View style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          flexDirection: 'row',
+          backgroundColor: '#b91c1c',
+          paddingTop: 6,
+          paddingBottom: Platform.OS === 'android' ? 8 : 20,
+          borderTopWidth: 1,
+          borderTopColor: 'rgba(255,255,255,0.15)',
+        }}>
+          {navItems.map((item) => {
+            const isActive = activeScreen === item.label;
+            return (
+              <TouchableOpacity
+                key={item.label}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 4 }}
+                onPress={() => setActiveScreen(item.label)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={item.icon as any}
+                  size={22}
+                  color={isActive ? '#F1BE48' : 'rgba(255,255,255,0.65)'}
+                />
+                <Text style={{
+                  color: isActive ? '#F1BE48' : 'rgba(255,255,255,0.65)',
+                  fontSize: 10,
+                  marginTop: 2,
+                  fontWeight: isActive ? '600' : '400',
+                }}>
+                  {item.mobileLabel}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    );
+  }
+
+  // ── Desktop layout: sidebar + content ────────────────────────────────────
+  return (
+    <View className="flex-1 bg-gray-100">
+      <View className="flex-1 flex-row">
+        <View className="w-60 bg-red-700 p-5">
+          {renderSidebarContent()}
+        </View>
+        <View className="flex-1">
+          {renderScreen()}
+        </View>
+      </View>
+    </View>
+  );
+}

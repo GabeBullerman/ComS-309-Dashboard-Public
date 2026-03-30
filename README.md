@@ -53,6 +53,8 @@ SPRING_DATASOURCE_USERNAME=postgres
 SPRING_DATASOURCE_PASSWORD=postgres
 SERVER_PORT=8080
 JWT_SECRET=Pu5XofXF6IEnT0ud+uLJ2rfe96Wyr/OWRoIp7F8A8PM
+GOOGLE_CLIENT_ID=124195890479-kh157q1foah7sc96ckjbvdvrdt9esu0q.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 EOF
 
 # Kill existing backend and restart
@@ -187,14 +189,41 @@ SPRING_DATASOURCE_USERNAME=postgres
 SPRING_DATASOURCE_PASSWORD=postgres
 SERVER_PORT=8080
 JWT_SECRET={base64-encoded-secret}
+
+# Google OAuth (backend-initiated flow)
+GOOGLE_CLIENT_ID=124195890479-kh157q1foah7sc96ckjbvdvrdt9esu0q.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET={secret from Google Cloud Console → web application credentials}
+FRONTEND_URL=http://localhost:8081
 ```
 
-### Frontend
-
-API base URL is set in `frontend/src/utils/auth.ts`:
-```typescript
-let apiBaseUrl = 'http://coms-4020-006.class.las.iastate.edu:8080';
+**On the VM**, also set:
 ```
+FRONTEND_URL=http://coms-4020-006.class.las.iastate.edu:{frontend port}
+```
+
+**Google Cloud Console — one-time setup:**
+In your web application credential, add these to **Authorized redirect URIs**:
+- `http://localhost:8080/login/oauth2/code/google`
+- `http://coms-4020-006.class.las.iastate.edu:8080/login/oauth2/code/google`
+
+### Frontend (`.env.local` — gitignored, optional)
+
+By default the app points to the VM backend. For local development, create
+`frontend/.env.local` to override:
+
+```
+# Android emulator → host machine's localhost
+EXPO_PUBLIC_API_URL=http://10.0.2.2:8080
+
+# iOS simulator → host machine's localhost
+# EXPO_PUBLIC_API_URL=http://localhost:8080
+
+# Comment out entirely when testing on web (web uses localhost directly)
+```
+
+> **Note:** `.env.local` is baked into the Metro bundle at build time.
+> After changing it you must restart Metro (`npx expo start --clear`) or
+> rebuild for Android (`npx expo run:android --clear`).
 
 ## CORS Configuration
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,68 +8,49 @@ import {
   Modal,
   Pressable,
 } from "react-native";
- 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
- 
-const GITLAB_URL = "https://gitlab.com/your-org/your-repo";
- 
-const commitSizeData = [
-  { week: "W1", label: "Jan 27 – Feb 2",  additions: 420,  deletions: 130, files: 6  },
-  { week: "W2", label: "Feb 3 – Feb 9",   additions: 890,  deletions: 240, files: 14 },
-  { week: "W3", label: "Feb 10 – Feb 16", additions: 310,  deletions: 80,  files: 4  },
-  { week: "W4", label: "Feb 17 – Feb 23", additions: 1240, deletions: 560, files: 22 },
-  { week: "W5", label: "Feb 24 – Mar 2",  additions: 670,  deletions: 200, files: 9  },
-  { week: "W6", label: "Mar 3 – Mar 9",   additions: 530,  deletions: 170, files: 7  },
-  { week: "W7", label: "Mar 10 – Mar 16", additions: 980,  deletions: 390, files: 16 },
-  { week: "W8", label: "Mar 17 – Mar 23", additions: 750,  deletions: 310, files: 11 },
-];
- 
-const commitFrequencyData = [
-  { week: "W1", commits: 8  },
-  { week: "W2", commits: 15 },
-  { week: "W3", commits: 5  },
-  { week: "W4", commits: 21 },
-  { week: "W5", commits: 12 },
-  { week: "W6", commits: 9  },
-  { week: "W7", commits: 18 },
-  { week: "W8", commits: 14 },
-];
- 
-const mergeRequestData = [
-  { week: "W1", opened: 2, merged: 1, closed: 0 },
-  { week: "W2", opened: 4, merged: 3, closed: 1 },
-  { week: "W3", opened: 1, merged: 2, closed: 0 },
-  { week: "W4", opened: 6, merged: 4, closed: 2 },
-  { week: "W5", opened: 3, merged: 3, closed: 1 },
-  { week: "W6", opened: 2, merged: 2, closed: 0 },
-  { week: "W7", opened: 5, merged: 4, closed: 1 },
-  { week: "W8", opened: 3, merged: 3, closed: 0 },
-];
- 
-const WEEKS = commitSizeData.map((d) => ({ week: d.week, label: d.label }));
- 
+import {
+  getGitLabToken,
+  buildWeekBuckets,
+  fetchAllCommitsSince,
+  filterCommitsByMember,
+  fetchCommitDetail,
+  fetchMemberMergeRequests,
+  WeekBucket,
+} from "@/utils/gitlab";
+
+// ─── Data Types ───────────────────────────────────────────────────────────────
+
+type CommitSizeWeek   = { week: string; label: string; additions: number; deletions: number; files: number };
+type CommitFreqWeek   = { week: string; commits: number };
+type MRWeek           = { week: string; opened: number; merged: number; closed: number };
+type WeekMeta         = { week: string; label: string };
+
 const CHART_H = 140;
- 
+
 // ─── Week Dropdown ────────────────────────────────────────────────────────────
- 
+
 function WeekDropdown({
+  weeks,
   selectedWeek,
   onSelect,
 }: {
+  weeks: WeekMeta[];
   selectedWeek: string;
   onSelect: (week: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [dropdownPos, setDropdownPos] = useState({ x: 0, y: 0, width: 0 });
-  const triggerRef = useRef<TouchableOpacity>(null);
-  const selected = WEEKS.find((w) => w.week === selectedWeek)!;
+  const triggerRef = useRef<View>(null);
+  const selected = weeks.find((w) => w.week === selectedWeek) ?? weeks[weeks.length - 1];
 
   const openDropdown = () => {
-    triggerRef.current?.measure((fx, fy, width, height, px, py) => {
+    triggerRef.current?.measure((_fx: number, _fy: number, width: number, height: number, px: number, py: number) => {
       setDropdownPos({ x: px, y: py + height, width });
       setOpen(true);
     });
   };
+
+  if (!selected) return null;
 
   return (
     <View>
@@ -96,14 +77,14 @@ function WeekDropdown({
               minWidth: Math.max(dropdownPos.width, 200),
             }}
           >
-            {WEEKS.map((w, i) => {
+            {weeks.map((w, i) => {
               const isActive = w.week === selectedWeek;
               return (
                 <TouchableOpacity
                   key={w.week}
                   onPress={() => { onSelect(w.week); setOpen(false); }}
                   className={`flex-row items-center justify-between px-4 py-2.5 ${
-                    i < WEEKS.length - 1 ? "border-b border-[#ececec]" : ""
+                    i < weeks.length - 1 ? "border-b border-[#ececec]" : ""
                   } ${isActive ? "bg-[#fff0f0]" : "bg-white"}`}
                   activeOpacity={0.7}
                 >
@@ -121,9 +102,9 @@ function WeekDropdown({
     </View>
   );
 }
- 
+
 // ─── Shared: Legend ───────────────────────────────────────────────────────────
- 
+
 function Legend({ items, className }: { items: { label: string; color: string }[]; className?: string }) {
   return (
     <View className={`flex-row gap-3 mb-2.5 ${className || ""}`}>
@@ -136,9 +117,9 @@ function Legend({ items, className }: { items: { label: string; color: string }[
     </View>
   );
 }
- 
+
 // ─── Shared: Stats Row ────────────────────────────────────────────────────────
- 
+
 function StatsRow({ stats }: { stats: { label: string; value: string; color: string }[] }) {
   return (
     <View className="flex-row justify-around mt-3.5">
@@ -151,18 +132,18 @@ function StatsRow({ stats }: { stats: { label: string; value: string; color: str
     </View>
   );
 }
- 
+
 // ─── Commit Size Chart ────────────────────────────────────────────────────────
- 
-function CommitSizeChart({ selectedWeek }: { selectedWeek: string }) {
-  const d = commitSizeData.find((x) => x.week === selectedWeek)!;
-  const maxVal = Math.max(d.additions, d.deletions);
- 
+
+function CommitSizeChart({ data, selectedWeek }: { data: CommitSizeWeek[]; selectedWeek: string }) {
+  const d = data.find((x) => x.week === selectedWeek) ?? { additions: 0, deletions: 0, files: 0, week: '', label: '' };
+  const maxVal = Math.max(d.additions, d.deletions, 1);
+
   return (
     <View>
       <Text className="text-[#7B82A0] text-xs mb-2">Lines added / removed</Text>
       <Legend items={[{ label: "Additions", color: "#31C48D" }, { label: "Deletions", color: "#978282" }]} className="pb-8" />
- 
+
       <View className="flex-row items-end gap-8 px-8" style={{ height: CHART_H }}>
         {/* Additions bar */}
         <View className="flex-1 items-center justify-end h-full gap-1">
@@ -173,7 +154,7 @@ function CommitSizeChart({ selectedWeek }: { selectedWeek: string }) {
           />
           <Text className="text-[#7B82A0] text-[10px] mt-1">Additions</Text>
         </View>
- 
+
         {/* Deletions bar */}
         <View className="flex-1 items-center justify-end h-full gap-1">
           <Text className="text-[#978282] text-xs font-bold">{d.deletions.toLocaleString()}</Text>
@@ -184,26 +165,26 @@ function CommitSizeChart({ selectedWeek }: { selectedWeek: string }) {
           <Text className="text-[#7B82A0] text-[10px] mt-1">Deletions</Text>
         </View>
       </View>
- 
+
       <StatsRow stats={[
-        { label: "Additions", value: d.additions.toLocaleString(), color: "#31C48D" },
-        { label: "Deletions", value: d.deletions.toLocaleString(), color: "#978282" },
-        { label: "Files Changed", value: String(d.files),          color: "#6E57E0" },
+        { label: "Additions",     value: d.additions.toLocaleString(), color: "#31C48D" },
+        { label: "Deletions",     value: d.deletions.toLocaleString(), color: "#978282" },
+        { label: "Files Changed", value: String(d.files),              color: "#6E57E0" },
       ]} />
     </View>
   );
 }
- 
+
 // ─── Commit Frequency Chart ───────────────────────────────────────────────────
- 
-function CommitFrequencyChart({ selectedWeek }: { selectedWeek: string }) {
-  const d = commitFrequencyData.find((x) => x.week === selectedWeek)!;
-  const maxVal = Math.max(...commitFrequencyData.map((x) => x.commits));
- 
+
+function CommitFrequencyChart({ data, selectedWeek }: { data: CommitFreqWeek[]; selectedWeek: string }) {
+  const d = data.find((x) => x.week === selectedWeek) ?? { week: '', commits: 0 };
+  const maxVal = Math.max(...data.map((x) => x.commits), 1);
+
   return (
     <View>
       <Text className="text-[#7B82A0] text-xs mb-12">Commits this week</Text>
- 
+
       <View className="items-center justify-end px-16" style={{ height: CHART_H }}>
         <Text className="text-[#6E57E0] text-lg font-bold mb-2">{d.commits}</Text>
         <View
@@ -212,30 +193,30 @@ function CommitFrequencyChart({ selectedWeek }: { selectedWeek: string }) {
         />
         <Text className="text-[#7B82A0] text-[10px] mt-2">Commits</Text>
       </View>
- 
+
       <StatsRow stats={[
         { label: "This Week",  value: String(d.commits), color: "#6E57E0" },
         { label: "Season Max", value: String(maxVal),     color: "#6E57E0" },
-        { label: "vs Max",     value: `${Math.round((d.commits / maxVal) * 100)}%`, color: "#6E57E0" },
+        { label: "vs Max",     value: `${Math.round((d.commits / Math.max(maxVal, 1)) * 100)}%`, color: "#6E57E0" },
       ]} />
     </View>
   );
 }
- 
+
 // ─── Merge Request Chart ──────────────────────────────────────────────────────
- 
-function MergeRequestChart({ selectedWeek }: { selectedWeek: string }) {
-  const d = mergeRequestData.find((x) => x.week === selectedWeek)!;
+
+function MergeRequestChart({ data, selectedWeek }: { data: MRWeek[]; selectedWeek: string }) {
+  const d = data.find((x) => x.week === selectedWeek) ?? { week: '', opened: 0, merged: 0, closed: 0 };
   const MR_KEYS   = ["opened", "merged", "closed"] as const;
   const MR_LABELS = ["Opened", "Merged", "Closed"];
   const MR_COLORS = ["#E53935", "#31C48D", "#978282"];
   const maxVal    = Math.max(d.opened, d.merged, d.closed, 1);
- 
+
   return (
     <View>
       <Text className="text-[#7B82A0] text-xs mb-2">Merge requests this week</Text>
       <Legend items={MR_LABELS.map((label, i) => ({ label, color: MR_COLORS[i] }))} className="pb-8"/>
- 
+
       <View className="flex-row items-end gap-4 px-8" style={{ height: CHART_H }}>
         {MR_KEYS.map((key, ki) => (
           <View key={key} className="flex-1 items-center justify-end h-full gap-1">
@@ -251,7 +232,7 @@ function MergeRequestChart({ selectedWeek }: { selectedWeek: string }) {
           </View>
         ))}
       </View>
- 
+
       <StatsRow stats={MR_KEYS.map((key, i) => ({
         label: MR_LABELS[i],
         value: String(d[key]),
@@ -260,24 +241,115 @@ function MergeRequestChart({ selectedWeek }: { selectedWeek: string }) {
     </View>
   );
 }
- 
+
 // ─── Tabs Config ──────────────────────────────────────────────────────────────
- 
+
 const TABS = [
   { id: "size",      label: "Commit Size",    icon: "⬡" },
   { id: "frequency", label: "Frequency",      icon: "◈" },
   { id: "mrs",       label: "Merge Requests", icon: "⬀" },
 ];
- 
+
 // ─── Main Component ───────────────────────────────────────────────────────────
- 
-export default function GitLabStatsPanel() {
+
+export default function GitLabStatsPanel({
+  gitlabUrl,
+  memberNetid,
+  memberName,
+}: {
+  gitlabUrl?: string;
+  memberNetid?: string;
+  memberName?: string;
+}) {
   const [activeTab, setActiveTab] = useState("size");
   const [selectedWeek, setSelectedWeek] = useState("W8");
- 
+  const [weeks, setWeeks] = useState<WeekMeta[]>([]);
+  const [commitSizeData, setCommitSizeData] = useState<CommitSizeWeek[]>([]);
+  const [commitFreqData, setCommitFreqData] = useState<CommitFreqWeek[]>([]);
+  const [mrData, setMRData] = useState<MRWeek[]>([]);
+
+  useEffect(() => {
+    if (!gitlabUrl || !memberNetid) return;
+
+    (async () => {
+      const token = await getGitLabToken();
+      if (!token) return;
+
+      const buckets: WeekBucket[] = buildWeekBuckets(8);
+      setWeeks(buckets.map((b) => ({ week: b.week, label: b.label })));
+      setSelectedWeek(`W${buckets.length}`); // default to most recent
+
+      const since = buckets[0].start.toISOString();
+
+      const allCommits = await fetchAllCommitsSince(gitlabUrl, token, since).catch(() => []);
+      const commits = filterCommitsByMember(allCommits, memberNetid, memberName ?? '');
+
+      // Fetch individual commit details for additions/deletions (parallel)
+      const details = await Promise.all(
+        commits.map((c: { id: string }) =>
+          fetchCommitDetail(gitlabUrl, token, c.id).catch(() => ({
+            id: c.id,
+            stats: { additions: 0, deletions: 0, total: 0 },
+          }))
+        )
+      );
+      const statsBySha: Record<string, { additions: number; deletions: number; files: number }> =
+        Object.fromEntries(details.map((d: { id: string; stats: { additions: number; deletions: number }; diffs?: { new_path: string }[] }) => [
+          d.id,
+          { ...d.stats, files: d.diffs?.length ?? 0 },
+        ]));
+
+      // Group into weekly buckets
+      const sizeData: CommitSizeWeek[] = buckets.map((bucket) => {
+        const weekCommits = commits.filter((c: { created_at: string }) => {
+          const t = new Date(c.created_at).getTime();
+          return t >= bucket.start.getTime() && t < bucket.end.getTime();
+        });
+        return {
+          week: bucket.week,
+          label: bucket.label,
+          additions: weekCommits.reduce((sum: number, c: { id: string }) => sum + (statsBySha[c.id]?.additions ?? 0), 0),
+          deletions: weekCommits.reduce((sum: number, c: { id: string }) => sum + (statsBySha[c.id]?.deletions ?? 0), 0),
+          files: weekCommits.reduce((sum: number, c: { id: string }) => sum + (statsBySha[c.id]?.files ?? 0), 0),
+        };
+      });
+      setCommitSizeData(sizeData);
+
+      const freqData: CommitFreqWeek[] = buckets.map((bucket) => ({
+        week: bucket.week,
+        commits: commits.filter((c: { created_at: string }) => {
+          const t = new Date(c.created_at).getTime();
+          return t >= bucket.start.getTime() && t < bucket.end.getTime();
+        }).length,
+      }));
+      setCommitFreqData(freqData);
+
+      // Fetch MRs authored by this member over the full period
+      const mrs = await fetchMemberMergeRequests(gitlabUrl, token, memberNetid, since, memberName ?? '').catch(() => []);
+
+      const mrBuckets: MRWeek[] = buckets.map((bucket) => {
+        const inBucket = (iso: string | null) => {
+          if (!iso) return false;
+          const t = new Date(iso).getTime();
+          return t >= bucket.start.getTime() && t < bucket.end.getTime();
+        };
+        return {
+          week: bucket.week,
+          // opened = MRs created this week
+          opened: mrs.filter((mr) => inBucket(mr.created_at)).length,
+          // merged = MRs merged this week
+          merged: mrs.filter((mr) => inBucket(mr.merged_at)).length,
+          // closed = MRs closed (not merged) this week
+          closed: mrs.filter((mr) => mr.state === 'closed' && inBucket(mr.closed_at)).length,
+        };
+      });
+      setMRData(mrBuckets);
+    })();
+  }, [gitlabUrl, memberNetid]);
+
   return (
     <View className="flex-1 bg-white shadow rounded-xl mt-6 mb-2 overflow-hidden">
- 
+
       {/* ── Top Bar ── */}
       <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-[#b9b9b9] bg-white">
         <View className="flex-row items-center gap-2.5">
@@ -286,16 +358,16 @@ export default function GitLabStatsPanel() {
           </View>
           <Text className="text-base font-semibold ml-2">Gitlab Statistics</Text>
         </View>
- 
+
         <TouchableOpacity
-          onPress={() => Linking.openURL(GITLAB_URL)}
+          onPress={() => gitlabUrl && Linking.openURL(gitlabUrl)}
           className="px-3.5 py-2 rounded-lg bg-[#E53935]"
           activeOpacity={0.8}
         >
           <Text className="text-white font-bold text-xs tracking-wide">Open Repo ↗</Text>
         </TouchableOpacity>
       </View>
- 
+
       {/* ── Tab Bar ── */}
       <View className="flex-row bg-white border-b border-[#b9b9b9] px-2">
         {TABS.map((tab) => {
@@ -320,22 +392,24 @@ export default function GitLabStatsPanel() {
           );
         })}
       </View>
- 
+
       {/* ── Tab Content ── */}
       <ScrollView className="flex-1" contentContainerClassName="p-5" showsVerticalScrollIndicator={false}>
- 
+
         {/* Week selector row */}
         <View className="flex-row items-center mb-4">
-          <WeekDropdown selectedWeek={selectedWeek} onSelect={setSelectedWeek} />
+          {weeks.length > 0 && (
+            <WeekDropdown weeks={weeks} selectedWeek={selectedWeek} onSelect={setSelectedWeek} />
+          )}
         </View>
- 
+
         {/* Chart card */}
         <View className="bg-white rounded-xl border border-[#b9b9b9] p-4">
-          {activeTab === "size"      && <CommitSizeChart      selectedWeek={selectedWeek} />}
-          {activeTab === "frequency" && <CommitFrequencyChart selectedWeek={selectedWeek} />}
-          {activeTab === "mrs"       && <MergeRequestChart    selectedWeek={selectedWeek} />}
+          {activeTab === "size"      && <CommitSizeChart      data={commitSizeData} selectedWeek={selectedWeek} />}
+          {activeTab === "frequency" && <CommitFrequencyChart data={commitFreqData} selectedWeek={selectedWeek} />}
+          {activeTab === "mrs"       && <MergeRequestChart    data={mrData}         selectedWeek={selectedWeek} />}
         </View>
- 
+
       </ScrollView>
     </View>
   );

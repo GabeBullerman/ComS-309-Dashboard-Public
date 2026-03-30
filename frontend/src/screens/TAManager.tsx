@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,213 +7,322 @@ import {
   FlatList,
   Alert,
   ScrollView,
+  ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { UserSummary, normalizeRole } from '../utils/auth';
+import { getUsersByRole, createUser, updateUser, deleteUser } from '../api/users';
 
-interface TA {
-  id: string;
-  name: string;
-  email: string;
-  role: 'TA' | 'HTA';
-  courses: string[];
-}
-
-const mockTAs: TA[] = [
-  { id: '1', name: 'John Smith', email: 'john.smith@iastate.edu', role: 'HTA', courses: ['CS 309', 'CS 319'] },
-  { id: '2', name: 'Alice Brown', email: 'alice.brown@iastate.edu', role: 'TA', courses: ['CS 309'] },
-  { id: '3', name: 'Michael Lee', email: 'michael.lee@iastate.edu', role: 'TA', courses: ['CS 319'] },
-];
-
-const COURSES = ['CS 309', 'CS 319', 'CS 229'];
+type StaffRole = 'TA' | 'HTA';
 
 export default function TAManagerScreen() {
-  const [tas, setTAs] = useState<TA[]>(mockTAs);
+  const { width } = useWindowDimensions();
+  const isMobile = width < 640;
+
+  const [staff, setStaff] = useState<UserSummary[]>([]);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'role'>('role');
+  const [loading, setLoading] = useState(true);
   const [showInviteForm, setShowInviteForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [inviteForm, setInviteForm] = useState({
+    netid: '',
     name: '',
-    email: '',
-    role: 'TA' as 'TA' | 'HTA',
-    courses: [] as string[],
+    password: '',
+    role: 'TA' as StaffRole,
   });
 
-  const handleInviteTA = () => {
-    if (!inviteForm.name || !inviteForm.email) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      return;
+  const loadStaff = async () => {
+    setLoading(true);
+    try {
+      const [tas, htas] = await Promise.all([
+        getUsersByRole('TA'),
+        getUsersByRole('HTA'),
+      ]);
+      const combined = [...htas, ...tas].map((u) => ({
+        ...u,
+        role: normalizeRole(String(u.role)),
+      }));
+      setStaff(combined);
+    } catch {
+      Alert.alert('Error', 'Failed to load staff.');
+    } finally {
+      setLoading(false);
     }
-
-    const newTA: TA = {
-      id: Date.now().toString(),
-      ...inviteForm,
-    };
-
-    setTAs(prev => [...prev, newTA]);
-    setInviteForm({ name: '', email: '', role: 'TA', courses: [] });
-    setShowInviteForm(false);
-    Alert.alert('Success', 'TA invitation sent successfully!');
   };
 
-  const handleRemoveTA = (taId: string) => {
+  useEffect(() => { loadStaff(); }, []);
+
+  const filteredStaff = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const result = q
+      ? staff.filter((m) => m.name?.toLowerCase().includes(q) || m.netid?.toLowerCase().includes(q))
+      : [...staff];
+    if (sortBy === 'name') {
+      result.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+    } else {
+      result.sort((a, b) => {
+        const aHTA = normalizeRole(String(a.role)) === 'HTA';
+        const bHTA = normalizeRole(String(b.role)) === 'HTA';
+        if (aHTA !== bHTA) return aHTA ? -1 : 1;
+        return (a.name ?? '').localeCompare(b.name ?? '');
+      });
+    }
+    return result;
+  }, [staff, search, sortBy]);
+
+  const handleCreate = async () => {
+    if (!inviteForm.netid.trim() || !inviteForm.name.trim() || !inviteForm.password.trim()) {
+      Alert.alert('Error', 'NetID, name, and password are required.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createUser({
+        netid: inviteForm.netid.trim(),
+        name: inviteForm.name.trim(),
+        password: inviteForm.password.trim(),
+        role: [inviteForm.role],
+      });
+      setInviteForm({ netid: '', name: '', password: '', role: 'TA' });
+      setShowInviteForm(false);
+      await loadStaff();
+    } catch (e: any) {
+      const msg = e?.response?.status === 409
+        ? 'A user with that NetID already exists.'
+        : 'Failed to create user.';
+      Alert.alert('Error', msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleRole = (member: UserSummary) => {
+    if (!member.id) return;
+    const newRole: StaffRole = normalizeRole(String(member.role)) === 'TA' ? 'HTA' : 'TA';
+    const label = normalizeRole(String(member.role)) === 'TA' ? 'Head TA' : 'TA';
     Alert.alert(
-      'Remove TA',
-      'Are you sure you want to remove this TA?',
+      'Change Role',
+      `Promote ${member.name ?? member.netid} to ${label}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => setTAs(prev => prev.filter(ta => ta.id !== taId))
+          text: 'Confirm',
+          onPress: async () => {
+            try {
+              await updateUser(member.id!, { role: [newRole] });
+              setStaff((prev) =>
+                prev.map((m) => m.id === member.id ? { ...m, role: newRole } : m)
+              );
+            } catch {
+              Alert.alert('Error', 'Failed to update role.');
+            }
+          },
         },
       ]
     );
   };
 
-  const handleUpdateRole = (taId: string, newRole: 'TA' | 'HTA') => {
-    setTAs(prev => prev.map(ta =>
-      ta.id === taId ? { ...ta, role: newRole } : ta
-    ));
+  const handleRemove = (member: UserSummary) => {
+    if (!member.id) return;
+    Alert.alert(
+      'Remove Staff',
+      `Remove ${member.name ?? member.netid} from the system?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteUser(member.id!);
+              setStaff((prev) => prev.filter((m) => m.id !== member.id));
+            } catch {
+              Alert.alert('Error', 'Failed to remove user.');
+            }
+          },
+        },
+      ]
+    );
   };
 
-  const toggleCourse = (course: string) => {
-    setInviteForm(prev => ({
-      ...prev,
-      courses: prev.courses.includes(course)
-        ? prev.courses.filter(c => c !== course)
-        : [...prev.courses, course]
-    }));
-  };
-
-  const renderTAItem = ({ item }: { item: TA }) => (
-    <View className="bg-white p-4 rounded-lg mb-3 border border-gray-200">
-      <View className="flex-row justify-between items-start mb-2">
-        <View className="flex-1">
-          <Text className="text-lg font-semibold text-gray-800">{item.name}</Text>
-          <Text className="text-gray-600">{item.email}</Text>
-        </View>
-        <View className="flex-row items-center">
-          <TouchableOpacity
-            onPress={() => handleUpdateRole(item.id, item.role === 'TA' ? 'HTA' : 'TA')}
-            className={`px-3 py-1 rounded-full mr-2 ${
-              item.role === 'HTA' ? 'bg-yellow-100' : 'bg-blue-100'
-            }`}
-          >
-            <Text className={`text-xs font-medium ${
-              item.role === 'HTA' ? 'text-yellow-800' : 'text-blue-800'
-            }`}>
-              {item.role}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => handleRemoveTA(item.id)}
-            className="p-1"
-          >
-            <Ionicons name="trash-outline" size={20} color="#ef4444" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View className="flex-row flex-wrap">
-        {item.courses.map(course => (
-          <View key={course} className="bg-gray-100 px-2 py-1 rounded mr-2 mb-1">
-            <Text className="text-xs text-gray-700">{course}</Text>
+  const renderItem = ({ item }: { item: UserSummary }) => {
+    const role = normalizeRole(String(item.role));
+    const isHTA = role === 'HTA';
+    return (
+      <View style={{
+        backgroundColor: '#fff',
+        padding: 14,
+        borderRadius: 10,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>{item.name ?? '—'}</Text>
+            <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 1 }}>{item.netid}</Text>
           </View>
-        ))}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => handleToggleRole(item)}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 20,
+                backgroundColor: isHTA ? '#fef9c3' : '#dbeafe',
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '600', color: isHTA ? '#92400e' : '#1e40af' }}>
+                {isHTA ? 'Head TA' : 'TA'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleRemove(item)} style={{ padding: 4 }}>
+              <Ionicons name="trash-outline" size={18} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
+
+  const pad = isMobile ? 12 : 20;
 
   return (
-    <ScrollView className="flex-1 bg-gray-50 p-4">
-      <View className="flex-row justify-between items-center mb-6">
-        <Text className="text-2xl font-bold text-gray-800">TA Management</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: '#f9fafb' }} contentContainerStyle={{ padding: pad }}>
+      {/* Header */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Text style={{ fontSize: isMobile ? 22 : 26, fontWeight: 'bold', color: '#111827' }}>TA Management</Text>
         <TouchableOpacity
           onPress={() => setShowInviteForm(!showInviteForm)}
-          className="bg-red-700 px-4 py-2 rounded-lg flex-row items-center"
+          style={{ backgroundColor: '#b91c1c', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
         >
-          <Ionicons name="person-add" size={16} color="white" />
-          <Text className="text-white font-medium ml-2">
-            {showInviteForm ? 'Cancel' : 'Invite TA'}
+          <Ionicons name="person-add" size={15} color="white" />
+          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
+            {showInviteForm ? 'Cancel' : 'Add TA'}
           </Text>
         </TouchableOpacity>
       </View>
 
+      {/* Invite Form */}
       {showInviteForm && (
-        <View className="bg-white p-4 rounded-lg mb-6 border border-gray-200">
-          <Text className="text-lg font-semibold mb-4">Invite New TA</Text>
+        <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 10, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB' }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 12 }}>Add New TA</Text>
 
+          <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563', marginBottom: 4 }}>NetID *</Text>
           <TextInput
-            placeholder="Full Name"
-            value={inviteForm.name}
-            onChangeText={(text) => setInviteForm(prev => ({ ...prev, name: text }))}
-            className="border border-gray-300 rounded-lg px-3 py-2 mb-3"
-          />
-
-          <TextInput
-            placeholder="Email Address"
-            value={inviteForm.email}
-            onChangeText={(text) => setInviteForm(prev => ({ ...prev, email: text }))}
-            keyboardType="email-address"
+            placeholder="e.g. jsmith"
+            value={inviteForm.netid}
+            onChangeText={(text) => setInviteForm((prev) => ({ ...prev, netid: text }))}
             autoCapitalize="none"
-            className="border border-gray-300 rounded-lg px-3 py-2 mb-3"
+            autoCorrect={false}
+            style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 10, fontSize: 14, color: '#111827', backgroundColor: '#f9fafb' }}
           />
 
-          <Text className="text-sm font-medium mb-2">Role:</Text>
-          <View className="flex-row mb-3">
-            {(['TA', 'HTA'] as const).map(role => (
-              <TouchableOpacity
-                key={role}
-                onPress={() => setInviteForm(prev => ({ ...prev, role }))}
-                className={`px-4 py-2 rounded-lg mr-2 ${
-                  inviteForm.role === role ? 'bg-red-700' : 'bg-gray-200'
-                }`}
-              >
-                <Text className={`font-medium ${
-                  inviteForm.role === role ? 'text-white' : 'text-gray-700'
-                }`}>
-                  {role}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563', marginBottom: 4 }}>Full Name *</Text>
+          <TextInput
+            placeholder="e.g. Jane Smith"
+            value={inviteForm.name}
+            onChangeText={(text) => setInviteForm((prev) => ({ ...prev, name: text }))}
+            style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 10, fontSize: 14, color: '#111827', backgroundColor: '#f9fafb' }}
+          />
 
-          <Text className="text-sm font-medium mb-2">Assign to Courses:</Text>
-          <View className="flex-row flex-wrap mb-4">
-            {COURSES.map(course => (
+          <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563', marginBottom: 4 }}>Temporary Password *</Text>
+          <TextInput
+            placeholder="Set a temporary password"
+            value={inviteForm.password}
+            onChangeText={(text) => setInviteForm((prev) => ({ ...prev, password: text }))}
+            secureTextEntry
+            style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12, fontSize: 14, color: '#111827', backgroundColor: '#f9fafb' }}
+          />
+
+          <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563', marginBottom: 6 }}>Role</Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+            {(['TA', 'HTA'] as StaffRole[]).map((r) => (
               <TouchableOpacity
-                key={course}
-                onPress={() => toggleCourse(course)}
-                className={`px-3 py-1 rounded-full mr-2 mb-2 ${
-                  inviteForm.courses.includes(course) ? 'bg-red-700' : 'bg-gray-200'
-                }`}
+                key={r}
+                onPress={() => setInviteForm((prev) => ({ ...prev, role: r }))}
+                style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, backgroundColor: inviteForm.role === r ? '#b91c1c' : '#E5E7EB' }}
               >
-                <Text className={`text-xs ${
-                  inviteForm.courses.includes(course) ? 'text-white' : 'text-gray-700'
-                }`}>
-                  {course}
+                <Text style={{ fontWeight: '600', fontSize: 14, color: inviteForm.role === r ? '#fff' : '#374151' }}>
+                  {r === 'HTA' ? 'Head TA' : 'TA'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
           <TouchableOpacity
-            onPress={handleInviteTA}
-            className="bg-red-700 px-4 py-2 rounded-lg"
+            onPress={handleCreate}
+            disabled={submitting}
+            style={{ backgroundColor: '#b91c1c', paddingVertical: 10, borderRadius: 8, alignItems: 'center' }}
           >
-            <Text className="text-white font-medium text-center">Send Invitation</Text>
+            {submitting
+              ? <ActivityIndicator size="small" color="white" />
+              : <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Add to System</Text>
+            }
           </TouchableOpacity>
         </View>
       )}
 
-      <Text className="text-lg font-semibold mb-3">Current TAs ({tas.length})</Text>
-      <FlatList
-        data={tas}
-        keyExtractor={(item) => item.id}
-        renderItem={renderTAItem}
-        scrollEnabled={false}
-        ListEmptyComponent={
-          <Text className="text-center text-gray-500 py-8">No TAs assigned yet</Text>
-        }
-      />
+      {loading ? (
+        <ActivityIndicator size="large" color="#C8102E" style={{ marginTop: 40 }} />
+      ) : (
+        <>
+          {/* Search + Sort */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: '#E5E7EB' }}>
+              <Ionicons name="search-outline" size={16} color="#9CA3AF" style={{ marginRight: 6 }} />
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search by name or NetID..."
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={{ flex: 1, fontSize: 14, color: '#111827' }}
+              />
+            </View>
+            {(['name', 'role'] as const).map((opt) => (
+              <TouchableOpacity
+                key={opt}
+                onPress={() => setSortBy(opt)}
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  backgroundColor: sortBy === opt ? '#b91c1c' : '#fff',
+                  borderColor: sortBy === opt ? '#b91c1c' : '#E5E7EB',
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '600', color: sortBy === opt ? '#fff' : '#4B5563' }}>
+                  {opt === 'name' ? 'A–Z' : 'Role'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>
+            Staff ({filteredStaff.length}{search ? ` of ${staff.length}` : ''})
+          </Text>
+
+          <FlatList
+            data={filteredStaff}
+            keyExtractor={(item) => String(item.id ?? item.netid)}
+            renderItem={renderItem}
+            scrollEnabled={false}
+            ListEmptyComponent={
+              <Text style={{ textAlign: 'center', color: '#6B7280', paddingVertical: 32 }}>No TAs found.</Text>
+            }
+          />
+        </>
+      )}
     </ScrollView>
   );
 }

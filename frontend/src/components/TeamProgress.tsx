@@ -26,25 +26,23 @@ const labelMap = {
 const INNER = 128;
 const RADIUS_INNER = 32;
 const levels: ProgressLevel[] = ["ungraded", "good", "moderate", "poor"];
-function ProgressBar({ level, onPress }: { level: ProgressLevel; onPress: (level: ProgressLevel) => void }) {
+function ProgressBar({ level, onPress, readOnly }: { level: ProgressLevel; onPress: (level: ProgressLevel) => void; readOnly?: boolean }) {
   const [open, setOpen] = useState(false);
 
   return (
     <View className="flex-1">
-      {/* The bar itself */}
       <TouchableOpacity
         className="h-8 bg-gray-200 rounded-md overflow-hidden justify-center"
-        onPress={() => setOpen(o => !o)}
-        activeOpacity={0.7}
+        onPress={() => !readOnly && setOpen(o => !o)}
+        activeOpacity={readOnly ? 1 : 0.7}
       >
         <View className={`h-full ${colorMap[level]} items-center justify-center flex-row`}>
           <Text className="text-white text-xs font-semibold mr-1">{labelMap[level]}</Text>
-          <Ionicons name={open ? "chevron-up" : "chevron-down"} size={12} color="white" />
+          {!readOnly && <Ionicons name={open ? "chevron-up" : "chevron-down"} size={12} color="white" />}
         </View>
       </TouchableOpacity>
 
-      {/* Inline dropdown */}
-      {open && (
+      {!readOnly && open && (
         <View className="bg-white border border-gray-200 rounded-md shadow mt-1 z-10">
           {levels.map((l) => (
             <TouchableOpacity
@@ -62,7 +60,7 @@ function ProgressBar({ level, onPress }: { level: ProgressLevel; onPress: (level
   );
 }
 
-export default function TeamProgress() {
+export default function TeamProgress({ readOnly = false }: { readOnly?: boolean }) {
   const [demos, setDemos] = useState<DemoRow[]>([
     { demo: "Demo 1", code: "good", teamwork: "ungraded" },
     { demo: "Demo 2", code: "ungraded", teamwork: "ungraded" },
@@ -82,17 +80,17 @@ export default function TeamProgress() {
         <View className="flex-row justify-between items-center mb-4">
           <View className="flex-row items-center">
             <Text className="text-lg font-semibold mr-3">Team Progress</Text>
-
-            <View className="bg-yellow-100 px-2 py-1 rounded">
-              <Text className="text-yellow-700 text-xs font-medium">
-                Unsaved Changes
-              </Text>
-            </View>
+            {!readOnly && (
+              <View className="bg-yellow-100 px-2 py-1 rounded">
+                <Text className="text-yellow-700 text-xs font-medium">Unsaved Changes</Text>
+              </View>
+            )}
           </View>
-
-          <TouchableOpacity className="bg-red-600 px-4 py-2 rounded-lg">
-            <Text className="text-white font-semibold">Save Changes</Text>
-          </TouchableOpacity>
+          {!readOnly && (
+            <TouchableOpacity className="bg-red-600 px-4 py-2 rounded-lg">
+              <Text className="text-white font-semibold">Save Changes</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* COLUMN HEADERS */}
@@ -109,8 +107,8 @@ export default function TeamProgress() {
               <Text className="text-xs">{row.demo}</Text>
             </TouchableOpacity>
 
-          <ProgressBar level={row.code} onPress={(l) => setLevel(index, "code", l)} />
-          <ProgressBar level={row.teamwork} onPress={(l) => setLevel(index, "teamwork", l)} />
+          <ProgressBar level={row.code} onPress={(l) => setLevel(index, "code", l)} readOnly={readOnly} />
+          <ProgressBar level={row.teamwork} onPress={(l) => setLevel(index, "teamwork", l)} readOnly={readOnly} />
           </View>
         ))}
 

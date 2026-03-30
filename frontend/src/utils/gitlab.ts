@@ -149,6 +149,140 @@ export function matchContributors(
   return result.sort((a, b) => b.commits - a.commits);
 }
 
+export interface GitLabCommitDetail {
+  id: string;
+  stats: { additions: number; deletions: number; total: number };
+  diffs?: { new_path: string }[];
+}
+
+export interface GitLabMergeRequest {
+  id: number;
+  state: 'opened' | 'merged' | 'closed';
+  created_at: string;
+  merged_at: string | null;
+  closed_at: string | null;
+  author: { username: string; name: string };
+}
+
+export interface WeekBucket {
+  week: string;   // "W1" … "W8"
+  label: string;  // "Jan 27 – Feb 2"
+  start: Date;    // inclusive (Monday 00:00)
+  end: Date;      // exclusive (next Monday 00:00)
+}
+
+/**
+ * Builds numWeeks calendar-week buckets (Mon–Sun) going back from the current week.
+ * W1 = oldest, W<numWeeks> = current week.
+ */
+export function buildWeekBuckets(numWeeks = 8): WeekBucket[] {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const thisMonday = new Date(now);
+  thisMonday.setHours(0, 0, 0, 0);
+  thisMonday.setDate(now.getDate() - daysToMonday);
+
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  return Array.from({ length: numWeeks }, (_, i) => {
+    const weekIndex = numWeeks - 1 - i; // 0 = most recent
+    const start = new Date(thisMonday);
+    start.setDate(thisMonday.getDate() - weekIndex * 7);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7); // exclusive
+    const sunday = new Date(start);
+    sunday.setDate(start.getDate() + 6);
+    return { week: `W${i + 1}`, label: `${fmt(start)} – ${fmt(sunday)}`, start, end };
+  });
+}
+
+/**
+ * Fetches all commits for the repo since a given ISO date (no author filter).
+ * Use filterCommitsByMember() to narrow to a specific person after fetching.
+ */
+export async function fetchAllCommitsSince(
+  gitlabUrl: string,
+  token: string,
+  since: string
+): Promise<GitLabCommit[]> {
+  const path = extractProjectPath(gitlabUrl);
+  if (!path) throw new Error('Invalid GitLab URL');
+  return gitlabFetch<GitLabCommit[]>(
+    `${GITLAB_BASE}/projects/${path}/repository/commits?since=${encodeURIComponent(since)}&per_page=100&all=true`,
+    token
+  );
+}
+
+/**
+ * Filters a commit list to only those belonging to a specific team member.
+ * Uses the same logic as TeamDetail: email contains netid (primary),
+ * then name-part fuzzy match (fallback).
+ */
+export function filterCommitsByMember(
+  commits: GitLabCommit[],
+  memberNetid: string,
+  memberName: string
+): GitLabCommit[] {
+  const netid = memberNetid.trim().toLowerCase();
+  const nameParts = memberName.toLowerCase().split(/\s+/).filter((p) => p.length > 2);
+
+  return commits.filter((c) => {
+    if (c.author_email.toLowerCase().includes(netid)) return true;
+    const authorLower = c.author_name.toLowerCase();
+    return nameParts.some((part) => authorLower.includes(part));
+  });
+}
+
+/**
+ * Fetches a single commit's stats (additions, deletions) and file count.
+ * Calls the stats endpoint and the diff endpoint in parallel.
+ */
+export async function fetchCommitDetail(
+  gitlabUrl: string,
+  token: string,
+  sha: string
+): Promise<GitLabCommitDetail> {
+  const path = extractProjectPath(gitlabUrl);
+  if (!path) throw new Error('Invalid GitLab URL');
+  const base = `${GITLAB_BASE}/projects/${path}/repository/commits/${sha}`;
+  const [detail, diffs] = await Promise.all([
+    gitlabFetch<GitLabCommitDetail>(base, token),
+    gitlabFetch<{ new_path: string }[]>(`${base}/diff`, token).catch(() => [] as { new_path: string }[]),
+  ]);
+  return { ...detail, diffs };
+}
+
+/**
+ * Fetches all merge requests for the repo since a given ISO date, then filters
+ * client-side by author username (= netid on ISU GitLab).
+ * Uses state=all in one call to avoid relying on author_username param support.
+ */
+export async function fetchMemberMergeRequests(
+  gitlabUrl: string,
+  token: string,
+  username: string,
+  since: string,
+  memberName = ''
+): Promise<GitLabMergeRequest[]> {
+  const path = extractProjectPath(gitlabUrl);
+  if (!path) throw new Error('Invalid GitLab URL');
+  const all = await gitlabFetch<GitLabMergeRequest[]>(
+    `${GITLAB_BASE}/projects/${path}/merge_requests?state=all&created_after=${encodeURIComponent(since)}&per_page=100`,
+    token
+  );
+  const netid = username.trim().toLowerCase();
+  const nameParts = memberName.toLowerCase().split(/\s+/).filter((p) => p.length > 2);
+  return all.filter((mr) => {
+    const authorUsername = mr.author?.username?.toLowerCase() ?? '';
+    if (authorUsername === netid) return true;
+    // Fallback: match by display name parts (handles netid ≠ GitLab username)
+    const authorName = mr.author?.name?.toLowerCase() ?? '';
+    return nameParts.some((part) => authorName.includes(part));
+  });
+}
+
 /** Groups commits into weekly buckets (most recent first) */
 export function groupCommitsByWeek(
   commits: GitLabCommit[],

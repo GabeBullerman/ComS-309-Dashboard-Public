@@ -19,7 +19,7 @@ function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
 
-export default function MemberAttendance() {
+export default function MemberAttendance({ readOnly = false }: { readOnly?: boolean }) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -63,10 +63,13 @@ export default function MemberAttendance() {
     setSelectedDay(null);
   };
 
-  const CELL = 70; // cell size for calendar grid. Can be changed if you would like to scale calendar size
+  const [containerWidth, setContainerWidth] = useState(0);
+  const CELL = 70; // cell height stays fixed
+  // In readOnly mode, expand cell width to fill container; otherwise square cells
+  const CELL_W = readOnly && containerWidth > 0 ? Math.floor((containerWidth - 24) / 7) : CELL;
 
   return (
-    <View className="bg-white rounded-xl shadow mt-6 mb-2 overflow-hidden">
+    <View className="bg-white rounded-xl shadow mt-6 mb-2 overflow-hidden" onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}>
       {/* Header */}
       <View className="flex-row items-center px-4 py-3 border-b border-gray-200 mt-3">
         <Ionicons name="calendar-outline" size={16} color="#be123c" />
@@ -77,7 +80,7 @@ export default function MemberAttendance() {
       <View className="flex-row p-3 gap-3">
 
         {/* LEFT: Mini Calendar — half size */}
-        <View style={{ width: CELL * 7 + 8 }}>
+        <View style={readOnly ? { flex: 1 } : { width: CELL * 7 + 8 }}>
           {/* Month Nav */}
           <View className="flex-row items-center justify-between mb-1">
             <TouchableOpacity onPress={prevMonth}>
@@ -92,7 +95,7 @@ export default function MemberAttendance() {
           {/* Day-of-week headers */}
           <View className="flex-row mb-0.5">
             {DAYS_OF_WEEK.map(d => (
-              <View key={d} style={{ width: CELL, alignItems: "center" }}>
+              <View key={d} style={{ width: CELL_W, alignItems: "center" }}>
                 <Text className="text-gray-400 font-semibold" style={{ fontSize: 7 }}>{d}</Text>
               </View>
             ))}
@@ -101,7 +104,7 @@ export default function MemberAttendance() {
           {/* Calendar Grid */}
           <View className="flex-row flex-wrap">
             {calendarCells.map((day, idx) => {
-              if (!day) return <View key={`e-${idx}`} style={{ width: CELL, height: CELL }} />;
+              if (!day) return <View key={`e-${idx}`} style={{ width: CELL_W, height: CELL }} />;
 
               const status = getDayStatus(day);
               const isSelected = selectedDay === day;
@@ -109,7 +112,7 @@ export default function MemberAttendance() {
               const dotColor = status ? STATUS_CONFIG[status].bg : null;
 
               return (
-                <TouchableOpacity key={day} onPress={() => setSelectedDay(day)} style={{ width: CELL, height: CELL, padding: 1 }}>
+                <TouchableOpacity key={day} onPress={() => !readOnly && setSelectedDay(day)} style={{ width: CELL_W, height: CELL, padding: 1 }}>
                   <View
                     className={`flex-1 rounded items-center justify-center ${isSelected ? "border border-rose-700" : isToday ? "border border-gray-400" : ""}`}
                     style={{ backgroundColor: dotColor ?? "transparent" }}
@@ -138,10 +141,10 @@ export default function MemberAttendance() {
         </View>
 
         {/* Divider */}
-        <View className="w-px bg-gray-200 my-1" />
+        {!readOnly && <View className="w-px bg-gray-200 my-1" />}
 
         {/* RIGHT: Status Controls */}
-        <View className="absolute right-6 w-24 pt-1">
+        {!readOnly && (<View className="absolute right-6 w-24 pt-1">
           <Text className="text-xs font-semibold text-gray-700 text-center mb-2">
             {selectedDay
               ? new Date(currentYear, currentMonth, selectedDay).toLocaleDateString("default", { month: "short", day: "numeric" })
@@ -174,7 +177,7 @@ export default function MemberAttendance() {
               </Text>
             </View>
           )}
-        </View>
+        </View>)}
 
       </View>
     </View>
