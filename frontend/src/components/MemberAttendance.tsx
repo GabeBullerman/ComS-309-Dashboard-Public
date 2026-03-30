@@ -2,14 +2,14 @@ import { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-type AttendanceStatus = "present" | "late" | "absent" |null;
+type AttendanceStatus = "present" | "late" | "absent" | null;
 
 const DAYS_OF_WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 const STATUS_CONFIG = {
-  present: { bg: "#16a34a", activeBg: "bg-green-600", activeBorder: "border-green-600", label: "Present", icon: "checkmark-circle" },
-  late:    { bg: "#d97706", activeBg: "bg-amber-600", activeBorder: "border-amber-600", label: "Late",    icon: "time" },
-  absent:  { bg: "#dc2626", activeBg: "bg-red-600",   activeBorder: "border-red-600",   label: "Absent",  icon: "close-circle" },
+  present: { color: "#16a34a", label: "Present", icon: "checkmark-circle" },
+  late:    { color: "#d97706", label: "Late",    icon: "time" },
+  absent:  { color: "#dc2626", label: "Absent",  icon: "close-circle" },
 };
 
 function getDaysInMonth(year: number, month: number) {
@@ -25,6 +25,7 @@ export default function MemberAttendance({ readOnly = false }: { readOnly?: bool
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
   const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
+  const [containerWidth, setContainerWidth] = useState(0);
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
@@ -63,64 +64,74 @@ export default function MemberAttendance({ readOnly = false }: { readOnly?: bool
     setSelectedDay(null);
   };
 
-  const [containerWidth, setContainerWidth] = useState(0);
-  const CELL = 70; // cell height stays fixed
-  // In readOnly mode, expand cell width to fill container; otherwise square cells
-  const CELL_W = readOnly && containerWidth > 0 ? Math.floor((containerWidth - 24) / 7) : CELL;
+  const CELL_H = 30;
+  const CELL_W = containerWidth > 0 ? Math.floor((containerWidth - 24) / 7) : 0;
 
   return (
-    <View className="bg-white rounded-xl shadow mt-6 mb-2 overflow-hidden" onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}>
+    <View
+      style={{ backgroundColor: 'white', borderRadius: 12, marginBottom: 8, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}
+      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+    >
       {/* Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-200 mt-3">
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
         <Ionicons name="calendar-outline" size={16} color="#be123c" />
-        <Text className="text-base font-semibold ml-2">Member Attendance</Text>
+        <Text style={{ fontSize: 15, fontWeight: '600', marginLeft: 8, color: '#111827' }}>Member Attendance</Text>
       </View>
 
-      {/* Body */}
-      <View className="flex-row p-3 gap-3">
+      <View style={{ padding: 12 }}>
+        {/* Month Nav */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <TouchableOpacity onPress={prevMonth} style={{ padding: 4 }}>
+            <Ionicons name="chevron-back" size={16} color="#6b7280" />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>{monthLabel}</Text>
+          <TouchableOpacity onPress={nextMonth} style={{ padding: 4 }}>
+            <Ionicons name="chevron-forward" size={16} color="#6b7280" />
+          </TouchableOpacity>
+        </View>
 
-        {/* LEFT: Mini Calendar — half size */}
-        <View style={readOnly ? { flex: 1 } : { width: CELL * 7 + 8 }}>
-          {/* Month Nav */}
-          <View className="flex-row items-center justify-between mb-1">
-            <TouchableOpacity onPress={prevMonth}>
-              <Ionicons name="chevron-back" size={10} color="#6b7280" />
-            </TouchableOpacity>
-            <Text className="text-gray-700 font-semibold" style={{ fontSize: 9 }}>{monthLabel}</Text>
-            <TouchableOpacity onPress={nextMonth}>
-              <Ionicons name="chevron-forward" size={10} color="#6b7280" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Day-of-week headers */}
-          <View className="flex-row mb-0.5">
+        {/* Day headers */}
+        {CELL_W > 0 && (
+          <View style={{ flexDirection: 'row', marginBottom: 2 }}>
             {DAYS_OF_WEEK.map(d => (
-              <View key={d} style={{ width: CELL_W, alignItems: "center" }}>
-                <Text className="text-gray-400 font-semibold" style={{ fontSize: 7 }}>{d}</Text>
+              <View key={d} style={{ width: CELL_W, alignItems: 'center' }}>
+                <Text style={{ fontSize: 10, color: '#9ca3af', fontWeight: '600' }}>{d}</Text>
               </View>
             ))}
           </View>
+        )}
 
-          {/* Calendar Grid */}
-          <View className="flex-row flex-wrap">
+        {/* Calendar Grid */}
+        {CELL_W > 0 && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
             {calendarCells.map((day, idx) => {
-              if (!day) return <View key={`e-${idx}`} style={{ width: CELL_W, height: CELL }} />;
+              if (!day) return <View key={`e-${idx}`} style={{ width: CELL_W, height: CELL_H }} />;
 
               const status = getDayStatus(day);
               const isSelected = selectedDay === day;
               const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
-              const dotColor = status ? STATUS_CONFIG[status].bg : null;
+              const dotColor = status ? STATUS_CONFIG[status].color : null;
 
               return (
-                <TouchableOpacity key={day} onPress={() => !readOnly && setSelectedDay(day)} style={{ width: CELL_W, height: CELL, padding: 1 }}>
-                  <View
-                    className={`flex-1 rounded items-center justify-center ${isSelected ? "border border-rose-700" : isToday ? "border border-gray-400" : ""}`}
-                    style={{ backgroundColor: dotColor ?? "transparent" }}
-                  >
-                    <Text
-                      className={`${dotColor ? "text-white" : isToday ? "text-rose-700 font-bold" : "text-gray-700"}`}
-                      style={{ fontSize: 7 }}
-                    >
+                <TouchableOpacity
+                  key={day}
+                  onPress={() => !readOnly && setSelectedDay(day)}
+                  style={{ width: CELL_W, height: CELL_H, padding: 1 }}
+                >
+                  <View style={{
+                    flex: 1,
+                    borderRadius: 4,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: dotColor ?? 'transparent',
+                    borderWidth: (isSelected || isToday) ? 1 : 0,
+                    borderColor: isSelected ? '#be123c' : '#9ca3af',
+                  }}>
+                    <Text style={{
+                      fontSize: 10,
+                      color: dotColor ? 'white' : isToday ? '#be123c' : '#374151',
+                      fontWeight: isToday ? '700' : '400',
+                    }}>
                       {day}
                     </Text>
                   </View>
@@ -128,57 +139,59 @@ export default function MemberAttendance({ readOnly = false }: { readOnly?: bool
               );
             })}
           </View>
+        )}
 
-          {/* Summary counts */}
-          <View className="flex-row justify-around mt-1.5 pt-1.5 border-t border-gray-100">
-            {Object.entries(STATUS_CONFIG).map(([key, val]) => (
-              <View key={key} className="items-center">
-                <Text className="font-bold" style={{ fontSize: 11, color: val.bg }}>{counts[key] ?? 0}</Text>
-                <Text className="text-gray-400" style={{ fontSize: 7 }}>{val.label}</Text>
-              </View>
-            ))}
-          </View>
+        {/* Summary counts */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F3F4F6' }}>
+          {Object.entries(STATUS_CONFIG).map(([key, val]) => (
+            <View key={key} style={{ alignItems: 'center' }}>
+              <Text style={{ fontWeight: '700', fontSize: 14, color: val.color }}>{counts[key] ?? 0}</Text>
+              <Text style={{ fontSize: 10, color: '#9ca3af' }}>{val.label}</Text>
+            </View>
+          ))}
         </View>
 
-        {/* Divider */}
-        {!readOnly && <View className="w-px bg-gray-200 my-1" />}
-
-        {/* RIGHT: Status Controls */}
-        {!readOnly && (<View className="absolute right-6 w-24 pt-1">
-          <Text className="text-xs font-semibold text-gray-700 text-center mb-2">
-            {selectedDay
-              ? new Date(currentYear, currentMonth, selectedDay).toLocaleDateString("default", { month: "short", day: "numeric" })
-              : "Pick a day"}
-          </Text>
-
-          {selectedDay ? (
-            <View className="gap-1.5">
-              {Object.entries(STATUS_CONFIG).map(([key, val]) => {
-                const isActive = selectedStatus === key;
-                return (
-                  <TouchableOpacity
-                    key={key}
-                    onPress={() => handleSetStatus(isActive ? null : key as AttendanceStatus)}
-                    className={`flex-row items-center gap-1.5 py-1.5 px-2 rounded-lg border ${isActive ? `${val.activeBg} ${val.activeBorder}` : "bg-gray-50 border-gray-200"}`}
-                  >
-                    <Ionicons name={val.icon as any} size={12} color={isActive ? "#fff" : val.bg} />
-                    <Text className={`text-xs font-semibold ${isActive ? "text-white" : "text-gray-700"}`}>
-                      {val.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ) : (
-            <View className="items-center mt-3">
-              <Ionicons name="finger-print-outline" size={22} color="#d1d5db" />
-              <Text className="text-gray-300 text-center mt-1" style={{ fontSize: 9 }}>
-                Tap a date to mark
-              </Text>
-            </View>
-          )}
-        </View>)}
-
+        {/* Status controls — below calendar, non-readOnly only */}
+        {!readOnly && (
+          <>
+            <View style={{ height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 }} />
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151', textAlign: 'center', marginBottom: 10 }}>
+              {selectedDay
+                ? new Date(currentYear, currentMonth, selectedDay).toLocaleDateString("default", { month: "short", day: "numeric" })
+                : "Tap a date to mark attendance"}
+            </Text>
+            {selectedDay && (
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                {Object.entries(STATUS_CONFIG).map(([key, val]) => {
+                  const isActive = selectedStatus === key;
+                  return (
+                    <TouchableOpacity
+                      key={key}
+                      onPress={() => handleSetStatus(isActive ? null : key as AttendanceStatus)}
+                      style={{
+                        flex: 1,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                        paddingVertical: 8,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        backgroundColor: isActive ? val.color : '#F9FAFB',
+                        borderColor: isActive ? val.color : '#E5E7EB',
+                      }}
+                    >
+                      <Ionicons name={val.icon as any} size={13} color={isActive ? '#fff' : val.color} />
+                      <Text style={{ fontSize: 11, fontWeight: '600', color: isActive ? 'white' : '#374151' }}>
+                        {val.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </>
+        )}
       </View>
     </View>
   );
