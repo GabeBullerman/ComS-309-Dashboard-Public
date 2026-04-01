@@ -43,6 +43,9 @@ public class Team {
     @Column(name = "gitlab")
     private String gitlab;
 
+    @Column(name = "discord")
+    private String discord;
+
     public Long getId() {
         return id;
     }
@@ -109,5 +112,13 @@ public class Team {
 
     public void setGitlab(String gitlab) {
         this.gitlab = gitlab;
+    }
+
+    public String getDiscord() {
+        return discord;
+    }
+
+    public void setDiscord(String discord) {
+        this.discord = discord;
     }
 }

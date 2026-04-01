@@ -10,6 +10,7 @@ public record TeamRequest(
         List<UserRequest> students,
         Integer status,
         String taNotes,
-        String gitlab
+        String gitlab,
+        String discord
 ) {
 }

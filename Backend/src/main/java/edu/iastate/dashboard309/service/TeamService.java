@@ -40,7 +40,7 @@ public class TeamService {
             .toList();
 
         return new TeamRequest(team.getId(), team.getName(), team.getSection(), taNetid, students,
-            team.getStatus(), team.getTaNotes(), team.getGitlab());
+            team.getStatus(), team.getTaNotes(), team.getGitlab(), team.getDiscord());
     }
 
     @Transactional 

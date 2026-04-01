@@ -1,0 +1,1 @@
+ALTER TABLE teams ADD COLUMN discord VARCHAR(255);

@@ -52,7 +52,7 @@ class TeamControllerTest {
 
     @Test
     void list_withoutTaNetid_returnsAllTeams() throws Exception {
-        TeamRequest team = new TeamRequest(1L, "Team A", 1, "ta1", List.of(), 0, "notes", "gitlab");
+        TeamRequest team = new TeamRequest(1L, "Team A", 1, "ta1", List.of(), 0, "notes", "gitlab", null);
         when(teamService.getTeams(any(), any(), any(), any(Pageable.class)))
             .thenReturn(new PageImpl<>(List.of(team)));
 
@@ -63,7 +63,7 @@ class TeamControllerTest {
 
     @Test
     void list_withTaNetid_returnsFilteredTeams() throws Exception {
-        TeamRequest team = new TeamRequest(2L, "Team B", 2, "ta2", List.of(), 0, "notes", "gitlab");
+        TeamRequest team = new TeamRequest(2L, "Team B", 2, "ta2", List.of(), 0, "notes", "gitlab", null);
         when(teamService.getTeams(any(), any(), any(), any(Pageable.class)))
             .thenReturn(new PageImpl<>(List.of(team)));
 
@@ -74,7 +74,7 @@ class TeamControllerTest {
 
     @Test
     void create_returnsBadRequestWhenTaMissing() throws Exception {
-        TeamRequest request = new TeamRequest(null, "Team A", 1, "ta1", List.of(), 0, "notes", "gitlab");
+        TeamRequest request = new TeamRequest(null, "Team A", 1, "ta1", List.of(), 0, "notes", "gitlab", null);
         when(userRepository.existsByNetid("ta1")).thenReturn(false);
 
         mockMvc.perform(post("/api/teams")
@@ -85,7 +85,7 @@ class TeamControllerTest {
 
     @Test
     void create_returnsCreatedTeam() throws Exception {
-        TeamRequest request = new TeamRequest(null, "Team A", 1, "ta1", List.of(), 0, "notes", "gitlab");
+        TeamRequest request = new TeamRequest(null, "Team A", 1, "ta1", List.of(), 0, "notes", "gitlab", null);
 
         User ta = new User();
         ta.setId(10L);
@@ -101,7 +101,7 @@ class TeamControllerTest {
             return saved;
         });
         when(teamService.getTeamById(1L))
-            .thenReturn(new TeamRequest(1L, "Team A", 1, "ta1", List.of(), 0, "notes", "gitlab"));
+            .thenReturn(new TeamRequest(1L, "Team A", 1, "ta1", List.of(), 0, "notes", "gitlab", null));
 
         mockMvc.perform(post("/api/teams")
                 .contentType(MediaType.APPLICATION_JSON)
