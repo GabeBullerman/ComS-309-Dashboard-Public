@@ -231,8 +231,9 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     >
       {/* Header */}
       <View style={{ paddingHorizontal: pad, marginBottom: 4 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ alignSelf: 'flex-start' }}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6 }}>
+          <Ionicons name="arrow-back" size={22} color="#6B7280" />
+          <Text style={{ fontSize: 14, color: '#6B7280', fontWeight: '500' }}>All Teams</Text>
         </TouchableOpacity>
       </View>
 
@@ -299,7 +300,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           return (
             <TouchableOpacity
               key={memberKey}
-              onPress={() => navigation.navigate('TeamMemberDetail', { member: m, gitlabUrl: gitlab || undefined, teamId: team.id })}
+              onPress={() => navigation.navigate('TeamMemberDetail', { member: m, gitlabUrl: gitlab || undefined, teamId: team.id, teamName: teamName })}
               style={{ alignItems: 'center', width: isMobile ? 80 : 152 }}
             >
               {/* Role badge — above photo, always same position */}

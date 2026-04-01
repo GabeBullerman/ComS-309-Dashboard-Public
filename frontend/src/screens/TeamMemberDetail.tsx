@@ -21,7 +21,7 @@ import { getCurrentUser } from "@/api/users";
 type TeamMemberDetailProps = NativeStackScreenProps<RootStackParamList, 'TeamMemberDetail'>;
 
 export default function TeamProgressScreen({ navigation, route }: TeamMemberDetailProps) {
-  const { member, teamId } = route.params;
+  const { member, teamId, teamName } = route.params;
   const [authorNetid, setAuthorNetid] = useState<string | undefined>(undefined);
   const [isStudent, setIsStudent] = useState(false);
 
@@ -46,15 +46,18 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
       contentContainerStyle={{ paddingBottom: 40 }}
     >
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: pad, marginBottom: 4 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 12 }}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+      <View style={{ paddingHorizontal: pad, marginBottom: 4 }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6 }}>
+          <Ionicons name="arrow-back" size={22} color="#6B7280" />
+          <Text style={{ fontSize: 14, color: '#6B7280', fontWeight: '500' }}>{teamName ?? 'Team'}</Text>
         </TouchableOpacity>
-        <Text style={{ flex: 1, fontSize: 20, fontWeight: '700', color: '#111827' }}>{member.name}</Text>
       </View>
 
-      {/* Avatar */}
+      {/* Avatar + name */}
       <View style={{ alignItems: 'center', paddingVertical: isMobile ? 12 : 16 }}>
+        <Text style={{ fontSize: isMobile ? 22 : 28, fontWeight: '700', color: '#111827', marginBottom: 12 }}>
+          {member.name}
+        </Text>
         <Image
           source={typeof member.photo === 'string' ? { uri: member.photo } : member.photo}
           style={{ width: INNER, height: INNER, borderRadius: RADIUS_INNER }}
