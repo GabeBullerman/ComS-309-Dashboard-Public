@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 type AttendanceStatus = "present" | "late" | "absent" | null;
@@ -19,7 +19,7 @@ function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
 
-export default function MemberAttendance({ readOnly = false }: { readOnly?: boolean }) {
+export default function MemberAttendance({ readOnly = false, style }: { readOnly?: boolean; style?: ViewStyle }) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -64,12 +64,12 @@ export default function MemberAttendance({ readOnly = false }: { readOnly?: bool
     setSelectedDay(null);
   };
 
-  const CELL_H = 30;
   const CELL_W = containerWidth > 0 ? Math.floor((containerWidth - 24) / 7) : 0;
+  const CELL_H = CELL_W > 0 ? Math.min(Math.round(CELL_W * 0.65), 48) : 0;
 
   return (
     <View
-      style={{ backgroundColor: 'white', borderRadius: 12, marginBottom: 8, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}
+      style={[{ backgroundColor: 'white', borderRadius: 12, marginBottom: 8, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }, style]}
       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
     >
       {/* Header */}
@@ -78,13 +78,13 @@ export default function MemberAttendance({ readOnly = false }: { readOnly?: bool
         <Text style={{ fontSize: 15, fontWeight: '600', marginLeft: 8, color: '#111827' }}>Member Attendance</Text>
       </View>
 
-      <View style={{ padding: 12 }}>
+      <View style={{ padding: 12, flex: 1 }}>
         {/* Month Nav */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <TouchableOpacity onPress={prevMonth} style={{ padding: 4 }}>
             <Ionicons name="chevron-back" size={16} color="#6b7280" />
           </TouchableOpacity>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>{monthLabel}</Text>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: '#374151' }}>{monthLabel}</Text>
           <TouchableOpacity onPress={nextMonth} style={{ padding: 4 }}>
             <Ionicons name="chevron-forward" size={16} color="#6b7280" />
           </TouchableOpacity>
@@ -95,7 +95,7 @@ export default function MemberAttendance({ readOnly = false }: { readOnly?: bool
           <View style={{ flexDirection: 'row', marginBottom: 2 }}>
             {DAYS_OF_WEEK.map(d => (
               <View key={d} style={{ width: CELL_W, alignItems: 'center' }}>
-                <Text style={{ fontSize: 10, color: '#9ca3af', fontWeight: '600' }}>{d}</Text>
+                <Text style={{ fontSize: 12, color: '#9ca3af', fontWeight: '600' }}>{d}</Text>
               </View>
             ))}
           </View>
@@ -127,10 +127,15 @@ export default function MemberAttendance({ readOnly = false }: { readOnly?: bool
                     borderWidth: (isSelected || isToday) ? 1 : 0,
                     borderColor: isSelected ? '#be123c' : '#9ca3af',
                   }}>
+                    {isToday && (
+                      <Text style={{ fontSize: 7, color: dotColor ? 'white' : '#be123c', fontWeight: '700', letterSpacing: 0.3, lineHeight: 9 }}>
+                        Today
+                      </Text>
+                    )}
                     <Text style={{
-                      fontSize: 10,
+                      fontSize: 13,
                       color: dotColor ? 'white' : isToday ? '#be123c' : '#374151',
-                      fontWeight: isToday ? '700' : '400',
+                      fontWeight: isToday ? '700' : '500',
                     }}>
                       {day}
                     </Text>
@@ -141,12 +146,15 @@ export default function MemberAttendance({ readOnly = false }: { readOnly?: bool
           </View>
         )}
 
+        {/* Spacer — pushes summary + controls to bottom */}
+        <View style={{ flex: 1 }} />
+
         {/* Summary counts */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F3F4F6' }}>
           {Object.entries(STATUS_CONFIG).map(([key, val]) => (
             <View key={key} style={{ alignItems: 'center' }}>
-              <Text style={{ fontWeight: '700', fontSize: 14, color: val.color }}>{counts[key] ?? 0}</Text>
-              <Text style={{ fontSize: 10, color: '#9ca3af' }}>{val.label}</Text>
+              <Text style={{ fontWeight: '700', fontSize: 16, color: val.color }}>{counts[key] ?? 0}</Text>
+              <Text style={{ fontSize: 12, color: '#9ca3af' }}>{val.label}</Text>
             </View>
           ))}
         </View>

@@ -48,8 +48,8 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
       {/* Header */}
       <View style={{ paddingHorizontal: pad, marginBottom: 4 }}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6 }}>
-          <Ionicons name="arrow-back" size={22} color="#6B7280" />
-          <Text style={{ fontSize: 14, color: '#6B7280', fontWeight: '500' }}>{teamName ?? 'Team'}</Text>
+          <Ionicons name="arrow-back" size={22} color="#111827" />
+          <Text style={{ fontSize: 14, color: '#111827', fontWeight: '500' }}>{teamName ?? 'Team'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -78,10 +78,10 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
       ) : (
         <View style={{ flexDirection: 'row', paddingHorizontal: pad, gap: 12, marginBottom: 12 }}>
           <View style={{ flex: 1 }}>
-            <MemberAttendance readOnly={isStudent} />
+            <MemberAttendance readOnly={isStudent} style={{ flex: 1, marginBottom: 0 }} />
           </View>
           <View style={{ flex: 1 }}>
-            <GitLabStatsPanel gitlabUrl={route.params.gitlabUrl} memberNetid={member.netid} memberName={member.name} />
+            <GitLabStatsPanel gitlabUrl={route.params.gitlabUrl} memberNetid={member.netid} memberName={member.name} style={{ flex: 1, marginBottom: 0 }} />
           </View>
         </View>
       )}

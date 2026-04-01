@@ -3,10 +3,10 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Linking,
   Modal,
   Pressable,
+  ViewStyle,
 } from "react-native";
 import {
   getGitLabToken,
@@ -26,6 +26,21 @@ type MRWeek           = { week: string; opened: number; merged: number; closed: 
 type WeekMeta         = { week: string; label: string };
 
 const CHART_H = 140;
+
+// ─── Stats Row ────────────────────────────────────────────────────────────────
+
+function StatsRow({ stats }: { stats: { label: string; value: string; color: string }[] }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6' }}>
+      {stats.map((s) => (
+        <View key={s.label} style={{ alignItems: 'center' }}>
+          <Text style={{ fontWeight: '700', fontSize: 16, color: s.color }}>{s.value}</Text>
+          <Text style={{ fontSize: 11, color: '#9ca3af' }}>{s.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 // ─── Week Dropdown ────────────────────────────────────────────────────────────
 
@@ -107,35 +122,7 @@ function WeekDropdown({ weeks, selectedWeek, onSelect }: { weeks: WeekMeta[]; se
   );
 }
 
-// ─── Shared: Legend ───────────────────────────────────────────────────────────
 
-function Legend({ items }: { items: { label: string; color: string }[] }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 10 }}>
-      {items.map((item) => (
-        <View key={item.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <View style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: item.color }} />
-          <Text style={{ color: '#7B82A0', fontSize: 11 }}>{item.label}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-// ─── Shared: Stats Row ────────────────────────────────────────────────────────
-
-function StatsRow({ stats }: { stats: { label: string; value: string; color: string }[] }) {
-  return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-around', marginTop: 14 }}>
-      {stats.map((s) => (
-        <View key={s.label} style={{ alignItems: 'center' }}>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: s.color }}>{s.value}</Text>
-          <Text style={{ color: '#7B82A0', fontSize: 10, marginTop: 2 }}>{s.label}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
 
 // ─── Commit Size Chart ────────────────────────────────────────────────────────
 
@@ -146,18 +133,13 @@ function CommitSizeChart({ data, selectedWeek }: { data: CommitSizeWeek[]; selec
   return (
     <View>
       <Text style={{ color: '#7B82A0', fontSize: 12, marginBottom: 8 }}>Lines added / removed</Text>
-      <Legend items={[{ label: "Additions", color: "#31C48D" }, { label: "Deletions", color: "#978282" }]} />
 
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 32, paddingHorizontal: 32, height: CHART_H }}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: '100%', gap: 4 }}>
-          <Text style={{ color: '#31C48D', fontSize: 12, fontWeight: '700' }}>{d.additions.toLocaleString()}</Text>
           <View style={{ width: '100%', borderRadius: 4, opacity: 0.85, height: CHART_H * (d.additions / maxVal), backgroundColor: '#31C48D' }} />
-          <Text style={{ color: '#7B82A0', fontSize: 10, marginTop: 4 }}>Additions</Text>
         </View>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: '100%', gap: 4 }}>
-          <Text style={{ color: '#978282', fontSize: 12, fontWeight: '700' }}>{d.deletions.toLocaleString()}</Text>
           <View style={{ width: '100%', borderRadius: 4, opacity: 0.85, height: CHART_H * (d.deletions / maxVal), backgroundColor: '#978282' }} />
-          <Text style={{ color: '#7B82A0', fontSize: 10, marginTop: 4 }}>Deletions</Text>
         </View>
       </View>
 
@@ -172,22 +154,33 @@ function CommitSizeChart({ data, selectedWeek }: { data: CommitSizeWeek[]; selec
 
 // ─── Commit Frequency Chart ───────────────────────────────────────────────────
 
-function CommitFrequencyChart({ data, selectedWeek }: { data: CommitFreqWeek[]; selectedWeek: string }) {
-  const d = data.find((x) => x.week === selectedWeek) ?? { week: '', commits: 0 };
+function CommitFrequencyChart({ data }: { data: CommitFreqWeek[] }) {
   const maxVal = Math.max(...data.map((x) => x.commits), 1);
+  const total  = data.reduce((s, x) => s + x.commits, 0);
+  const avg    = data.length > 0 ? Math.round(total / data.length) : 0;
 
   return (
     <View>
-      <Text style={{ color: '#7B82A0', fontSize: 12, marginBottom: 48 }}>Commits this week</Text>
-      <View style={{ alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 64, height: CHART_H }}>
-        <Text style={{ color: '#6E57E0', fontSize: 18, fontWeight: '700', marginBottom: 8 }}>{d.commits}</Text>
-        <View style={{ width: '100%', borderRadius: 4, opacity: 0.85, height: CHART_H * (d.commits / maxVal), backgroundColor: '#6E57E0' }} />
-        <Text style={{ color: '#7B82A0', fontSize: 10, marginTop: 8 }}>Commits</Text>
+      <Text style={{ color: '#7B82A0', fontSize: 12, marginBottom: 8 }}>Commits per week</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: CHART_H, gap: 4 }}>
+        {data.map((w) => {
+          const barH = Math.max(CHART_H * (w.commits / maxVal), w.commits > 0 ? 4 : 0);
+          return (
+            <View key={w.week} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+              <Text style={{ color: '#6E57E0', fontSize: 10, fontWeight: '700', marginBottom: 2 }}>
+                {w.commits > 0 ? w.commits : ''}
+              </Text>
+              <View style={{ width: '100%', borderRadius: 3, opacity: 0.85, height: barH, backgroundColor: '#6E57E0' }} />
+              <Text style={{ color: '#9ca3af', fontSize: 9, marginTop: 4 }}>{w.week}</Text>
+            </View>
+          );
+        })}
       </View>
+
       <StatsRow stats={[
-        { label: "This Week",  value: String(d.commits), color: "#6E57E0" },
-        { label: "Season Max", value: String(maxVal),     color: "#6E57E0" },
-        { label: "vs Max",     value: `${Math.round((d.commits / Math.max(maxVal, 1)) * 100)}%`, color: "#6E57E0" },
+        { label: "Total",   value: String(total),   color: "#6E57E0" },
+        { label: "Peak",    value: String(maxVal),   color: "#6E57E0" },
+        { label: "Avg/wk", value: String(avg),       color: "#6E57E0" },
       ]} />
     </View>
   );
@@ -205,12 +198,10 @@ function MergeRequestChart({ data, selectedWeek }: { data: MRWeek[]; selectedWee
   return (
     <View>
       <Text style={{ color: '#7B82A0', fontSize: 12, marginBottom: 8 }}>Merge requests this week</Text>
-      <Legend items={MR_LABELS.map((label, i) => ({ label, color: MR_COLORS[i] }))} />
 
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 16, paddingHorizontal: 32, height: CHART_H }}>
         {MR_KEYS.map((key, ki) => (
           <View key={key} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: '100%', gap: 4 }}>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: MR_COLORS[ki] }}>{d[key]}</Text>
             <View style={{
               width: '100%',
               borderRadius: 2,
@@ -218,7 +209,6 @@ function MergeRequestChart({ data, selectedWeek }: { data: MRWeek[]; selectedWee
               height: maxVal === 0 ? 4 : CHART_H * (d[key] / maxVal),
               backgroundColor: MR_COLORS[ki],
             }} />
-            <Text style={{ color: '#7B82A0', fontSize: 10, marginTop: 4 }}>{MR_LABELS[ki]}</Text>
           </View>
         ))}
       </View>
@@ -242,10 +232,11 @@ const TABS = [
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function GitLabStatsPanel({ gitlabUrl, memberNetid, memberName }: {
+export default function GitLabStatsPanel({ gitlabUrl, memberNetid, memberName, style }: {
   gitlabUrl?: string;
   memberNetid?: string;
   memberName?: string;
+  style?: ViewStyle;
 }) {
   const [activeTab, setActiveTab] = useState("size");
   const [selectedWeek, setSelectedWeek] = useState("W8");
@@ -323,7 +314,7 @@ export default function GitLabStatsPanel({ gitlabUrl, memberNetid, memberName }:
   }, [gitlabUrl, memberNetid]);
 
   return (
-    <View style={{ backgroundColor: 'white', borderRadius: 12, marginBottom: 8, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
+    <View style={[{ flex: 1, backgroundColor: 'white', borderRadius: 12, marginBottom: 8, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }, style]}>
 
       {/* Top Bar */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#b9b9b9', backgroundColor: 'white' }}>
@@ -373,18 +364,20 @@ export default function GitLabStatsPanel({ gitlabUrl, memberNetid, memberName }:
       </View>
 
       {/* Tab Content */}
-      <View style={{ padding: 20 }}>
+      <View style={{ flex: 1, padding: 12 }}>
         {/* Week selector */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-          {weeks.length > 0 && (
-            <WeekDropdown weeks={weeks} selectedWeek={selectedWeek} onSelect={setSelectedWeek} />
-          )}
-        </View>
+        {activeTab !== "frequency" && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+            {weeks.length > 0 && (
+              <WeekDropdown weeks={weeks} selectedWeek={selectedWeek} onSelect={setSelectedWeek} />
+            )}
+          </View>
+        )}
 
         {/* Chart card */}
-        <View style={{ backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#b9b9b9', padding: 16 }}>
+        <View style={{ flex: 1, backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#b9b9b9', padding: 16 }}>
           {activeTab === "size"      && <CommitSizeChart      data={commitSizeData} selectedWeek={selectedWeek} />}
-          {activeTab === "frequency" && <CommitFrequencyChart data={commitFreqData} selectedWeek={selectedWeek} />}
+          {activeTab === "frequency" && <CommitFrequencyChart data={commitFreqData} />}
           {activeTab === "mrs"       && <MergeRequestChart    data={mrData}         selectedWeek={selectedWeek} />}
         </View>
       </View>
