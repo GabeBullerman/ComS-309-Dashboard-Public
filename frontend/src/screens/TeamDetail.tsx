@@ -230,19 +230,21 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       contentContainerStyle={{ paddingBottom: 40 }}
     >
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: pad, marginBottom: 4 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 12 }}>
+      <View style={{ paddingHorizontal: pad, marginBottom: 4 }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ alignSelf: 'flex-start' }}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={{ flex: 1, fontSize: 20, fontWeight: '700', color: '#111827' }}>{teamName}</Text>
       </View>
 
-      {/* Unified action bar */}
-      {(gitlab || discord || canEditRepo) && (
-        <View style={{ paddingHorizontal: pad, paddingTop: 10, paddingBottom: 4 }}>
-          <View style={{ flexDirection: 'row', borderRadius: 8, overflow: 'hidden', backgroundColor: '#C8102E' }}>
+      {/* Team name — centered, large */}
+      <Text style={{ fontSize: isMobile ? 22 : 28, fontWeight: '700', color: '#111827', textAlign: 'center', paddingHorizontal: pad, marginTop: 8, marginBottom: 4 }}>
+        {teamName}
+      </Text>
 
-            {/* Discord half */}
+      {/* Unified action bar — below team name, above members */}
+      {(gitlab || discord || canEditRepo) && (
+        <View style={{ paddingHorizontal: pad, paddingTop: 8, paddingBottom: 4 }}>
+          <View style={{ flexDirection: 'row', borderRadius: 8, overflow: 'hidden', backgroundColor: '#C8102E' }}>
             <TouchableOpacity
               onPress={() => discord
                 ? Linking.openURL(discord).catch(() => Alert.alert('Error', 'Could not open Discord link'))
@@ -259,12 +261,8 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
             <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.35)', marginVertical: 8 }} />
 
-            {/* GitLab half */}
             <TouchableOpacity
-              onPress={() => gitlab
-                ? handleOpenRepo()
-                : canEditRepo ? handleEditPress() : null
-              }
+              onPress={() => gitlab ? handleOpenRepo() : canEditRepo ? handleEditPress() : null}
               style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, paddingHorizontal: 8, opacity: !gitlab && !canEditRepo ? 0.4 : 1 }}
               disabled={!gitlab && !canEditRepo}
             >
@@ -274,7 +272,6 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
               </Text>
             </TouchableOpacity>
 
-            {/* Edit pencil */}
             {canEditRepo && (
               <>
                 <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.35)', marginVertical: 8 }} />
