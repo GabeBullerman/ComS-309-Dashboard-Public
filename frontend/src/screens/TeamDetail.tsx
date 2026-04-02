@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   Modal,
   TextInput,
@@ -21,6 +20,7 @@ import { TeamMember } from '../types/Teams';
 import { getTeam, updateTeamInfo } from '../api/teams';
 import { setUserProjectRole, getCurrentUser } from '../api/users';
 import MemberComments from '../components/Comments';
+import MemberAvatar from '../components/MemberAvatar';
 import WeeklyPerformance from '../components/WeeklyPerformance';
 import {
   fetchContributors,
@@ -292,7 +292,6 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       {/* Member tiles — wrapping row on mobile, horizontal scroll on desktop */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: pad, gap: 12 }}>
         {team.members.map((m) => {
-          const TILE = isMobile ? 72 : 136;
           const INNER = isMobile ? 64 : 128;
           const RADIUS = isMobile ? 20 : 35;
           const memberKey = m.netid || m.name;
@@ -320,20 +319,13 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
               ) : (
                 <View style={{ height: isMobile ? 22 : 24, marginBottom: 6 }} />
               )}
-              <View style={{
-                width: TILE, height: TILE,
-                borderRadius: RADIUS,
-                borderWidth: 3,
-                borderColor: 'transparent',
-                padding: 2,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <Image
-                  source={typeof m.photo === 'string' ? { uri: m.photo } : m.photo}
-                  style={{ width: INNER, height: INNER, borderRadius: RADIUS - 4 }}
-                />
-              </View>
+              <MemberAvatar
+                memberId={m.netid || m.name}
+                initials={m.initials}
+                size={INNER}
+                borderRadius={RADIUS - 4}
+                bordered
+              />
               <Text style={{ marginTop: 6, fontSize: isMobile ? 11 : 14, textAlign: 'center', lineHeight: isMobile ? 16 : 22 }} numberOfLines={2}>
                 {m.name}
               </Text>

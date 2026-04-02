@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  Image,
   TouchableOpacity,
   Platform,
   StatusBar,
@@ -17,6 +16,7 @@ import TeamProgress from "@/components/TeamProgress";
 import GitLabStatsPanel from "@/components/GitlabStats";
 import { NativeStackScreenProps } from "node_modules/@react-navigation/native-stack/lib/typescript/src/types";
 import { getCurrentUser } from "@/api/users";
+import MemberAvatar from "@/components/MemberAvatar";
 
 type TeamMemberDetailProps = NativeStackScreenProps<RootStackParamList, 'TeamMemberDetail'>;
 
@@ -58,9 +58,13 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
         <Text style={{ fontSize: isMobile ? 22 : 28, fontWeight: '700', color: '#111827', marginBottom: 12 }}>
           {member.name}
         </Text>
-        <Image
-          source={typeof member.photo === 'string' ? { uri: member.photo } : member.photo}
-          style={{ width: INNER, height: INNER, borderRadius: RADIUS_INNER }}
+        <MemberAvatar
+          memberId={member.netid || member.name}
+          initials={member.initials}
+          size={INNER}
+          borderRadius={RADIUS_INNER}
+          canEdit={!isStudent}
+          bordered
         />
       </View>
 
