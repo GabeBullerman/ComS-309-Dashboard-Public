@@ -11,12 +11,14 @@ import { getCurrentUser } from "../api/users";
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { Ionicons } from "@expo/vector-icons";
+import ProfileAvatar from "../components/ProfileAvatar";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DashboardScreen'>;
 
 export default function DashboardScreen({route}: Props) {
   const [activeScreen, setActiveScreen] = useState("Teams");
   const [displayName, setDisplayName] = useState("User");
+  const [netid, setNetid] = useState("");
   const permissions = getUserPermissions(route.params.userRole);
   const screenWidth = Dimensions.get("window").width;
   const isMobile = screenWidth < 768;
@@ -27,6 +29,7 @@ export default function DashboardScreen({route}: Props) {
     getCurrentUser()
       .then((user) => {
         if (!mounted) return;
+        if (user?.netid) setNetid(user.netid);
         if (user?.name && user.name.trim().length > 0) {
           setDisplayName(user.name);
           return;
@@ -112,9 +115,12 @@ export default function DashboardScreen({route}: Props) {
           className="flex-row items-center gap-3"
           onPress={() => setActiveScreen('Profile')}
         >
-          <View className="w-10 h-10 rounded-full bg-[#F1BE48] items-center justify-center">
-            <Text className="text-gray-800 font-semibold">{initials}</Text>
-          </View>
+          <ProfileAvatar
+            userId={netid || displayName}
+            initials={initials}
+            size={40}
+            style={{ borderWidth: 3, borderColor: '#111827' }}
+          />
           <View style={{ flex: 1 }}>
             <Text className="font-semibold text-sm text-white">{displayName}</Text>
             <Text className="text-xs text-white/70">{role} · Profile</Text>
