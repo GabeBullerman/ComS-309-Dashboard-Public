@@ -60,10 +60,6 @@ public class SecurityConfig {
                     .anyRequest().authenticated())
             .httpBasic(httpBasic -> httpBasic.disable())
             .formLogin(form -> form.disable())
-            .oauth2Login(oauth2 -> oauth2
-                .successHandler(oAuth2LoginSuccessHandler)
-                .failureHandler((req, res, ex) -> res.sendRedirect(frontendUrl + "?error=google_auth_failed"))
-            )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

@@ -47,6 +47,14 @@ public class UserService {
     }
 
     @Transactional
+    public List<UserRequest> getTaByInitials(String initials){
+        List<User> users = userRepository.findTaByInitials(initials);
+        return users.stream()
+            .map(u -> userToRequest(u))
+            .toList();
+    }
+
+    @Transactional
     public UserRequest getUserByGoogleId(String googleId){
         User user = userRepository.findByGoogleId(googleId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -57,6 +65,14 @@ public class UserService {
     @Transactional 
     public List<UserRequest> getAllUsers(){
         List<User> users = userRepository.findAll();
+        return users.stream()
+            .map(u -> userToRequest(u))
+            .toList();
+    }
+
+    @Transactional
+    public List<UserRequest> getTAsWithInitials(String initials){
+        List<User> users = userRepository.findTaByInitials(initials);
         return users.stream()
             .map(u -> userToRequest(u))
             .toList();

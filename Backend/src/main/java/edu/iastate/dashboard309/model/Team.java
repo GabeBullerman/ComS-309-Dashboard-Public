@@ -3,6 +3,7 @@ package edu.iastate.dashboard309.model;
 import java.util.HashSet;
 import java.util.Set;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -31,7 +32,7 @@ public class Team {
     @JoinColumn(name = "ta_id")
     private User ta;
 
-    @OneToMany(mappedBy = "team")
+    @OneToMany(mappedBy = "team", cascade = CascadeType.ALL)
     private Set<User> students = new HashSet<>();
 
     @Column(name = "status")
@@ -85,6 +86,13 @@ public class Team {
 
     public void removeStudent(User student){
         students.remove(student);
+    }
+
+    public void clearStudents(){
+        for(User student : new HashSet<>(students)){
+            removeStudent(student);
+            student.setTeam(null);
+        }
     }
 
     public Integer getStatus() {
