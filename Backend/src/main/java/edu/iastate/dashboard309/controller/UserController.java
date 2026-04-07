@@ -10,12 +10,15 @@ import edu.iastate.dashboard309.repository.UserRepository;
 import edu.iastate.dashboard309.service.TeamService;
 import edu.iastate.dashboard309.service.UserService;
 import jakarta.validation.Valid;
+import jakarta.websocket.server.PathParam;
+
 import java.util.List;
 import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -97,6 +100,18 @@ public class UserController {
         return user.getGitlabToken();
     }
 
+    @GetMapping("/{id}/initials")
+    public String getInitials(@PathVariable Long id){
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return user.getInitials();
+    }
+
+    @GetMapping("/initials/{initials}")
+    public List<UserRequest> getTAsWithInitials(@PathVariable String initials){
+        return userService.getTAsWithInitials(initials);
+    }
+
     @GetMapping("/role/{role}")
     public List<UserRequest> getUsersWithRole(@PathVariable String role){
         return userService.getUsersWithRoleName(role);
@@ -118,6 +133,14 @@ public class UserController {
         User user = new User();
         user.setName(request.name());
         user.setNetid(request.netid());
+
+        // Set initials
+        StringBuilder initials = new StringBuilder();
+        for (String word : request.name().trim().split("\\s+")) {
+            initials.append(Character.toUpperCase(word.charAt(0)));
+        }
+        user.setInitials(initials.toString());
+
         // Hash password
         user.setPassword(passwordEncoder.encode(request.password()));
         System.out.println(request.role());
@@ -146,7 +169,7 @@ public class UserController {
             user.setNetid(request.netid());
         }
         if (request.password() != null) {
-            user.setPassword(request.password());
+            user.setPassword(passwordEncoder.encode(request.password()));
         }
         if (request.role() != null) {
             user.getRole().clear();
@@ -188,6 +211,20 @@ public class UserController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         user.setProjectRole(body.get("projectRole"));
         userRepository.save(user);
+        return userService.getUserById(id);
+    }
+
+    @PreAuthorize("hasAuthority('CAN_CHANGE_INITIALS')")
+    @PutMapping("/{id}/initials")
+    public UserRequest updateInitials(@PathVariable Long id, @Valid @RequestParam String initials){
+        if(initials == null || !initials.isBlank()){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No \'initials\' provided");
+        }
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        
+        user.setInitials(initials);
+
         return userService.getUserById(id);
     }
 
