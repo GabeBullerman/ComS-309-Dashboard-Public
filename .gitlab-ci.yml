@@ -12,14 +12,14 @@ default:
 
 pipeline-smoke:
   stage: test
-  image: alpine:3.20
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/alpine:3.20
   script:
     - echo "Pipeline smoke check"
     - echo "source=$CI_PIPELINE_SOURCE branch=$CI_COMMIT_REF_NAME sha=$CI_COMMIT_SHORT_SHA"
 
 backend-tests:
   stage: test
-  image: maven:3.9.9-eclipse-temurin-17
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/maven:3.9.9-eclipse-temurin-17
   variables:
     MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
     JWT_SECRET: "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY="
@@ -43,7 +43,7 @@ backend-tests:
 
 frontend-quality:
   stage: quality
-  image: node:20
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:20
   allow_failure: true
   cache:
     key: "${CI_JOB_NAME}"
