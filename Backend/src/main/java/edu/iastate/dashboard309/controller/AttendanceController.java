@@ -57,6 +57,11 @@ public class AttendanceController {
         return attendanceService.getPresentAttendanceCountByStudentNetid(netid);
     }
 
+    @GetMapping("/count/student/{netid}/absent")
+    public Long getAbsentCountByStudent(@PathVariable String netid) {
+        return attendanceService.getAbsentAttendanceCountByStudentNetid(netid);
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public AttendanceRequest create(@Valid @RequestBody AttendanceRequest request) {

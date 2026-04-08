@@ -54,7 +54,19 @@ public class AttendanceService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
 
-        return attendanceRepository.countByStudentNetidAndStatus(studentNetid, AttendanceStatus.PRESENT);
+        return attendanceRepository.countByStudentNetidAndStatusIn(
+            studentNetid,
+            List.of(AttendanceStatus.PRESENT, AttendanceStatus.LATE)
+        );
+    }
+
+    @Transactional
+    public Long getAbsentAttendanceCountByStudentNetid(String studentNetid) {
+        if (!userRepository.existsByNetid(studentNetid)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+
+        return attendanceRepository.countByStudentNetidAndStatus(studentNetid, AttendanceStatus.ABSENT);
     }
 
     @Transactional
