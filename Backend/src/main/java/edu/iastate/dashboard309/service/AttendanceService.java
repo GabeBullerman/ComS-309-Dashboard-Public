@@ -9,6 +9,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import edu.iastate.dashboard309.dto.AttendanceRequest;
 import edu.iastate.dashboard309.model.Attendance;
+import edu.iastate.dashboard309.model.AttendanceStatus;
 import edu.iastate.dashboard309.repository.AttendanceRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
 
@@ -45,6 +46,15 @@ public class AttendanceService {
         return attendanceRepository.findByStudentNetidOrderByAttendanceDateDesc(studentNetid).stream()
             .map(this::toRequest)
             .toList();
+    }
+
+    @Transactional
+    public Long getPresentAttendanceCountByStudentNetid(String studentNetid) {
+        if (!userRepository.existsByNetid(studentNetid)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+
+        return attendanceRepository.countByStudentNetidAndStatus(studentNetid, AttendanceStatus.PRESENT);
     }
 
     @Transactional
