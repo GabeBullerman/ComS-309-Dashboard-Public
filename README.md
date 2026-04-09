@@ -1,6 +1,6 @@
 # Class Dashboard
 
-A role-based classroom management system built with Spring Boot (backend) and React Native/Expo (frontend). Enables instructors, TAs, and students to manage teams, assignments, and course activities.
+A role-based classroom management system for Iowa State University's Senior Design (COM S 309) program. Built with Spring Boot (backend) and React Native/Expo (frontend).
 
 ## Quick Start
 
@@ -9,44 +9,38 @@ A role-based classroom management system built with Spring Boot (backend) and Re
 **Backend:**
 ```bash
 cd Backend
-# Create .env file with database credentials
-cat > .env << 'EOF'
-SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/class_dashboard
-SPRING_DATASOURCE_USERNAME=postgres
-SPRING_DATASOURCE_PASSWORD=postgres
-SERVER_PORT=8080
-JWT_SECRET=your-secret-key-here
-EOF
-
+# Create .env file with database credentials (see Environment Variables section)
 ./mvnw spring-boot:run
 ```
 
-**Frontend (web/mobile):**
+**Frontend (web):**
 ```bash
 cd frontend
 npm install
-npm start           # iOS/Android/Web via Expo
-npm run web         # Web only (Metro bundler on port 8081)
+npm run web         # Metro bundler on port 8081
+```
+
+**Frontend (mobile):**
+```bash
+npm start           # Expo dev server — scan QR code for iOS/Android
 ```
 
 **Frontend (Electron desktop):**
 ```bash
-cd frontend
-npm run web         # Terminal 1 — start Expo web dev server
+npm run web           # Terminal 1 — start Expo web dev server
 npm run electron:dev  # Terminal 2 — launch desktop app
 ```
 
-### Deployment (VM at coms-4020-006.class.las.iastate.edu)
+### Deployment (VM: coms-4020-006.class.las.iastate.edu)
 
 ```bash
 ssh gbulle@coms-4020-006.class.las.iastate.edu
 cd ~/ug_mk_4
 
-# Pull latest from your branch
 git fetch origin
-git reset --hard origin/Gabe   # or whichever branch
+git reset --hard origin/main
 
-# Create .env file if it doesn't exist (gitignored)
+# Create .env if it doesn't exist (gitignored)
 cat > Backend/.env << 'EOF'
 SPRING_DATASOURCE_URL=jdbc:postgresql://coms-4020-006.class.las.iastate.edu:5432/class_dashboard
 SPRING_DATASOURCE_USERNAME=postgres
@@ -61,249 +55,215 @@ EOF
 pkill -f "dashboard309" 2>/dev/null; sleep 1
 cd Backend
 nohup ./mvnw spring-boot:run > backend.log 2>&1 &
-tail -f backend.log   # watch for "Started Dashboard309Application"
+tail -f backend.log   # wait for "Started Dashboard309Application"
 ```
 
 ## Features
 
-- **Role-Based Access Control**: Student, TA, HTA (Head TA), Instructor
-- **JWT Authentication**: Secure token-based login
-- **Team Management**: View, search, and filter student teams; edit team name and repo URL
-- **Member Project Roles**: Assign Frontend / Backend / Full Stack role per team member (persisted to DB)
-- **Repo Linking**: Add/edit a GitLab repo URL per team; clickable "View Project" button
-- **Task Assignment**: Create and assign tasks to teams/students
-- **Course Management**: View course information
-- **TA Management**: Invite and manage TAs (Instructor only)
-- **Cross-Platform**: Web, iOS, Android, and **Electron desktop app**
+- **Role-Based Access Control** — Student, TA, HTA, Instructor with granular permissions
+- **JWT Authentication** — Token-based login + cookie-based refresh; Google OAuth support
+- **Team Management** — View, search, filter teams; edit name, repo URL, TA notes, status
+- **Member Roles** — Assign Frontend / Backend / Full Stack project role per member
+- **Attendance Tracking** — Record per-student lecture and TA meeting attendance (Present/Late/Absent) with calendar UI; per-tab counts
+- **Weekly Performance** — Grade students weekly on code and teamwork (Poor/Moderate/Good) with week-picker; persisted per student per week
+- **Demo Performance** — Grade students across 4 demos on code and teamwork; persisted per student per demo
+- **At-Risk Students** — Automatically flags students based on: lecture absences (warning ≥3, critical ≥5), habitual lateness (≥3), poor demo performance (2+ demos), poor weekly performance (3+ weeks)
+- **Task Assignment** — Create, assign, edit, and delete tasks for teams/students; due dates; edit in-place
+- **File Import** — Upload CSV/Excel to bulk-import class roster and team data
+- **TA Management** — Invite and manage TAs (Instructor only)
+- **Discord Integration** — Per-team Discord link; clickable button on team view
+- **Cross-Platform** — Web, iOS, Android, and Electron desktop app
 
 ## Role Permissions
 
 | Feature | Student | TA | HTA | Instructor |
-|---------|---------|-----|-----|-----------|
-| View Teams | Own only | Assigned | All | All |
-| View Courses | ✗ | ✓ | ✓ | ✓ |
-| View Past Semesters | ✗ | ✗ | ✓ | ✓ |
-| Edit Team Info / Repo | ✗ | ✓ | ✓ | ✓ |
-| Assign Member Project Roles | ✗ | ✓ | ✓ | ✓ |
+|---|---|---|---|---|
+| View teams | Own only | Assigned | All | All |
+| Edit team info / repo | ✗ | ✓ | ✓ | ✓ |
+| Record attendance | ✗ | ✓ | ✓ | ✓ |
+| Grade weekly/demo performance | ✗ | ✓ | ✓ | ✓ |
+| View at-risk students | ✗ | ✓ | ✓ | ✓ |
+| Assign tasks | ✗ | ✓ | ✓ | ✓ |
+| Upload class roster | ✗ | ✗ | ✓ | ✓ |
 | Manage TAs | ✗ | ✗ | ✗ | ✓ |
 
 ## Test Users
 
 ```
-Email format: {netid}@iastate.edu
+Instructor:  netid=instructor  password=instructor
+HTA:         netid=hta         password=hta
+TA:          netid=ta          password=ta
+Student:     netid=student     password=student
 
-Instructor:  netid=instructor   password=instructor
-HTA:         netid=hta          password=hta
-TA:          netid=ta           password=ta
-Student:     netid=student      password=student
-
-Test students (24 accounts across 6 teams):
-  student1@iastate.edu  through  student24@iastate.edu
-  password: Password123!
-
-  Team A1: student1–student4
-  Team A2: student5–student8
-  Team A3: student9–student12
-  Team B1: student13–student16
-  Team B2: student17–student20
-  Team B3: student21–student24
+Test students (24 accounts across 6 teams, password: Password123!):
+  student1–student4   → Team A1
+  student5–student8   → Team A2
+  student9–student12  → Team A3
+  student13–student16 → Team B1
+  student17–student20 → Team B2
+  student21–student24 → Team B3
 ```
 
 ## Tech Stack
 
-**Backend:**
-- Java 17, Spring Boot 3.2.3
-- Spring Security with JWT (JJWT 0.11.5)
-- PostgreSQL, Flyway migrations
-- Maven
+**Backend:** Java 17, Spring Boot 3.2.3, Spring Security + JWT (JJWT 0.11.5), PostgreSQL (`ddl-auto: update`), Maven
 
-**Frontend:**
-- React Native 0.81.5 + Expo 54
-- TypeScript
-- NativeWind / TailwindCSS
-- Axios, React Navigation 7
-- Electron 28 (desktop)
+**Frontend:** React Native 0.81.5, Expo 54, TypeScript, NativeWind/TailwindCSS, Axios, React Navigation 7, Electron 28
 
 ## API Endpoints
 
-**Auth:**
-- `POST /api/auth/login` — returns JWT token
-- `POST /api/auth/logout`
+**Auth** (`/api/auth`)
+- `POST /login` — password login, returns JWT; sets refresh token cookie
+- `POST /login/google` — Google OAuth login
+- `POST /refresh` — refresh access token via cookie
+- `POST /logout`
 
-**Users:**
-- `GET /api/users/self` — current user info
-- `GET /api/users` — list users (filterable by role/search)
-- `POST /api/users` — create user
-- `PUT /api/users/{id}` — update user
-- `PUT /api/users/{id}/project-role` — update a user's project role (Frontend/Backend/Full Stack)
-- `DELETE /api/users/{id}`
+**Users** (`/api/users`)
+- `GET /self` — current user
+- `GET /` — list users (filterable)
+- `POST /`, `PUT /{id}`, `DELETE /{id}`
+- `PUT /{id}/project-role` — set Frontend/Backend/Full Stack role
 
-**Teams:**
-- `GET /api/teams` — list teams (filterable by taNetid, section, status)
-- `GET /api/teams/{id}` — get team (includes students with projectRole)
-- `PUT /api/teams/{id}` — update team (name, gitlab URL, status, taNotes, taNetid)
-- `GET /api/teams/{id}/students`
-- `PUT /api/teams/{id}/add/{studentId}`
-- `PUT /api/teams/{id}/remove/{studentId}`
+**Teams** (`/api/teams`)
+- `GET /` — list teams (filter by taNetid, section, status)
+- `GET /{id}`, `PUT /{id}`
+- `GET /{id}/students`, `PUT /{id}/add/{studentId}`, `PUT /{id}/remove/{studentId}`
 
-**Tasks:**
-- `GET /api/tasks/assigned-to/{netid}`
-- `GET /api/tasks/assigned-by/{netid}`
-- `POST /api/tasks`, `PUT /api/tasks/{id}`, `DELETE /api/tasks/{id}`
+**Tasks** (`/api/tasks`)
+- `GET /assigned-to/{netid}`, `GET /assigned-by/{netid}`
+- `POST /`, `PUT /{id}`, `DELETE /{id}`
 
-**Docs:**
-- `GET /v3/api-docs` — OpenAPI specification
+**Attendance** (`/api/attendance`)
+- `GET /student/{netid}` — all records for a student
+- `POST /` — create (upserts by student + date + type)
+- `PUT /{id}`, `DELETE /{id}`
+
+**Weekly Performance** (`/api/weekly-performance`)
+- `GET /student/{netid}` — all weekly records for a student
+- `POST /` — create/upsert by (studentNetid, weekStartDate)
+- `PUT /{id}`, `DELETE /{id}`
+
+**Demo Performance** (`/api/demo-performance`)
+- `GET /student/{netid}` — all demo records for a student
+- `POST /` — create/upsert by (studentNetid, demoNumber)
+- `PUT /{id}`, `DELETE /{id}`
+
+**Import** (`/api/import`)
+- `POST /` — upload CSV/Excel to bulk-import roster/teams
+
+**Docs**
 - `GET /swagger-ui/**` — Swagger UI
-
-## Frontend Scripts
-
-```bash
-npm start               # Expo dev server (iOS/Android/Web)
-npm run web             # Web only (port 8081)
-npm run android         # Android
-npm run ios             # iOS
-npm run electron:dev    # Desktop app (requires npm run web running first)
-npm run electron:build  # Build distributable desktop app (Windows/macOS/Linux)
-npm run lint
-npm run type-check
-```
-
-## Electron Desktop App
-
-The desktop app wraps the Expo web build in an Electron window.
-
-**Dev mode** loads live from the Expo web dev server (`http://localhost:8081`).
-**Production build** (`npm run electron:build`) exports the web bundle and packages it via electron-builder.
-
-> **Note:** `ELECTRON_RUN_AS_NODE` is set by Expo/Metro for its own tooling. The launcher script (`scripts/electron-dev.js`) clears this before spawning Electron so it runs as a proper desktop app rather than a Node.js process.
-
-Output targets: Windows (NSIS installer + portable), macOS (dmg + zip), Linux (AppImage).
+- `GET /v3/api-docs` — OpenAPI spec
 
 ## Environment Variables
 
-### Backend (`.env` — gitignored, must be created manually)
+### Backend (`.env` in `Backend/` — gitignored)
 
 ```
-SPRING_DATASOURCE_URL=jdbc:postgresql:{host}:{port}/class_dashboard
+SPRING_DATASOURCE_URL=jdbc:postgresql://{host}:{port}/class_dashboard
 SPRING_DATASOURCE_USERNAME=postgres
 SPRING_DATASOURCE_PASSWORD=postgres
 SERVER_PORT=8080
-JWT_SECRET={base64-encoded-secret}
-
-# Google OAuth (backend-initiated flow)
-GOOGLE_CLIENT_ID=124195890479-kh157q1foah7sc96ckjbvdvrdt9esu0q.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET={secret from Google Cloud Console → web application credentials}
+JWT_SECRET={base64-encoded-256-bit-secret}
+GOOGLE_CLIENT_ID={from Google Cloud Console}
+GOOGLE_CLIENT_SECRET={from Google Cloud Console}
 FRONTEND_URL=http://localhost:8081
 ```
 
-**On the VM**, also set:
-```
-FRONTEND_URL=http://coms-4020-006.class.las.iastate.edu:{frontend port}
-```
-
-**Google Cloud Console — one-time setup:**
-In your web application credential, add these to **Authorized redirect URIs**:
+**Google OAuth setup (one-time):** Add to Authorized Redirect URIs in Google Cloud Console:
 - `http://localhost:8080/login/oauth2/code/google`
 - `http://coms-4020-006.class.las.iastate.edu:8080/login/oauth2/code/google`
 
-### Frontend (`.env.local` — gitignored, optional)
+### Frontend (`.env.local` in `frontend/` — gitignored, optional)
 
-By default the app points to the VM backend. For local development, create
-`frontend/.env.local` to override:
+By default the app points to the VM backend. Override for local dev:
 
 ```
-# Android emulator → host machine's localhost
-EXPO_PUBLIC_API_URL=http://10.0.2.2:8080
-
-# iOS simulator → host machine's localhost
-# EXPO_PUBLIC_API_URL=http://localhost:8080
-
-# Comment out entirely when testing on web (web uses localhost directly)
+EXPO_PUBLIC_API_URL=http://10.0.2.2:8080   # Android emulator
+# EXPO_PUBLIC_API_URL=http://localhost:8080  # iOS simulator / web
 ```
 
-> **Note:** `.env.local` is baked into the Metro bundle at build time.
-> After changing it you must restart Metro (`npx expo start --clear`) or
-> rebuild for Android (`npx expo run:android --clear`).
-
-## CORS Configuration
-
-Backend allows requests from:
-- `localhost:8081`, `localhost:8082`, `localhost:19006` (development)
-- `coms-4020-006.class.las.iastate.edu:8080` (production)
-
-See `SecurityConfig.java` for full config.
-
-## Building & Testing
-
-**Backend:**
-```bash
-cd Backend
-./mvnw spring-boot:run          # Run locally
-./mvnw test                     # Run tests
-./mvnw clean package -DskipTests  # Build JAR
-```
-
-**Frontend:**
-```bash
-cd frontend
-npm run lint
-npm run type-check
-```
+After changing, restart Metro with `npx expo start --clear`.
 
 ## Project Structure
 
 ```
-4020C-Project/
+ug_mk_4/
 ├── Backend/
 │   ├── src/main/java/edu/iastate/dashboard309/
-│   │   ├── controller/        # REST API endpoints
-│   │   ├── service/           # Business logic
-│   │   ├── model/             # JPA entities (User, Team, Task, Role...)
-│   │   ├── repository/        # Spring Data JPA repositories
-│   │   ├── dto/               # Request/response records
-│   │   └── authentication/    # SecurityConfig, JwtFilter, JwtService
-│   ├── src/main/resources/
-│   │   ├── application.yml
-│   │   └── db/migration/      # Flyway SQL migrations
+│   │   ├── controller/     # REST endpoints (Auth, Users, Teams, Tasks,
+│   │   │                   #   Attendance, WeeklyPerformance, DemoPerformance,
+│   │   │                   #   Import, Comments, Roles, Permissions)
+│   │   ├── service/        # Business logic
+│   │   ├── model/          # JPA entities
+│   │   ├── repository/     # Spring Data JPA repos
+│   │   ├── dto/            # Request/response records
+│   │   └── authentication/ # SecurityConfig, JwtFilter, JwtService
+│   ├── src/main/resources/application.yml
 │   └── pom.xml
 ├── frontend/
-│   ├── electron/
-│   │   └── main.js            # Electron main process
-│   ├── scripts/
-│   │   ├── electron-dev.js    # Dev launcher (clears ELECTRON_RUN_AS_NODE)
-│   │   └── electron-build.js  # Production build launcher
 │   ├── src/
-│   │   ├── components/        # LoginRegisterPage, SidebarLayout, TeamCard
-│   │   ├── screens/           # TeamsScreen, TeamDetail, TAManager, Courses...
-│   │   ├── data/teams.ts      # Team/TeamMember type definitions
-│   │   └── utils/auth.ts      # Axios instance, API helpers, JWT utils
-│   ├── App.tsx                # Root navigation + auth state
-│   ├── electron-builder.yml   # Desktop build config
+│   │   ├── api/            # client.ts, attendance.ts, demoPerformance.ts,
+│   │   │                   # weeklyPerformance.ts, tasks.ts, teams.ts, users.ts
+│   │   ├── components/     # TeamCard, MemberAttendance, WeeklyPerformance,
+│   │   │                   # TeamProgress, AtRiskStudentCard, ProfileAvatar, ...
+│   │   ├── screens/        # DashboardScreen, TeamsScreen, TeamDetail,
+│   │   │                   # TeamMemberDetail, AtRiskStudentsScreen,
+│   │   │                   # TaskAssignmentScreen, UploadScreen, TAManager, ...
+│   │   ├── types/          # Teams.ts, shared type definitions
+│   │   └── utils/auth.ts   # Role/permission helpers
+│   ├── electron/main.js    # Electron main process
+│   ├── App.tsx             # Root navigation + auth state
 │   └── package.json
 └── README.md
 ```
 
+## Frontend Scripts
+
+```bash
+npm run web             # Web (port 8081)
+npm start               # Expo dev server (iOS/Android/Web)
+npm run electron:dev    # Desktop (requires npm run web first)
+npm run electron:build  # Build distributable (Windows/macOS/Linux)
+npm run lint
+npm run type-check
+```
+
 ## Troubleshooting
 
-**Backend won't start:**
-- Verify `.env` exists in `Backend/` directory
-- Check `JWT_SECRET` is set
-- Ensure port 8080 is available (`fuser -k 8080/tcp`)
-- Check DB connectivity
+**Backend won't start**
+- Verify `Backend/.env` exists with all required variables
+- Check port 8080 is free: `fuser -k 8080/tcp`
+- Check DB is reachable
 
-**Frontend can't login:**
-- Verify backend is running at the correct URL
-- Check browser console for CORS or network errors
-- Stale JWT causing 403? Clear `auth_token` from AsyncStorage and re-login
+**All data disappears after ~15 minutes / "Could not identify current user"**
+- JWT access tokens expire after 15 min; the backend refresh endpoint requires a valid cookie
+- Fix: ensure the latest backend is deployed (the refresh endpoint null-checks cookies)
+- Workaround: log out and log back in to get a fresh token
 
-**Electron won't launch / runs as Node instead of app:**
-- Run via `npm run electron:dev` (not `npx electron`) — the launcher script clears `ELECTRON_RUN_AS_NODE`
-- Ensure `npm run web` is running first (dev mode connects to `localhost:8081`)
+**Frontend 403 errors after inactivity**
+- Token expired and refresh failed — log out and log back in
+- Check the backend is running and reachable
 
-**Role-based views not showing correctly:**
-- Re-login to get a fresh JWT with updated roles
-- Roles come from the JWT token claims, not local storage
+**Demo/weekly performance not saving**
+- Ensure `demo_number` and `week_start_date` columns exist in the DB (added by Hibernate on startup)
+- If columns are missing, start the backend first, then verify with `\d demo_performance` in psql
+
+**Electron won't launch / runs as Node**
+- Use `npm run electron:dev`, not `npx electron` directly
+- Ensure `npm run web` is running first
+
+**Role-based views not showing correctly**
+- Re-login to get a fresh JWT with updated role claims
+
+## CI/CD
+
+GitLab CI runs two jobs on push/MR:
+- `backend-tests` — Maven test suite
+- `frontend-quality` — ESLint + TypeScript type-check
+
+Requires a GitLab Runner with Docker executor. Register one via Settings → CI/CD → Runners.
 
 ## License
 
-Iowa State University Senior Design Program
+Iowa State University Senior Design Program — Spring 2026
