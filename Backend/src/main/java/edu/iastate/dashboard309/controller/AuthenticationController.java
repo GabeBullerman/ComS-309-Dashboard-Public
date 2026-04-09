@@ -75,26 +75,27 @@ public class AuthenticationController {
     
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request) {
-        String t = Arrays.stream(request.getCookies())
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) return ResponseEntity.ok("Logged out");
+        String t = Arrays.stream(cookies)
             .filter(c -> c.getName().equals("refreshToken"))
             .findFirst()
             .map(Cookie::getValue)
-            .orElseThrow();
-
-        //Remove refresh token
-        jwtService.deleteRefreshToken(t);
-        
+            .orElse(null);
+        if (t != null) jwtService.deleteRefreshToken(t);
         return ResponseEntity.ok("Logged out");
     }
 
-    
+
     @PostMapping("/refresh")
     public String refresh(HttpServletRequest request, HttpServletResponse response){
-        String t = Arrays.stream(request.getCookies())
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No refresh token");
+        String t = Arrays.stream(cookies)
             .filter(c -> c.getName().equals("refreshToken"))
             .findFirst()
             .map(Cookie::getValue)
-            .orElseThrow();
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Refresh token not found"));
         
         String[] parts = t.split("\\.");
         UUID uuid = UUID.fromString(parts[0]);
