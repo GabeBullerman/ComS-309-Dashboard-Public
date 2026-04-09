@@ -3,12 +3,11 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 type AttendanceStatus = "present" | "late" | "absent" | null;
-type AttendanceTab = "class" | "ta_meeting" | "demo_meeting";
+type AttendanceTab = "class" | "ta_meeting";
 
 const TABS: { key: AttendanceTab; label: string }[] = [
   { key: "class", label: "Class" },
   { key: "ta_meeting", label: "TA Meeting" },
-  { key: "demo_meeting", label: "Demo Meeting" },
 ];
 
 const DAYS_OF_WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -36,7 +35,6 @@ export default function MemberAttendance({ readOnly = false }: { readOnly?: bool
   const [attendance, setAttendance] = useState<Record<AttendanceTab, Record<string, AttendanceStatus>>>({
     class: {},
     ta_meeting: {},
-    demo_meeting: {},
   });
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
