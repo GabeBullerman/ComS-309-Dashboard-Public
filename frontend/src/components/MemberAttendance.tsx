@@ -1,15 +1,29 @@
-import { useState } from "react";
-import { View, Text, TouchableOpacity, ViewStyle } from "react-native";
+import { useState, useEffect, useCallback } from "react";
+import { View, Text, TouchableOpacity, ViewStyle, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  AttendanceRecord,
+  AttendanceStatus,
+  getAttendanceForStudent,
+  createAttendance,
+  updateAttendance,
+  deleteAttendance,
+} from "@/api/attendance";
 
-type AttendanceStatus = "present" | "late" | "absent" | null;
+type LocalStatus = "present" | "late" | "absent" | null;
 
 const DAYS_OF_WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 const STATUS_CONFIG = {
-  present: { color: "#16a34a", label: "Present", icon: "checkmark-circle" },
-  late:    { color: "#d97706", label: "Late",    icon: "time" },
-  absent:  { color: "#dc2626", label: "Absent",  icon: "close-circle" },
+  present: { color: "#16a34a", label: "Present", icon: "checkmark-circle", apiStatus: "PRESENT" as AttendanceStatus },
+  late:    { color: "#d97706", label: "Late",    icon: "time",             apiStatus: "LATE"    as AttendanceStatus },
+  absent:  { color: "#dc2626", label: "Absent",  icon: "close-circle",     apiStatus: "ABSENT"  as AttendanceStatus },
+};
+
+const API_TO_LOCAL: Record<AttendanceStatus, LocalStatus> = {
+  PRESENT: "present",
+  LATE: "late",
+  ABSENT: "absent",
 };
 
 function getDaysInMonth(year: number, month: number) {
@@ -18,36 +32,93 @@ function getDaysInMonth(year: number, month: number) {
 function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
+function toDateKey(year: number, month: number, day: number): string {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
 
-export default function MemberAttendance({ readOnly = false, style }: { readOnly?: boolean; style?: ViewStyle }) {
+interface Props {
+  netid: string;
+  readOnly?: boolean;
+  style?: ViewStyle;
+}
+
+export default function MemberAttendance({ netid, readOnly = false, style }: Props) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
-  const [attendance, setAttendance] = useState<Record<string, AttendanceStatus>>({});
   const [containerWidth, setContainerWidth] = useState(0);
+
+  // Map of YYYY-MM-DD -> AttendanceRecord (from backend)
+  const [records, setRecords] = useState<Record<string, AttendanceRecord>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!netid) return;
+    setLoading(true);
+    getAttendanceForStudent(netid)
+      .then((data) => {
+        const map: Record<string, AttendanceRecord> = {};
+        for (const r of data) map[r.attendanceDate] = r;
+        setRecords(map);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [netid]);
+
+  const getKey = useCallback(
+    (day: number) => toDateKey(currentYear, currentMonth, day),
+    [currentYear, currentMonth]
+  );
+
+  const getDayStatus = (day: number): LocalStatus => {
+    const r = records[getKey(day)];
+    return r ? API_TO_LOCAL[r.status] : null;
+  };
+
+  const handleSetStatus = async (status: LocalStatus) => {
+    if (!selectedDay || readOnly) return;
+    const key = getKey(selectedDay);
+    const existing = records[key];
+    setSaving(true);
+    try {
+      if (!status) {
+        if (existing) {
+          await deleteAttendance(existing.id);
+          setRecords((prev) => { const next = { ...prev }; delete next[key]; return next; });
+        }
+      } else {
+        const apiStatus = STATUS_CONFIG[status].apiStatus;
+        if (existing) {
+          const updated = await updateAttendance(existing.id, netid, key, apiStatus, existing.type);
+          setRecords((prev) => ({ ...prev, [key]: updated }));
+        } else {
+          const created = await createAttendance(netid, key, apiStatus, 'LECTURE');
+          setRecords((prev) => ({ ...prev, [key]: created }));
+        }
+      }
+    } catch {
+      // silently ignore — UI stays in previous state
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const selectedStatus = selectedDay ? getDayStatus(selectedDay) : null;
+
+  const counts = Object.values(records).reduce(
+    (acc, r) => {
+      const local = API_TO_LOCAL[r.status];
+      if (local) acc[local] = (acc[local] || 0) + 1;
+      return acc;
+    },
+    { present: 0, late: 0, absent: 0 } as Record<string, number>
+  );
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
   const monthLabel = new Date(currentYear, currentMonth).toLocaleString("default", { month: "short", year: "numeric" });
-  const getKey = (day: number) => `${currentYear}-${currentMonth}-${day}`;
-  const getDayStatus = (day: number): AttendanceStatus => attendance[getKey(day)] ?? null;
-
-  const handleSetStatus = (status: AttendanceStatus) => {
-    if (!selectedDay) return;
-    setAttendance((prev) => {
-      const next = { ...prev };
-      if (!status) delete next[getKey(selectedDay)];
-      else next[getKey(selectedDay)] = status;
-      return next;
-    });
-  };
-
-  const selectedStatus = selectedDay ? getDayStatus(selectedDay) : null;
-  const counts = Object.values(attendance).reduce(
-    (acc, s) => { if (s) acc[s] = (acc[s] || 0) + 1; return acc; },
-    { present: 0, late: 0, absent: 0 } as Record<string, number>
-  );
 
   const calendarCells: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) calendarCells.push(null);
@@ -75,7 +146,8 @@ export default function MemberAttendance({ readOnly = false, style }: { readOnly
       {/* Header */}
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
         <Ionicons name="calendar-outline" size={16} color="#be123c" />
-        <Text style={{ fontSize: 15, fontWeight: '600', marginLeft: 8, color: '#111827' }}>Member Attendance</Text>
+        <Text style={{ fontSize: 15, fontWeight: '600', marginLeft: 8, color: '#111827', flex: 1 }}>Member Attendance</Text>
+        {saving && <ActivityIndicator size="small" color="#be123c" />}
       </View>
 
       <View style={{ padding: 12, flex: 1 }}>
@@ -102,7 +174,11 @@ export default function MemberAttendance({ readOnly = false, style }: { readOnly
         )}
 
         {/* Calendar Grid */}
-        {CELL_W > 0 && (
+        {loading ? (
+          <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+            <ActivityIndicator color="#be123c" />
+          </View>
+        ) : CELL_W > 0 && (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
             {calendarCells.map((day, idx) => {
               if (!day) return <View key={`e-${idx}`} style={{ width: CELL_W, height: CELL_H }} />;
@@ -146,7 +222,6 @@ export default function MemberAttendance({ readOnly = false, style }: { readOnly
           </View>
         )}
 
-        {/* Spacer — pushes summary + controls to bottom */}
         <View style={{ flex: 1 }} />
 
         {/* Summary counts */}
@@ -159,7 +234,7 @@ export default function MemberAttendance({ readOnly = false, style }: { readOnly
           ))}
         </View>
 
-        {/* Status controls — below calendar, non-readOnly only */}
+        {/* Status controls */}
         {!readOnly && (
           <>
             <View style={{ height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 }} />
@@ -175,7 +250,8 @@ export default function MemberAttendance({ readOnly = false, style }: { readOnly
                   return (
                     <TouchableOpacity
                       key={key}
-                      onPress={() => handleSetStatus(isActive ? null : key as AttendanceStatus)}
+                      onPress={() => handleSetStatus(isActive ? null : key as LocalStatus)}
+                      disabled={saving}
                       style={{
                         flex: 1,
                         flexDirection: 'row',
@@ -187,6 +263,7 @@ export default function MemberAttendance({ readOnly = false, style }: { readOnly
                         borderWidth: 1,
                         backgroundColor: isActive ? val.color : '#F9FAFB',
                         borderColor: isActive ? val.color : '#E5E7EB',
+                        opacity: saving ? 0.6 : 1,
                       }}
                     >
                       <Ionicons name={val.icon as any} size={13} color={isActive ? '#fff' : val.color} />

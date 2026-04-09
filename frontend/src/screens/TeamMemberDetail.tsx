@@ -70,19 +70,19 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
 
       {/* Team Progress Card */}
       <View style={{ paddingHorizontal: pad, marginBottom: 12 }}>
-        <TeamProgress readOnly={isStudent} />
+        <TeamProgress netid={member.netid ?? ''} readOnly={isStudent} />
       </View>
 
       {/* Attendance + GitLab Stats — side by side on desktop, stacked on mobile */}
       {isMobile ? (
         <View style={{ paddingHorizontal: pad, gap: 12 }}>
-          <MemberAttendance readOnly={isStudent} />
+          <MemberAttendance netid={member.netid ?? ''} readOnly={isStudent} />
           <GitLabStatsPanel gitlabUrl={route.params.gitlabUrl} memberNetid={member.netid} memberName={member.name} />
         </View>
       ) : (
         <View style={{ flexDirection: 'row', paddingHorizontal: pad, gap: 12, marginBottom: 12 }}>
           <View style={{ flex: 1 }}>
-            <MemberAttendance readOnly={isStudent} style={{ flex: 1, marginBottom: 0 }} />
+            <MemberAttendance netid={member.netid ?? ''} readOnly={isStudent} style={{ flex: 1, marginBottom: 0 }} />
           </View>
           <View style={{ flex: 1 }}>
             <GitLabStatsPanel gitlabUrl={route.params.gitlabUrl} memberNetid={member.netid} memberName={member.name} style={{ flex: 1, marginBottom: 0 }} />

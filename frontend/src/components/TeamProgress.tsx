@@ -1,14 +1,14 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import {
+  DemoPerformanceRecord,
+  getDemoPerformanceForStudent,
+  createDemoPerformance,
+  updateDemoPerformance,
+} from "@/api/demoPerformance";
 
 type ProgressLevel = "good" | "moderate" | "poor" | "ungraded";
-
-interface DemoRow {
-  demo: string;
-  code: ProgressLevel;
-  teamwork: ProgressLevel;
-}
 
 const COLOR_MAP: Record<ProgressLevel, string> = {
   good: "#22c55e",
@@ -25,6 +25,20 @@ const LABEL_MAP: Record<ProgressLevel, string> = {
 };
 
 const levels: ProgressLevel[] = ["ungraded", "good", "moderate", "poor"];
+
+const SCORE_TO_LEVEL: Record<number, ProgressLevel> = { 0: "poor", 1: "moderate", 2: "good" };
+const LEVEL_TO_SCORE: Record<string, number> = { poor: 0, moderate: 1, good: 2 };
+
+const DEMO_LABELS = ["Demo 1", "Demo 2", "Demo 3", "Demo 4"];
+
+interface DemoRow {
+  demoNumber: number;
+  code: ProgressLevel;
+  teamwork: ProgressLevel;
+  codeRecordId?: number;
+  teamworkRecordId?: number;
+  recordId?: number;
+}
 
 function ProgressBar({ level, onPress, readOnly }: { level: ProgressLevel; onPress: (level: ProgressLevel) => void; readOnly?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -62,16 +76,69 @@ function ProgressBar({ level, onPress, readOnly }: { level: ProgressLevel; onPre
   );
 }
 
-export default function TeamProgress({ readOnly = false }: { readOnly?: boolean }) {
-  const [demos, setDemos] = useState<DemoRow[]>([
-    { demo: "Demo 1", code: "good", teamwork: "ungraded" },
-    { demo: "Demo 2", code: "ungraded", teamwork: "ungraded" },
-    { demo: "Demo 3", code: "ungraded", teamwork: "ungraded" },
-    { demo: "Demo 4", code: "ungraded", teamwork: "ungraded" },
-  ]);
+interface Props {
+  netid: string;
+  readOnly?: boolean;
+}
+
+export default function TeamProgress({ netid, readOnly = false }: Props) {
+  const [demos, setDemos] = useState<DemoRow[]>(
+    DEMO_LABELS.map((_, i) => ({ demoNumber: i + 1, code: 'ungraded', teamwork: 'ungraded' }))
+  );
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [unsaved, setUnsaved] = useState(false);
+
+  useEffect(() => {
+    if (!netid) { setLoading(false); return; }
+    setLoading(true);
+    getDemoPerformanceForStudent(netid)
+      .then((records: DemoPerformanceRecord[]) => {
+        setDemos(DEMO_LABELS.map((_, i) => {
+          const demoNumber = i + 1;
+          const r = records.find(rec => rec.demoNumber === demoNumber);
+          return {
+            demoNumber,
+            code: r ? (SCORE_TO_LEVEL[r.codeScore] ?? 'ungraded') : 'ungraded',
+            teamwork: r ? (SCORE_TO_LEVEL[r.teamworkScore] ?? 'ungraded') : 'ungraded',
+            recordId: r?.id,
+          };
+        }));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [netid]);
 
   const setLevel = (rowIndex: number, field: "code" | "teamwork", level: ProgressLevel) => {
     setDemos(prev => prev.map((row, i) => i === rowIndex ? { ...row, [field]: level } : row));
+    setUnsaved(true);
+  };
+
+  const handleSave = async () => {
+    if (!netid) return;
+    setSaving(true);
+    try {
+      const updated = await Promise.all(
+        demos.map(async (row) => {
+          if (row.code === 'ungraded' && row.teamwork === 'ungraded') return row;
+          const codeScore = LEVEL_TO_SCORE[row.code] ?? 0;
+          const teamworkScore = LEVEL_TO_SCORE[row.teamwork] ?? 0;
+          if (row.recordId != null) {
+            await updateDemoPerformance(row.recordId, netid, row.demoNumber, codeScore, teamworkScore);
+            return row;
+          } else {
+            const created = await createDemoPerformance(netid, row.demoNumber, codeScore, teamworkScore);
+            return { ...row, recordId: created.id };
+          }
+        })
+      );
+      setDemos(updated);
+      setUnsaved(false);
+    } catch {
+      // silently ignore
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -80,15 +147,23 @@ export default function TeamProgress({ readOnly = false }: { readOnly?: boolean 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>Team Progress</Text>
-          {!readOnly && (
+          {loading && <ActivityIndicator size="small" color="#dc2626" />}
+          {!readOnly && unsaved && !loading && (
             <View style={{ backgroundColor: '#fef9c3', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
               <Text style={{ color: '#a16207', fontSize: 11, fontWeight: '500' }}>Unsaved Changes</Text>
             </View>
           )}
         </View>
         {!readOnly && (
-          <TouchableOpacity style={{ backgroundColor: '#dc2626', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}>
-            <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Save Changes</Text>
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={saving || loading}
+            style={{ backgroundColor: '#dc2626', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, opacity: saving ? 0.6 : 1, minWidth: 100, alignItems: 'center' }}
+          >
+            {saving
+              ? <ActivityIndicator size="small" color="white" />
+              : <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Save Changes</Text>
+            }
           </TouchableOpacity>
         )}
       </View>
@@ -105,7 +180,7 @@ export default function TeamProgress({ readOnly = false }: { readOnly?: boolean 
       {demos.map((row, index) => (
         <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 }}>
           <View style={{ width: 64, backgroundColor: '#F3F4F6', paddingVertical: 8, borderRadius: 6, alignItems: 'center' }}>
-            <Text style={{ fontSize: 12, color: '#374151' }}>{row.demo}</Text>
+            <Text style={{ fontSize: 12, color: '#374151' }}>{DEMO_LABELS[index]}</Text>
           </View>
           <ProgressBar level={row.code} onPress={(l) => setLevel(index, "code", l)} readOnly={readOnly} />
           <ProgressBar level={row.teamwork} onPress={(l) => setLevel(index, "teamwork", l)} readOnly={readOnly} />

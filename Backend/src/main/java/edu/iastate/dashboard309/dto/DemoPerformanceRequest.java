@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 public record DemoPerformanceRequest(
     Long id,
     @NotBlank String studentNetid,
+    @NotNull @Min(1) @Max(4) Integer demoNumber,
     @NotNull @Min(0) @Max(2) Integer codeScore,
     @NotNull @Min(0) @Max(2) Integer teamworkScore
 ) {

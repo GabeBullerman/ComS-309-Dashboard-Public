@@ -1,5 +1,7 @@
 package edu.iastate.dashboard309.model;
 
+import java.time.LocalDate;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -21,6 +23,9 @@ public class WeeklyPerformance {
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
 
+    @Column(name = "week_start_date", nullable = false)
+    private LocalDate weekStartDate;
+
     @Column(name = "code_score", nullable = false)
     private Integer codeScore;
 
@@ -41,6 +46,14 @@ public class WeeklyPerformance {
 
     public void setStudent(User student) {
         this.student = student;
+    }
+
+    public LocalDate getWeekStartDate() {
+        return weekStartDate;
+    }
+
+    public void setWeekStartDate(LocalDate weekStartDate) {
+        this.weekStartDate = weekStartDate;
     }
 
     public Integer getCodeScore() {

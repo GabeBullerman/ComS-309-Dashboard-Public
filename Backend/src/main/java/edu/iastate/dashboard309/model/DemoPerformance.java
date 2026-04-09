@@ -21,6 +21,9 @@ public class DemoPerformance {
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
 
+    @Column(name = "demo_number", nullable = false)
+    private Integer demoNumber;
+
     @Column(name = "code_score", nullable = false)
     private Integer codeScore;
 
@@ -41,6 +44,14 @@ public class DemoPerformance {
 
     public void setStudent(User student) {
         this.student = student;
+    }
+
+    public Integer getDemoNumber() {
+        return demoNumber;
+    }
+
+    public void setDemoNumber(Integer demoNumber) {
+        this.demoNumber = demoNumber;
     }
 
     public Integer getCodeScore() {

@@ -85,6 +85,7 @@ public class WeeklyPerformanceController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
 
         weeklyPerformance.setStudent(student);
+        weeklyPerformance.setWeekStartDate(request.weekStartDate());
         weeklyPerformance.setCodeScore(request.codeScore());
         weeklyPerformance.setTeamworkScore(request.teamworkScore());
     }

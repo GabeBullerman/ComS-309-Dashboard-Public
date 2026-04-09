@@ -1,7 +1,13 @@
-import { useState, useRef } from "react";
-import { View, Text, TouchableOpacity, Modal, Pressable, ScrollView } from "react-native";
+import { useState, useRef, useEffect } from "react";
+import { View, Text, TouchableOpacity, Modal, Pressable, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { TeamMember } from "@/types/Teams";
+import {
+  WeeklyPerformanceRecord,
+  getWeeklyPerformanceForStudent,
+  createWeeklyPerformance,
+  updateWeeklyPerformance,
+} from "@/api/weeklyPerformance";
 
 type ProgressLevel = "good" | "moderate" | "poor" | "ungraded";
 
@@ -21,8 +27,11 @@ const LABEL_MAP: Record<ProgressLevel, string> = {
 
 const LEVELS: ProgressLevel[] = ["ungraded", "good", "moderate", "poor"];
 
+// Backend uses 0-2 integers; "ungraded" = no record in DB
+const SCORE_TO_LEVEL: Record<number, ProgressLevel> = { 0: "poor", 1: "moderate", 2: "good" };
+const LEVEL_TO_SCORE: Record<string, number> = { poor: 0, moderate: 1, good: 2 };
+
 type MemberScore = { code: ProgressLevel; teamwork: ProgressLevel };
-type WeekScores = Record<string, MemberScore>;
 
 function buildWeeks(count: number): { label: string; key: string }[] {
   const weeks: { label: string; key: string }[] = [];
@@ -123,24 +132,89 @@ interface Props {
 export default function WeeklyPerformance({ members, readOnly = false }: Props) {
   const weeks = buildWeeks(8);
   const [selectedWeek, setSelectedWeek] = useState(weeks[0].key);
-  const [allScores, setAllScores] = useState<Record<string, WeekScores>>({});
+  // netid -> weekKey -> { code, teamwork }
+  const [scores, setScores] = useState<Record<string, Record<string, MemberScore>>>({});
+  // netid -> weekKey -> existing record id (for PUT vs POST)
+  const [recordIds, setRecordIds] = useState<Record<string, Record<string, number>>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [unsaved, setUnsaved] = useState(false);
 
-  const getScore = (memberKey: string): MemberScore =>
-    allScores[selectedWeek]?.[memberKey] ?? { code: 'ungraded', teamwork: 'ungraded' };
+  useEffect(() => {
+    if (members.length === 0) { setLoading(false); return; }
+    setLoading(true);
+    Promise.all(
+      members
+        .filter(m => m.netid)
+        .map(m =>
+          getWeeklyPerformanceForStudent(m.netid!)
+            .then(records => ({ netid: m.netid!, records }))
+            .catch(() => ({ netid: m.netid!, records: [] as WeeklyPerformanceRecord[] }))
+        )
+    ).then(results => {
+      const newScores: typeof scores = {};
+      const newIds: typeof recordIds = {};
+      for (const { netid, records } of results) {
+        newScores[netid] = {};
+        newIds[netid] = {};
+        for (const r of records) {
+          newScores[netid][r.weekStartDate] = {
+            code: SCORE_TO_LEVEL[r.codeScore] ?? 'ungraded',
+            teamwork: SCORE_TO_LEVEL[r.teamworkScore] ?? 'ungraded',
+          };
+          newIds[netid][r.weekStartDate] = r.id;
+        }
+      }
+      setScores(newScores);
+      setRecordIds(newIds);
+    }).finally(() => setLoading(false));
+  }, [members]);
 
-  const setScore = (memberKey: string, field: 'code' | 'teamwork', level: ProgressLevel) => {
-    setAllScores(prev => ({
+  const getScore = (netid: string): MemberScore =>
+    scores[netid]?.[selectedWeek] ?? { code: 'ungraded', teamwork: 'ungraded' };
+
+  const setScore = (netid: string, field: 'code' | 'teamwork', level: ProgressLevel) => {
+    setScores(prev => ({
       ...prev,
-      [selectedWeek]: {
-        ...prev[selectedWeek],
-        [memberKey]: { ...getScore(memberKey), [field]: level },
+      [netid]: {
+        ...prev[netid],
+        [selectedWeek]: { ...getScore(netid), [field]: level },
       },
     }));
     setUnsaved(true);
   };
 
-  const handleSave = () => setUnsaved(false);
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await Promise.all(
+        members
+          .filter(m => m.netid)
+          .map(async (m) => {
+            const netid = m.netid!;
+            const score = getScore(netid);
+            if (score.code === 'ungraded' && score.teamwork === 'ungraded') return;
+            const codeScore = LEVEL_TO_SCORE[score.code] ?? 0;
+            const teamworkScore = LEVEL_TO_SCORE[score.teamwork] ?? 0;
+            const existingId = recordIds[netid]?.[selectedWeek];
+            if (existingId != null) {
+              await updateWeeklyPerformance(existingId, netid, selectedWeek, codeScore, teamworkScore);
+            } else {
+              const created = await createWeeklyPerformance(netid, selectedWeek, codeScore, teamworkScore);
+              setRecordIds(prev => ({
+                ...prev,
+                [netid]: { ...prev[netid], [selectedWeek]: created.id },
+              }));
+            }
+          })
+      );
+      setUnsaved(false);
+    } catch {
+      // silently ignore
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <View style={{ backgroundColor: 'white', borderRadius: 12, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
@@ -148,7 +222,8 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
         <Ionicons name="bar-chart-outline" size={18} color="#be123c" />
         <Text style={{ fontSize: 15, fontWeight: '600', marginLeft: 8, color: '#111827', flex: 1 }}>Weekly Performance</Text>
-        {!readOnly && unsaved && (
+        {loading && <ActivityIndicator size="small" color="#be123c" style={{ marginRight: 8 }} />}
+        {!readOnly && unsaved && !loading && (
           <View style={{ backgroundColor: '#fef9c3', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginRight: 8 }}>
             <Text style={{ color: '#a16207', fontSize: 11, fontWeight: '500' }}>Unsaved</Text>
           </View>
@@ -156,9 +231,13 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
         {!readOnly && (
           <TouchableOpacity
             onPress={handleSave}
-            style={{ backgroundColor: '#dc2626', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 }}
+            disabled={saving || loading}
+            style={{ backgroundColor: '#dc2626', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, opacity: saving ? 0.6 : 1 }}
           >
-            <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Save</Text>
+            {saving
+              ? <ActivityIndicator size="small" color="white" />
+              : <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Save</Text>
+            }
           </TouchableOpacity>
         )}
       </View>
@@ -181,7 +260,7 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
         <View style={{ gap: 8 }}>
           {members.map((member) => {
             const key = member.netid || member.name;
-            const score = getScore(key);
+            const score = member.netid ? getScore(member.netid) : { code: 'ungraded' as ProgressLevel, teamwork: 'ungraded' as ProgressLevel };
             return (
               <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <View style={{ flex: 2 }}>
@@ -191,11 +270,19 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
                   )}
                 </View>
                 <View style={{ flex: 2 }}>
-                  <ProgressCell level={score.code} onPress={(l) => setScore(key, 'code', l)} readOnly={readOnly} />
+                  <ProgressCell
+                    level={score.code}
+                    onPress={(l) => member.netid && setScore(member.netid, 'code', l)}
+                    readOnly={readOnly || !member.netid}
+                  />
                 </View>
                 <View style={{ width: 8 }} />
                 <View style={{ flex: 2 }}>
-                  <ProgressCell level={score.teamwork} onPress={(l) => setScore(key, 'teamwork', l)} readOnly={readOnly} />
+                  <ProgressCell
+                    level={score.teamwork}
+                    onPress={(l) => member.netid && setScore(member.netid, 'teamwork', l)}
+                    readOnly={readOnly || !member.netid}
+                  />
                 </View>
               </View>
             );

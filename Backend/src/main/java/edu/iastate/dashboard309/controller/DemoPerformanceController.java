@@ -85,6 +85,7 @@ public class DemoPerformanceController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
 
         demoPerformance.setStudent(student);
+        demoPerformance.setDemoNumber(request.demoNumber());
         demoPerformance.setCodeScore(request.codeScore());
         demoPerformance.setTeamworkScore(request.teamworkScore());
     }
