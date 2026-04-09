@@ -53,30 +53,37 @@ function buildWeeks(count: number): { label: string; key: string }[] {
 
 function ProgressCell({ level, onPress, readOnly }: { level: ProgressLevel; onPress: (l: ProgressLevel) => void; readOnly?: boolean }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0, w: 0 });
+  const ref = useRef<View>(null);
+
   return (
     <View style={{ flex: 1 }}>
       <TouchableOpacity
-        onPress={() => !readOnly && setOpen(o => !o)}
+        ref={ref}
+        onPress={() => !readOnly && ref.current?.measure((_fx, _fy, w, h, px, py) => { setPos({ x: px, y: py + h, w }); setOpen(true); })}
         activeOpacity={readOnly ? 1 : 0.7}
         style={{ height: 30, backgroundColor: COLOR_MAP[level], borderRadius: 6, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4 }}
       >
         <Text style={{ color: 'white', fontSize: 11, fontWeight: '600' }}>{LABEL_MAP[level]}</Text>
         {!readOnly && <Ionicons name={open ? "chevron-up" : "chevron-down"} size={10} color="white" />}
       </TouchableOpacity>
-      {!readOnly && open && (
-        <View style={{ position: 'absolute', top: 34, left: 0, right: 0, backgroundColor: 'white', borderRadius: 6, borderWidth: 1, borderColor: '#E5E7EB', elevation: 6, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 4, zIndex: 20 }}>
-          {LEVELS.map((l) => (
-            <TouchableOpacity
-              key={l}
-              onPress={() => { onPress(l); setOpen(false); }}
-              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
-            >
-              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLOR_MAP[l], marginRight: 8 }} />
-              <Text style={{ fontSize: 12, color: '#374151' }}>{LABEL_MAP[l]}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)}>
+          <View style={{ position: 'absolute', top: pos.y + 4, left: pos.x, minWidth: Math.max(pos.w, 140), backgroundColor: 'white', borderRadius: 6, borderWidth: 1, borderColor: '#E5E7EB', elevation: 8, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, overflow: 'hidden' }}>
+            {LEVELS.map((l) => (
+              <TouchableOpacity
+                key={l}
+                onPress={() => { onPress(l); setOpen(false); }}
+                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
+              >
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLOR_MAP[l], marginRight: 8 }} />
+                <Text style={{ fontSize: 12, color: '#374151' }}>{LABEL_MAP[l]}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
