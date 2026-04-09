@@ -2,17 +2,31 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
+export type RiskSeverity = 'warning' | 'critical';
+
+export interface AtRiskFlag {
+  reason: string;
+  severity: RiskSeverity;
+}
+
 export interface AtRiskStudentProps {
-  name: string;
+  studentName: string;
+  teamName: string;
   ta: string;
   section: number;
-  atRiskReason: string;
+  flags: AtRiskFlag[];
   onPress?: () => void;
 }
 
 export const AtRiskStudentCard: React.FC<AtRiskStudentProps> = ({
-  name, ta, section, atRiskReason, onPress,
+  studentName, teamName, ta, section, flags, onPress,
 }) => {
+  const isCritical = flags.some(f => f.severity === 'critical');
+  const borderColor = isCritical ? '#dc2626' : '#f59e0b';
+  const badgeColor = isCritical ? '#fee2e2' : '#fef9c3';
+  const badgeText = isCritical ? '#b91c1c' : '#92400e';
+  const badgeLabel = isCritical ? 'Critical' : 'At Risk';
+  const initials = studentName.trim().split(/\s+/).slice(0, 2).map(n => n[0]?.toUpperCase() ?? '').join('');
 
   return (
     <Pressable
@@ -24,36 +38,74 @@ export const AtRiskStudentCard: React.FC<AtRiskStudentProps> = ({
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
-      <View className="flex-row items-center bg-white rounded-xl border border-gray-200 px-3.5 py-3 shadow-sm elevation-2">
-        {/* Avatar with initials */}
-        <View className="w-16 h-16 mr-3 rounded-full bg-yellow-400 items-center justify-center border-[1.5px] border-amber-600">
-            <Text className="text-gray-800 font-semibold">{name.split(' ').map(n => n[0]).join('').toUpperCase()}</Text>
+      <View style={{
+        backgroundColor: 'white',
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor,
+        padding: 14,
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 3,
+        elevation: 2,
+      }}>
+        {/* Header row */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 }}>
+          {/* Avatar */}
+          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#F1BE48', alignItems: 'center', justifyContent: 'center', marginRight: 10, borderWidth: 1.5, borderColor: '#d97706' }}>
+            <Text style={{ color: '#1f2937', fontWeight: '700', fontSize: 14 }}>{initials}</Text>
+          </View>
+
+          {/* Name + meta */}
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827', flex: 1, marginRight: 6 }} numberOfLines={1}>
+                {studentName}
+              </Text>
+              <View style={{ backgroundColor: badgeColor, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: badgeText }}>{badgeLabel}</Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 3 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <Ionicons name="people-outline" size={12} color="#9ca3af" />
+                <Text style={{ fontSize: 11, color: '#6b7280' }}>{teamName}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <Ionicons name="person-sharp" size={12} color="#9ca3af" />
+                <Text style={{ fontSize: 11, color: '#6b7280' }}>TA: {ta}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <Ionicons name="book-outline" size={12} color="#9ca3af" />
+                <Text style={{ fontSize: 11, color: '#6b7280' }}>§{section}</Text>
+              </View>
+            </View>
+          </View>
         </View>
 
-        <View className="flex-1 mb-2">
-            {/* Header */}
-            <View className="flex-row items-start justify-between mb-2">
-            <Text className="flex-1 pr-2 text-base font-semibold text-gray-900">
-                {name}
-            </Text>
+        {/* Risk flags */}
+        <View style={{ gap: 5 }}>
+          {flags.map((flag, i) => (
+            <View key={i} style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: 6,
+              backgroundColor: flag.severity === 'critical' ? '#fee2e2' : '#fefce8',
+              borderRadius: 6,
+              paddingHorizontal: 8,
+              paddingVertical: 5,
+            }}>
+              <Ionicons
+                name={flag.severity === 'critical' ? 'alert-circle' : 'warning'}
+                size={13}
+                color={flag.severity === 'critical' ? '#dc2626' : '#d97706'}
+                style={{ marginTop: 1 }}
+              />
+              <Text style={{ fontSize: 12, color: flag.severity === 'critical' ? '#b91c1c' : '#92400e', flex: 1 }}>
+                {flag.reason}
+              </Text>
             </View>
-
-            {/* TA */}
-            <View className="flex-row items-center mb-1">
-            <Ionicons name="person-sharp" size={15} color="#64f0cd" className="mr-1.5" />
-            <Text className="text-[13px] text-gray-600">TA: {ta}</Text>
-            </View>
-
-            {/* Section */}
-            <View className="flex-row items-center mb-2.5">
-            <Ionicons name="book" size={15} color="#C8102E" className="mr-1.5" />
-            <Text className="text-[13px] text-gray-600">Section: {section}</Text>
-            </View>
-
-            {/* Risk Reason */}
-            <View className="bg-gray-100 p-2 rounded-lg">
-                <Text className="text-xs text-gray-500 mb-1">At risk reason: {atRiskReason}</Text>
-            </View>
+          ))}
         </View>
       </View>
     </Pressable>
