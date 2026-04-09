@@ -124,4 +124,11 @@ public class TeamService {
         team.removeStudent(student);
         student.setTeam(null);
     }
+
+    @Transactional
+    public void clearStudents(Long id){
+        Team team = teamRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+        team.clearStudents();
+    }
 }

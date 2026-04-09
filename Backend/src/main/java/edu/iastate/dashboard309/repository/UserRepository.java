@@ -20,6 +20,15 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("""
         SELECT DISTINCT u FROM User u
+        JOIN u.roles r
+        WHERE u.initials = :initials
+            AND r.roleName IN ('ta', 'hta')
+    """)
+    List<User> findTaByInitials(
+        @Param("initials") String initials);
+
+    @Query("""
+        SELECT DISTINCT u FROM User u
         LEFT JOIN u.roles r
         WHERE (:role IS NULL OR r.roleName = :role)
     """)
