@@ -1,206 +1,282 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  ActivityIndicator,
-  useWindowDimensions,
-} from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Team, TeamMember } from '../types/Teams';
-import { getUserPermissions, normalizeRole, UserRole } from '../utils/auth';
+  View, Text, TextInput, FlatList, ActivityIndicator, useWindowDimensions,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { UserRole, normalizeRole } from '../utils/auth';
 import { getCurrentUser } from '../api/users';
 import { getTeams, TeamApiResponse } from '../api/teams';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../../App';
-import { AtRiskStudentCard } from '@/components/AtRiskStudentCard';
+import { getAttendanceForStudent, AttendanceRecord } from '../api/attendance';
+import { getDemoPerformanceForStudent, DemoPerformanceRecord } from '../api/demoPerformance';
+import { getWeeklyPerformanceForStudent, WeeklyPerformanceRecord } from '../api/weeklyPerformance';
+import { AtRiskStudentCard, AtRiskFlag } from '@/components/AtRiskStudentCard';
+
+// ── At-Risk Algorithm ─────────────────────────────────────────────────────────
+// Based on professor Mitra's guidelines:
+//  - 5 lecture absences = failing threshold (critical at 5+, warning at 3-4)
+//  - Habitual lateness (3+ lates to lecture) = warning
+//  - Poor demo performance on 2+ of 4 demos = warning
+//  - Poor weekly performance for 3+ weeks = warning
+
+function computeAtRiskFlags(
+  attendance: AttendanceRecord[],
+  demos: DemoPerformanceRecord[],
+  weekly: WeeklyPerformanceRecord[],
+): AtRiskFlag[] {
+  const flags: AtRiskFlag[] = [];
+
+  // Lecture attendance only
+  const lectureAbsences = attendance.filter(r => r.type === 'LECTURE' && r.status === 'ABSENT').length;
+  const lectureLates    = attendance.filter(r => r.type === 'LECTURE' && r.status === 'LATE').length;
+
+  if (lectureAbsences >= 5) {
+    flags.push({ reason: `${lectureAbsences} lecture absences — at failing threshold`, severity: 'critical' });
+  } else if (lectureAbsences >= 3) {
+    flags.push({ reason: `${lectureAbsences} lecture absences — approaching 5-absence limit`, severity: 'warning' });
+  }
+
+  if (lectureLates >= 3) {
+    flags.push({ reason: `${lectureLates} late arrivals to lecture (habitual)`, severity: 'warning' });
+  }
+
+  // Demo performance: poor = score 0 on code or teamwork
+  const poorDemos = demos.filter(d => d.codeScore === 0 || d.teamworkScore === 0).length;
+  if (poorDemos >= 2) {
+    flags.push({
+      reason: `Poor performance in ${poorDemos} of ${demos.length} demo${demos.length !== 1 ? 's' : ''}`,
+      severity: 'warning',
+    });
+  }
+
+  // Weekly performance: 3+ weeks with poor scores on both code AND teamwork
+  const poorWeeks = weekly.filter(w => w.codeScore === 0 && w.teamworkScore === 0).length;
+  if (poorWeeks >= 3) {
+    flags.push({ reason: `Poor weekly performance for ${poorWeeks} weeks`, severity: 'warning' });
+  }
+
+  return flags;
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface AtRiskStudent {
+  netid: string;
+  studentName: string;
+  teamName: string;
+  teamId: number;
+  ta: string;
+  section: number;
+  flags: AtRiskFlag[];
+}
 
 interface Props {
   userRole: UserRole;
 }
 
+// ── Screen ────────────────────────────────────────────────────────────────────
+
 export default function AtRiskStudentsScreen({ userRole }: Props) {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { width } = useWindowDimensions();
-  const numColumns = width < 640 ? 1 : width < 960 ? 2 : width < 1280 ? 3 : 4;
+  const numColumns = width < 640 ? 1 : width < 960 ? 2 : 3;
   const isMobile = width < 640;
   const effectiveRole = normalizeRole(String(userRole));
-  const permissions = getUserPermissions(effectiveRole);
 
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [atRiskStudents, setAtRiskStudents] = useState<AtRiskStudent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    const toInitials = (name?: string) => {
-      if (!name) return 'NA';
-      return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || 'NA';
-    };
-
-    const mapStatus = (status?: number | null): Team['status'] => {
-      if (status == null) return 'Moderate';
-      if (status <= 0) return 'Poor';
-      if (status === 1) return 'Moderate';
-      return 'Good';
-    };
-
-    const mapTeam = (team: TeamApiResponse): Team => {
-      const members: TeamMember[] = (team.students ?? []).map((student) => ({
-        id: student.id,
-        name: student.name || student.netid || 'Unknown Student',
-        netid: student.netid,
-        initials: toInitials(student.name || student.netid),
-        color: 'bg-[#F1BE48] text-gray-800',
-        photo: require('../Images/PersonIcon.png'),
-        demoResults: [],
-      }));
-
-      return {
-        id: team.id,
-        name: team.name || 'Unnamed Team',
-        description: (team.taNotes && team.taNotes.trim().length > 0) ? team.taNotes : 'No description available',
-        memberCount: members.length,
-        semester: 'Spring 2026',
-        ta: team.taNetid || 'Unassigned',
-        section: team.section ?? 0,
-        status: mapStatus(team.status),
-        members,
-        gitlab: team.gitlab ?? undefined,
-      };
-    };
-
-    const loadTeams = async () => {
+    const load = async () => {
       setIsLoading(true);
       setErrorMessage('');
       try {
         const currentUser = await getCurrentUser();
         const netid = currentUser?.netid;
-        if (!netid) {
-          setErrorMessage('Could not identify current user.');
-          setIsLoading(false);
-          return;
-        }
-        const normalizedRole = normalizeRole(String(effectiveRole));
+        if (!netid) { setErrorMessage('Could not identify current user.'); return; }
+
         let rawTeams: TeamApiResponse[] = [];
-        if (normalizedRole === 'TA') {
+        if (effectiveRole === 'TA') {
           rawTeams = await getTeams(netid);
         } else {
           rawTeams = await getTeams();
         }
-        if (normalizedRole === 'Student') {
-          rawTeams = rawTeams.filter((team) =>
-            (team.students ?? []).some((s) => s.netid === netid)
-          );
+
+        // Collect all unique students across teams
+        const studentMap = new Map<string, { name: string; teamName: string; teamId: number; ta: string; section: number }>();
+        for (const team of rawTeams) {
+          for (const student of team.students ?? []) {
+            if (!student.netid || studentMap.has(student.netid)) continue;
+            studentMap.set(student.netid, {
+              name: student.name || student.netid,
+              teamName: team.name || 'Unnamed Team',
+              teamId: team.id,
+              ta: team.taNetid || 'Unassigned',
+              section: (team.section ?? 0) as number,
+            });
+          }
         }
-        setTeams(rawTeams.map(mapTeam));
+
+        // Fetch performance data for all students in parallel
+        const results = await Promise.all(
+          [...studentMap.entries()].map(async ([studentNetid, info]) => {
+            const [attendance, demos, weekly] = await Promise.all([
+              getAttendanceForStudent(studentNetid).catch((): AttendanceRecord[] => []),
+              getDemoPerformanceForStudent(studentNetid).catch((): DemoPerformanceRecord[] => []),
+              getWeeklyPerformanceForStudent(studentNetid).catch((): WeeklyPerformanceRecord[] => []),
+            ]);
+            const flags = computeAtRiskFlags(attendance, demos, weekly);
+            return { studentNetid, info, flags };
+          })
+        );
+
+        // Keep only at-risk students, sorted critical first then by name
+        const flagged: AtRiskStudent[] = results
+          .filter(r => r.flags.length > 0)
+          .map(r => ({
+            netid: r.studentNetid,
+            studentName: r.info.name,
+            teamName: r.info.teamName,
+            teamId: r.info.teamId,
+            ta: r.info.ta,
+            section: r.info.section,
+            flags: r.flags,
+          }))
+          .sort((a, b) => {
+            const aHasCritical = a.flags.some(f => f.severity === 'critical');
+            const bHasCritical = b.flags.some(f => f.severity === 'critical');
+            if (aHasCritical !== bHasCritical) return aHasCritical ? -1 : 1;
+            return a.studentName.localeCompare(b.studentName);
+          });
+
+        setAtRiskStudents(flagged);
       } catch {
-        setErrorMessage('Failed to load teams from backend.');
+        setErrorMessage('Failed to load student data.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadTeams();
+    load();
   }, [effectiveRole]);
 
-  const isStudentView   = effectiveRole === 'Student';
-  const canFilterSemester = effectiveRole === 'Instructor' || effectiveRole === 'HTA';
-  const canFilterSection  = effectiveRole === 'Instructor' || effectiveRole === 'HTA' || effectiveRole === 'TA';
-  const searchPlaceholder = 'Search students name, TA, or section...';
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return atRiskStudents;
+    const q = searchQuery.toLowerCase();
+    return atRiskStudents.filter(s =>
+      s.studentName.toLowerCase().includes(q) ||
+      s.netid.toLowerCase().includes(q) ||
+      s.teamName.toLowerCase().includes(q) ||
+      s.ta.toLowerCase().includes(q) ||
+      s.section.toString().includes(q)
+    );
+  }, [atRiskStudents, searchQuery]);
 
-  const filteredTeams = useMemo(() => {
-    return teams
-      .filter((team) => {
-        const matchesSearch = isStudentView || (
-          team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          team.section.toString().includes(searchQuery) ||
-          team.ta.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          team.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          team.members.some((m) =>
-            m.initials.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            m.name.toLowerCase().includes(searchQuery.toLowerCase())
-          )
-        );
-        const matchesRole     = effectiveRole === 'Student' || permissions.canViewPastSemesters || team.semester === 'Spring 2026';
-        return matchesSearch && matchesRole;
-      })
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [teams, searchQuery, effectiveRole, permissions, isStudentView, canFilterSemester, canFilterSection]);
+  const criticalCount = atRiskStudents.filter(s => s.flags.some(f => f.severity === 'critical')).length;
+  const warningCount  = atRiskStudents.length - criticalCount;
 
-  // — Loading —
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
         <ActivityIndicator size="large" color="#C8102E" />
-        <Text className="text-gray-500 mt-3">Loading students...</Text>
+        <Text style={{ color: '#6b7280', marginTop: 12 }}>Analyzing student data...</Text>
       </View>
     );
   }
 
-  // — Error —
   if (errorMessage) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50 px-6">
-        <Text className="text-lg font-semibold text-red-600">Unable to load students</Text>
-        <Text className="text-gray-500 mt-2 text-center">{errorMessage}</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', paddingHorizontal: 24 }}>
+        <Text style={{ fontSize: 16, fontWeight: '600', color: '#dc2626' }}>Unable to load students</Text>
+        <Text style={{ color: '#6b7280', marginTop: 8, textAlign: 'center' }}>{errorMessage}</Text>
       </View>
     );
   }
 
-  const remainder = numColumns > 1 ? filteredTeams.length % numColumns : 0;
-  const padded: (Team | null)[] = remainder === 0
-    ? filteredTeams
-    : [...filteredTeams, ...Array(numColumns - remainder).fill(null)];
+  const remainder = numColumns > 1 ? filtered.length % numColumns : 0;
+  const padded: (AtRiskStudent | null)[] = remainder === 0
+    ? filtered
+    : [...filtered, ...Array(numColumns - remainder).fill(null)];
 
   return (
-    <View className="flex-1 bg-gray-50">
-      <View className={`flex-1 ${isMobile ? 'px-3 pt-3' : 'px-6 pt-6'}`}>
+    <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+      <View style={{ flex: 1, paddingHorizontal: isMobile ? 12 : 24, paddingTop: isMobile ? 12 : 24 }}>
 
-        <Text className={`font-bold text-gray-900 mb-2.5 ${isMobile ? 'text-[22px]' : 'text-[28px]'}`}>
-            At-Risk Students
+        <Text style={{ fontSize: isMobile ? 22 : 28, fontWeight: '700', color: '#111827', marginBottom: 10 }}>
+          At-Risk Students
         </Text>
 
-        {(
-          <>
-            {/* Search */}
-            <View className="flex-row items-center bg-white rounded-lg border border-gray-200 px-2.5 py-2 mb-2">
-              <Ionicons name="search" size={16} color="#9CA3AF" style={{ marginRight: 6 }} />
-              <TextInput
-                placeholder={searchPlaceholder}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                className="flex-1 text-sm text-slate-800"
-                placeholderTextColor="#9CA3AF"
-              />
-            </View>
-          </>
+        {/* Summary badges */}
+        {atRiskStudents.length > 0 && (
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+            {criticalCount > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fee2e2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
+                <Ionicons name="alert-circle" size={13} color="#dc2626" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#b91c1c' }}>{criticalCount} Critical</Text>
+              </View>
+            )}
+            {warningCount > 0 && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fefce8', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
+                <Ionicons name="warning" size={13} color="#d97706" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#92400e' }}>{warningCount} Warning</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Search */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', paddingHorizontal: 10, paddingVertical: 8, marginBottom: 12 }}>
+          <Ionicons name="search" size={16} color="#9ca3af" style={{ marginRight: 6 }} />
+          <TextInput
+            placeholder="Search by student, team, TA, or section..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={{ flex: 1, fontSize: 14, color: '#1e293b' }}
+            placeholderTextColor="#9ca3af"
+          />
+        </View>
+
+        {/* Empty state */}
+        {filtered.length === 0 && (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="checkmark-circle-outline" size={48} color="#86efac" />
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#374151', marginTop: 12 }}>
+              {atRiskStudents.length === 0 ? 'No at-risk students' : 'No results match your search'}
+            </Text>
+            <Text style={{ fontSize: 13, color: '#9ca3af', marginTop: 4 }}>
+              {atRiskStudents.length === 0 ? 'All students are within acceptable thresholds.' : 'Try a different search term.'}
+            </Text>
+          </View>
         )}
 
         {/* Student list */}
-        <FlatList
-          className="flex-1"
-          key={numColumns}
-          data={padded}
-          keyExtractor={(_, i) => i.toString()}
-          numColumns={numColumns}
-          columnWrapperStyle={numColumns > 1 ? { gap: 8, alignItems: 'stretch' } : undefined}
-          contentContainerStyle={{ paddingBottom: 24, gap: 8 }}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) =>
-            item === null ? (
-              <View className="flex-1" />
-            ) : (
-              <View className="flex-1">
-                <AtRiskStudentCard
-                    atRiskReason={'hello world'} {...item}
-                    onPress={() => navigation.navigate('TeamDetail', { team: item, userRole: effectiveRole })}/>
-              </View>
-            )
-          }
-        />
+        {filtered.length > 0 && (
+          <FlatList
+            style={{ flex: 1 }}
+            key={numColumns}
+            data={padded}
+            keyExtractor={(_, i) => i.toString()}
+            numColumns={numColumns}
+            columnWrapperStyle={numColumns > 1 ? { gap: 8, alignItems: 'stretch' } : undefined}
+            contentContainerStyle={{ paddingBottom: 24, gap: 8 }}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) =>
+              item === null ? (
+                <View style={{ flex: 1 }} />
+              ) : (
+                <View style={{ flex: 1 }}>
+                  <AtRiskStudentCard
+                    studentName={item.studentName}
+                    teamName={item.teamName}
+                    ta={item.ta}
+                    section={item.section}
+                    flags={item.flags}
+                  />
+                </View>
+              )
+            }
+          />
+        )}
       </View>
     </View>
   );
