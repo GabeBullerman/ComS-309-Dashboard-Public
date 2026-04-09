@@ -9,7 +9,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginPage from './src/screens/LoginPage';
 import TAManager from "./src/screens/TAManager";
 import UploadScreen from "./src/screens/UploadScreen";
-import CoursesScreen from "./src/screens/Courses";
 import DashboardScreen from "./src/screens/DashboardScreen";
 import TeamDetailScreen from "./src/screens/TeamDetail";
 import { logout as apiLogout, storeToken, getRoleFromToken, getToken } from './src/utils/auth';
@@ -138,7 +137,6 @@ export default function App() {
             <Stack.Screen name="TAManager" component={TAManager} options={{ headerShown: false }} />
             <Stack.Screen name="TeamDetail" component={TeamDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen name="TeamMemberDetail" component={TeamMemberDetail} options={{ headerShown: false }} />
-            <Stack.Screen name="Courses" component={CoursesScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Upload" component={UploadScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Landing" options={{ headerShown: false }}>
               {(props) => <LandingPage {...props} userEmail={userEmail} onLogout={handleLogout} />}
