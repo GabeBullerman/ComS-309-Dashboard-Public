@@ -53,6 +53,7 @@ public class WeeklyPerformanceService {
         return new WeeklyPerformanceRequest(
             weeklyPerformance.getId(),
             weeklyPerformance.getStudent().getNetid(),
+            weeklyPerformance.getWeekStartDate(),
             weeklyPerformance.getCodeScore(),
             weeklyPerformance.getTeamworkScore()
         );

@@ -24,7 +24,7 @@ if (Platform.OS === "web") {
 export type RootStackParamList = {
   Home: undefined;
   TeamDetail: { team: Team; userRole: UserRole };
-  TeamMemberDetail: { member: TeamMember; gitlabUrl?: string; teamId?: number };
+  TeamMemberDetail: { member: TeamMember; gitlabUrl?: string; teamId?: number; teamName?: string };
   Teams: {userRole: UserRole};
   TAManager: undefined;
   Courses: undefined;

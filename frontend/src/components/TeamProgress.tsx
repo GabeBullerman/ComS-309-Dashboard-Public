@@ -1,57 +1,72 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import {
+  DemoPerformanceRecord,
+  getDemoPerformanceForStudent,
+  createDemoPerformance,
+} from "@/api/demoPerformance";
+
 type ProgressLevel = "good" | "moderate" | "poor" | "ungraded";
 
-interface DemoRow {
-  demo: string;
-  code: ProgressLevel;
-  teamwork: ProgressLevel;
-}
-
-const colorMap = {
-  good: "bg-green-500",
-  moderate: "bg-yellow-400",
-  poor: "bg-red-500",
-  ungraded: "bg-gray-400",
+const COLOR_MAP: Record<ProgressLevel, string> = {
+  good: "#22c55e",
+  moderate: "#facc15",
+  poor: "#ef4444",
+  ungraded: "#9ca3af",
 };
 
-const labelMap = {
+const LABEL_MAP: Record<ProgressLevel, string> = {
   good: "Good",
   moderate: "Moderate",
   poor: "Poor",
   ungraded: "Ungraded",
 };
 
-const INNER = 128;
-const RADIUS_INNER = 32;
 const levels: ProgressLevel[] = ["ungraded", "good", "moderate", "poor"];
+
+const SCORE_TO_LEVEL: Record<number, ProgressLevel> = { 0: "poor", 1: "moderate", 2: "good" };
+const LEVEL_TO_SCORE: Record<string, number> = { poor: 0, moderate: 1, good: 2 };
+
+const DEMO_LABELS = ["Demo 1", "Demo 2", "Demo 3", "Demo 4"];
+
+interface DemoRow {
+  demoNumber: number;
+  code: ProgressLevel;
+  teamwork: ProgressLevel;
+  codeRecordId?: number;
+  teamworkRecordId?: number;
+  recordId?: number;
+}
+
 function ProgressBar({ level, onPress, readOnly }: { level: ProgressLevel; onPress: (level: ProgressLevel) => void; readOnly?: boolean }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <View className="flex-1">
+    <View style={{ flex: 1 }}>
       <TouchableOpacity
-        className="h-8 bg-gray-200 rounded-md overflow-hidden justify-center"
+        style={{ height: 32, backgroundColor: '#E5E7EB', borderRadius: 6, overflow: 'hidden', justifyContent: 'center' }}
         onPress={() => !readOnly && setOpen(o => !o)}
         activeOpacity={readOnly ? 1 : 0.7}
       >
-        <View className={`h-full ${colorMap[level]} items-center justify-center flex-row`}>
-          <Text className="text-white text-xs font-semibold mr-1">{labelMap[level]}</Text>
+        <View style={{ height: '100%', backgroundColor: COLOR_MAP[level], alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
+          <Text style={{ color: 'white', fontSize: 12, fontWeight: '600', marginRight: readOnly ? 0 : 4 }}>
+            {LABEL_MAP[level]}
+          </Text>
           {!readOnly && <Ionicons name={open ? "chevron-up" : "chevron-down"} size={12} color="white" />}
         </View>
       </TouchableOpacity>
 
       {!readOnly && open && (
-        <View className="bg-white border border-gray-200 rounded-md shadow mt-1 z-10">
+        <View style={{ backgroundColor: 'white', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 6, marginTop: 4, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, zIndex: 10 }}>
           {levels.map((l) => (
             <TouchableOpacity
               key={l}
-              className="flex-row items-center px-3 py-2 border-b border-gray-100"
+              style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
               onPress={() => { onPress(l); setOpen(false); }}
             >
-              <View className={`w-3 h-3 rounded-full mr-2 ${colorMap[l]}`} />
-              <Text className="text-xs text-gray-700">{labelMap[l]}</Text>
+              <View style={{ width: 12, height: 12, borderRadius: 6, marginRight: 8, backgroundColor: COLOR_MAP[l] }} />
+              <Text style={{ fontSize: 12, color: '#374151' }}>{LABEL_MAP[l]}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -60,67 +75,129 @@ function ProgressBar({ level, onPress, readOnly }: { level: ProgressLevel; onPre
   );
 }
 
-export default function TeamProgress({ readOnly = false }: { readOnly?: boolean }) {
-  const [demos, setDemos] = useState<DemoRow[]>([
-    { demo: "Demo 1", code: "good", teamwork: "ungraded" },
-    { demo: "Demo 2", code: "ungraded", teamwork: "ungraded" },
-    { demo: "Demo 3", code: "ungraded", teamwork: "ungraded" },
-    { demo: "Demo 4", code: "ungraded", teamwork: "ungraded" },
-  ]);
+interface Props {
+  netid: string;
+  readOnly?: boolean;
+}
+
+export default function TeamProgress({ netid, readOnly = false }: Props) {
+  const [demos, setDemos] = useState<DemoRow[]>(
+    DEMO_LABELS.map((_, i) => ({ demoNumber: i + 1, code: 'ungraded', teamwork: 'ungraded' }))
+  );
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [unsaved, setUnsaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!netid) { setLoading(false); return; }
+    setLoading(true);
+    getDemoPerformanceForStudent(netid)
+      .then((records: DemoPerformanceRecord[]) => {
+        setDemos(DEMO_LABELS.map((_, i) => {
+          const demoNumber = i + 1;
+          const r = records.find(rec => rec.demoNumber === demoNumber);
+          return {
+            demoNumber,
+            code: r ? (SCORE_TO_LEVEL[r.codeScore] ?? 'ungraded') : 'ungraded',
+            teamwork: r ? (SCORE_TO_LEVEL[r.teamworkScore] ?? 'ungraded') : 'ungraded',
+            recordId: r?.id,
+          };
+        }));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [netid]);
 
   const setLevel = (rowIndex: number, field: "code" | "teamwork", level: ProgressLevel) => {
-  setDemos(prev => prev.map((row, i) =>
-    i === rowIndex ? { ...row, [field]: level } : row
-  ));
-};
-    return (
-        <View className="bg-white rounded-xl p-4 mb-2 shadow">
+    setDemos(prev => prev.map((row, i) => i === rowIndex ? { ...row, [field]: level } : row));
+    setUnsaved(true);
+  };
 
-        {/* HEADER */}
-        <View className="flex-row justify-between items-center mb-4">
-          <View className="flex-row items-center">
-            <Text className="text-lg font-semibold mr-3">Team Progress</Text>
-            {!readOnly && (
-              <View className="bg-yellow-100 px-2 py-1 rounded">
-                <Text className="text-yellow-700 text-xs font-medium">Unsaved Changes</Text>
-              </View>
-            )}
-          </View>
-          {!readOnly && (
-            <TouchableOpacity className="bg-red-600 px-4 py-2 rounded-lg">
-              <Text className="text-white font-semibold">Save Changes</Text>
-            </TouchableOpacity>
+  const handleSave = async () => {
+    if (!netid) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const updated = await Promise.all(
+        demos.map(async (row) => {
+          if (row.code === 'ungraded' && row.teamwork === 'ungraded') return row;
+          const codeScore = LEVEL_TO_SCORE[row.code] ?? 0;
+          const teamworkScore = LEVEL_TO_SCORE[row.teamwork] ?? 0;
+          // Always POST — backend upserts by (studentNetid, demoNumber)
+          const saved = await createDemoPerformance(netid, row.demoNumber, codeScore, teamworkScore);
+          return { ...row, recordId: saved.id };
+        })
+      );
+      setDemos(updated);
+      setUnsaved(false);
+    } catch (e: any) {
+      setSaveError(e?.response?.data?.message ?? e?.message ?? 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 16, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
+      {/* Header */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>Team Progress</Text>
+          {loading && <ActivityIndicator size="small" color="#dc2626" />}
+          {saveError && (
+            <View style={{ backgroundColor: '#fee2e2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, marginRight: 8 }}>
+              <Text style={{ color: '#dc2626', fontSize: 11, fontWeight: '500' }}>{saveError}</Text>
+            </View>
+          )}
+          {!readOnly && unsaved && !loading && !saveError && (
+            <View style={{ backgroundColor: '#fef9c3', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
+              <Text style={{ color: '#a16207', fontSize: 11, fontWeight: '500' }}>Unsaved Changes</Text>
+            </View>
           )}
         </View>
+        {!readOnly && (
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={saving || loading}
+            style={{ backgroundColor: '#dc2626', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, opacity: saving ? 0.6 : 1, minWidth: 100, alignItems: 'center' }}
+          >
+            {saving
+              ? <ActivityIndicator size="small" color="white" />
+              : <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Save Changes</Text>
+            }
+          </TouchableOpacity>
+        )}
+      </View>
 
-        {/* COLUMN HEADERS */}
-        <View className="flex-row mb-2">
-          <Text className="w-20 text-gray-500 text-xs">Demo</Text>
-          <Text className="flex-1 text-gray-500 text-xs">Code Progress</Text>
-          <Text className="flex-1 text-gray-500 text-xs">Teamwork</Text>
-        </View>
+      {/* Column Headers */}
+      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+        <Text style={{ width: 64, color: '#6B7280', fontSize: 12 }}>Demo</Text>
+        <Text style={{ flex: 1, color: '#6B7280', fontSize: 12 }}>Code Progress</Text>
+        <View style={{ width: 8 }} />
+        <Text style={{ flex: 1, color: '#6B7280', fontSize: 12 }}>Teamwork</Text>
+      </View>
 
-        {/* ROWS */}
-        {demos.map((row, index) => (
-          <View key={index} className="flex-row items-center mb-3 space-x-2">
-            <TouchableOpacity className="w-20 bg-gray-100 py-2 rounded items-center">
-              <Text className="text-xs">{row.demo}</Text>
-            </TouchableOpacity>
-
+      {/* Rows */}
+      {demos.map((row, index) => (
+        <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 }}>
+          <View style={{ width: 64, backgroundColor: '#F3F4F6', paddingVertical: 8, borderRadius: 6, alignItems: 'center' }}>
+            <Text style={{ fontSize: 12, color: '#374151' }}>{DEMO_LABELS[index]}</Text>
+          </View>
           <ProgressBar level={row.code} onPress={(l) => setLevel(index, "code", l)} readOnly={readOnly} />
           <ProgressBar level={row.teamwork} onPress={(l) => setLevel(index, "teamwork", l)} readOnly={readOnly} />
+        </View>
+      ))}
+
+      {/* Legend */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 }}>
+        {(Object.entries(LABEL_MAP) as [ProgressLevel, string][]).map(([key, label]) => (
+          <View key={key} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16, marginBottom: 4 }}>
+            <View style={{ width: 12, height: 12, borderRadius: 6, marginRight: 6, backgroundColor: COLOR_MAP[key] }} />
+            <Text style={{ fontSize: 12, color: '#4B5563' }}>{label}</Text>
           </View>
         ))}
-
-        {/* LEGEND */}
-        <View className="flex-row flex-wrap mt-4 items-center">
-          {Object.entries(labelMap).map(([key, label]) => (
-            <View key={key} className="flex-row items-center mr-4 mb-2">
-              <View className={`w-3 h-3 rounded-full mr-2 ${colorMap[key as ProgressLevel]}`} />
-              <Text className="text-xs text-gray-600">{label}</Text>
-            </View>
-          ))}
-        </View>
       </View>
-    );
+    </View>
+  );
 }

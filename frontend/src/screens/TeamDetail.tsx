@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   Modal,
   TextInput,
@@ -21,6 +20,8 @@ import { TeamMember } from '../types/Teams';
 import { getTeam, updateTeamInfo } from '../api/teams';
 import { setUserProjectRole, getCurrentUser } from '../api/users';
 import MemberComments from '../components/Comments';
+import MemberAvatar from '../components/MemberAvatar';
+import WeeklyPerformance from '../components/WeeklyPerformance';
 import {
   fetchContributors,
   fetchRecentCommits,
@@ -49,6 +50,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   }, []);
   const [activeTab, setActiveTab] = useState<TabKey>('contributions');
   const [gitlab, setGitlab] = useState<string>(team.gitlab || '');
+  const [discord, setDiscord] = useState<string>(team.discord || '');
   const [teamName, setTeamName] = useState(team.name);
   const [memberRoles, setMemberRoles] = useState<Record<string, ProjectRole>>({});
   const [openRoleKey, setOpenRoleKey] = useState<string | null>(null);
@@ -56,6 +58,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   const badgeRefs = useRef<Record<string, any>>({});
   const [modalVisible, setModalVisible] = useState(false);
   const [editUrl, setEditUrl] = useState('');
+  const [editDiscord, setEditDiscord] = useState('');
   const [editName, setEditName] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -75,6 +78,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     getTeam(team.id)
       .then((fresh) => {
         if (fresh.gitlab != null) setGitlab(fresh.gitlab);
+        if (fresh.discord != null) setDiscord(fresh.discord);
         if (fresh.name) setTeamName(fresh.name);
         // Build member roles map from each student's projectRole field
         if (fresh.students) {
@@ -154,6 +158,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
   const handleEditPress = () => {
     setEditUrl(gitlab);
+    setEditDiscord(discord);
     setEditName(teamName);
     setModalVisible(true);
   };
@@ -165,8 +170,9 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     }
     setSaving(true);
     try {
-      await updateTeamInfo(team.id, { name: editName.trim(), gitlab: editUrl.trim() });
+      await updateTeamInfo(team.id, { name: editName.trim(), gitlab: editUrl.trim(), discord: editDiscord.trim() });
       setGitlab(editUrl.trim());
+      setDiscord(editDiscord.trim());
       setTeamName(editName.trim());
       setModalVisible(false);
     } catch {
@@ -224,47 +230,68 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       contentContainerStyle={{ paddingBottom: 40 }}
     >
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: pad, marginBottom: 4 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 12 }}>
-          <Ionicons name="arrow-back" size={24} color="#111827" />
+      <View style={{ paddingHorizontal: pad, marginBottom: 4 }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6 }}>
+          <Ionicons name="arrow-back" size={22} color="#111827" />
+          <Text style={{ fontSize: 14, color: '#111827', fontWeight: '500' }}>All Teams</Text>
         </TouchableOpacity>
-        <Text style={{ flex: 1, fontSize: 20, fontWeight: '700', color: '#111827' }}>{teamName}</Text>
       </View>
 
-      {/* Repo / Edit Button */}
-      <View style={{ paddingHorizontal: pad, paddingTop: 10, paddingBottom: 4 }}>
-        {canEditRepo ? (
-          gitlab ? (
-            <View style={{ flexDirection: 'row', borderRadius: 8, overflow: 'hidden', backgroundColor: '#C8102E' }}>
-              <TouchableOpacity onPress={handleOpenRepo} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, paddingHorizontal: 16 }}>
-                <Ionicons name="git-branch-outline" size={16} color="white" />
-                <Text style={{ marginLeft: 8, color: 'white', fontWeight: '600' }}>View Project</Text>
-              </TouchableOpacity>
-              <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.4)', marginVertical: 8 }} />
-              <TouchableOpacity onPress={handleEditPress} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, paddingHorizontal: 20 }}>
-                <Ionicons name="pencil-outline" size={15} color="white" />
-                <Text style={{ marginLeft: 6, color: 'white', fontWeight: '600' }}>Edit Info</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity onPress={handleEditPress} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 8, paddingVertical: 12, backgroundColor: '#C8102E' }}>
-              <Ionicons name="create-outline" size={16} color="white" />
-              <Text style={{ marginLeft: 8, color: 'white', fontWeight: '600' }}>Edit Team Info</Text>
+      {/* Team name — centered, large */}
+      <Text style={{ fontSize: isMobile ? 22 : 28, fontWeight: '700', color: '#111827', textAlign: 'center', paddingHorizontal: pad, marginTop: 8, marginBottom: 4 }}>
+        {teamName}
+      </Text>
+
+      {/* Unified action bar — below team name, above members */}
+      {(gitlab || discord || canEditRepo) && (
+        <View style={{ paddingHorizontal: pad, paddingTop: 8, paddingBottom: 4 }}>
+          <View style={{ flexDirection: 'row', borderRadius: 8, overflow: 'hidden', backgroundColor: '#C8102E' }}>
+            <TouchableOpacity
+              onPress={() => discord
+                ? Linking.openURL(discord).catch(() => Alert.alert('Error', 'Could not open Discord link'))
+                : canEditRepo ? handleEditPress() : null
+              }
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, paddingHorizontal: 8, opacity: !discord && !canEditRepo ? 0.4 : 1 }}
+              disabled={!discord && !canEditRepo}
+            >
+              <Ionicons name="logo-discord" size={16} color="white" />
+              <Text style={{ marginLeft: 7, color: 'white', fontWeight: '600', fontSize: 13 }}>
+                {discord ? 'Discord' : 'Add Discord'}
+              </Text>
             </TouchableOpacity>
-          )
-        ) : gitlab ? (
-          <TouchableOpacity onPress={handleOpenRepo} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 8, paddingVertical: 12, backgroundColor: '#C8102E' }}>
-            <Ionicons name="git-branch-outline" size={16} color="white" />
-            <Text style={{ marginLeft: 8, color: 'white', fontWeight: '600' }}>View Project</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
+
+            <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.35)', marginVertical: 8 }} />
+
+            <TouchableOpacity
+              onPress={() => gitlab ? handleOpenRepo() : canEditRepo ? handleEditPress() : null}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, paddingHorizontal: 8, opacity: !gitlab && !canEditRepo ? 0.4 : 1 }}
+              disabled={!gitlab && !canEditRepo}
+            >
+              <Text style={{ fontSize: 15 }}>🦊</Text>
+              <Text style={{ marginLeft: 7, color: 'white', fontWeight: '600', fontSize: 13 }}>
+                {gitlab ? 'View Repo' : 'Add Repo'}
+              </Text>
+            </TouchableOpacity>
+
+            {canEditRepo && (
+              <>
+                <View style={{ width: 1, backgroundColor: 'rgba(255,255,255,0.35)', marginVertical: 8 }} />
+                <TouchableOpacity
+                  onPress={handleEditPress}
+                  style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 13, paddingHorizontal: 16 }}
+                >
+                  <Ionicons name="pencil-outline" size={16} color="white" />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      )}
 
       {/* Team Members */}
       {/* Member tiles — wrapping row on mobile, horizontal scroll on desktop */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: pad, gap: 12 }}>
         {team.members.map((m) => {
-          const TILE = isMobile ? 72 : 136;
           const INNER = isMobile ? 64 : 128;
           const RADIUS = isMobile ? 20 : 35;
           const memberKey = m.netid || m.name;
@@ -272,7 +299,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           return (
             <TouchableOpacity
               key={memberKey}
-              onPress={() => navigation.navigate('TeamMemberDetail', { member: m, gitlabUrl: gitlab || undefined, teamId: team.id })}
+              onPress={() => navigation.navigate('TeamMemberDetail', { member: m, gitlabUrl: gitlab || undefined, teamId: team.id, teamName: teamName })}
               style={{ alignItems: 'center', width: isMobile ? 80 : 152 }}
             >
               {/* Role badge — above photo, always same position */}
@@ -292,20 +319,13 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
               ) : (
                 <View style={{ height: isMobile ? 22 : 24, marginBottom: 6 }} />
               )}
-              <View style={{
-                width: TILE, height: TILE,
-                borderRadius: RADIUS,
-                borderWidth: 3,
-                borderColor: 'transparent',
-                padding: 2,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-                <Image
-                  source={typeof m.photo === 'string' ? { uri: m.photo } : m.photo}
-                  style={{ width: INNER, height: INNER, borderRadius: RADIUS - 4 }}
-                />
-              </View>
+              <MemberAvatar
+                memberId={m.netid || m.name}
+                initials={m.initials}
+                size={INNER}
+                borderRadius={RADIUS - 4}
+                bordered
+              />
               <Text style={{ marginTop: 6, fontSize: isMobile ? 11 : 14, textAlign: 'center', lineHeight: isMobile ? 16 : 22 }} numberOfLines={2}>
                 {m.name}
               </Text>
@@ -403,6 +423,11 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         </View>
       </View>
       </View>
+      {/* Weekly Performance */}
+      <View style={{ marginHorizontal: pad, marginBottom: 12 }}>
+        <WeeklyPerformance members={team.members} readOnly={userRole === 'Student'} />
+      </View>
+
       <MemberComments teamId={team.id} authorNetid={authorNetid} isStudent={userRole === 'Student'} />
 
       {/* Edit Team Info Modal */}
@@ -433,6 +458,17 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                 value={editUrl}
                 onChangeText={setEditUrl}
                 placeholder="https://gitlab.com/..."
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 16, fontSize: 14, color: '#111827' }}
+              />
+
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 4 }}>Discord Channel URL</Text>
+              <TextInput
+                value={editDiscord}
+                onChangeText={setEditDiscord}
+                placeholder="https://discord.com/channels/..."
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"

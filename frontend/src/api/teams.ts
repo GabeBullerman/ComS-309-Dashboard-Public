@@ -16,6 +16,7 @@ export interface TeamApiResponse {
   status?: number | null;
   taNotes?: string | null;
   gitlab?: string | null;
+  discord?: string | null;
 }
 
 export const getTeams = async (taNetid?: string): Promise<TeamApiResponse[]> => {
@@ -46,6 +47,6 @@ export const getTeam = async (teamId: number): Promise<TeamApiResponse> => {
   return res.data;
 };
 
-export const updateTeamInfo = async (teamId: number, data: { name?: string; gitlab?: string }): Promise<void> => {
+export const updateTeamInfo = async (teamId: number, data: { name?: string; gitlab?: string; discord?: string }): Promise<void> => {
   await axiosInstance.put(`/api/teams/${teamId}`, data);
 };

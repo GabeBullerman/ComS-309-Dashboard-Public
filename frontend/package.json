@@ -27,6 +27,7 @@
     "expo-auth-session": "~7.0.10",
     "expo-crypto": "~15.0.8",
     "expo-dev-client": "~6.0.20",
+    "expo-image-picker": "~17.0.10",
     "expo-status-bar": "~3.0.9",
     "expo-web-browser": "~15.0.10",
     "nativewind": "^4.2.1",

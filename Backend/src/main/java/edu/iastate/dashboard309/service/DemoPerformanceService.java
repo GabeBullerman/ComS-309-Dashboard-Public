@@ -53,6 +53,7 @@ public class DemoPerformanceService {
         return new DemoPerformanceRequest(
             demoPerformance.getId(),
             demoPerformance.getStudent().getNetid(),
+            demoPerformance.getDemoNumber(),
             demoPerformance.getCodeScore(),
             demoPerformance.getTeamworkScore()
         );

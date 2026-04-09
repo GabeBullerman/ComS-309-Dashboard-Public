@@ -53,9 +53,10 @@ public class WeeklyPerformanceController {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
     public WeeklyPerformanceRequest create(@Valid @RequestBody WeeklyPerformanceRequest request) {
-        WeeklyPerformance weeklyPerformance = new WeeklyPerformance();
+        WeeklyPerformance weeklyPerformance = weeklyPerformanceRepository
+            .findByStudentNetidAndWeekStartDate(request.studentNetid(), request.weekStartDate())
+            .orElseGet(WeeklyPerformance::new);
         applyRequest(weeklyPerformance, request);
         weeklyPerformanceRepository.save(weeklyPerformance);
         return weeklyPerformanceService.getWeeklyPerformanceById(weeklyPerformance.getId());
@@ -85,6 +86,7 @@ public class WeeklyPerformanceController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
 
         weeklyPerformance.setStudent(student);
+        weeklyPerformance.setWeekStartDate(request.weekStartDate());
         weeklyPerformance.setCodeScore(request.codeScore());
         weeklyPerformance.setTeamworkScore(request.teamworkScore());
     }

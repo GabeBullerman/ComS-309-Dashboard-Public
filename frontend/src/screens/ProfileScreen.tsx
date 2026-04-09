@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getCurrentUser } from '../api/users';
 import { getGitLabToken, saveGitLabToken } from '../utils/gitlab';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ProfileAvatar from '../components/ProfileAvatar';
 
 interface Props {
   userRole: string;
@@ -84,9 +85,12 @@ export default function ProfileScreen({ userRole, onLogout }: Props) {
       {/* Profile card */}
       <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#F1BE48', alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: '#374151' }}>{initials}</Text>
-          </View>
+          <ProfileAvatar
+            userId={netid || displayName}
+            initials={initials}
+            size={72}
+            canEdit
+          />
           <View>
             <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>{displayName || '—'}</Text>
             <Text style={{ fontSize: 13, color: '#6B7280' }}>{netid || '—'}</Text>

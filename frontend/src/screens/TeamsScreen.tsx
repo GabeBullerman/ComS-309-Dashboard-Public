@@ -119,6 +119,7 @@ export default function ClassTeamsScreen({ userRole }: Props) {
         status: mapStatus(team.status),
         members,
         gitlab: team.gitlab ?? undefined,
+        discord: team.discord ?? undefined,
       };
     };
 

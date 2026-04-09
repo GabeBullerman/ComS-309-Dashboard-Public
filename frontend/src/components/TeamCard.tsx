@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MemberAvatar from './MemberAvatar';
 
 export interface TeamCardProps {
   name: string;
@@ -9,7 +10,7 @@ export interface TeamCardProps {
   ta: string;
   section: number;
   status: 'Good' | 'Moderate' | 'Poor';
-  members: Array<{ initials: string; color: string }>;
+  members: Array<{ initials: string; color: string; name: string; netid?: string }>;
   onPress?: () => void;
 }
 
@@ -69,14 +70,15 @@ export const TeamCard: React.FC<TeamCardProps> = ({
         {/* Member avatars */}
         <View className="flex-row flex-wrap gap-1.5">
           {members.map((member, index) => (
-            <View
+            <MemberAvatar
               key={index}
-              className="w-9 h-9 rounded-full bg-yellow-400 items-center justify-center border-[1.5px] border-amber-600"
-            >
-              <Text className="text-xs font-semibold text-gray-800">
-                {member.initials}
-              </Text>
-            </View>
+              memberId={member.netid || member.name}
+              initials={member.initials}
+              size={40}
+              borderRadius={20}
+              canEdit={false}
+              bordered
+            />
           ))}
         </View>
 

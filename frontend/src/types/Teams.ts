@@ -27,4 +27,5 @@ export interface Team {
   status: 'Good' | 'Moderate' | 'Poor';
   members: TeamMember[];
   gitlab?: string;
+  discord?: string;
 }

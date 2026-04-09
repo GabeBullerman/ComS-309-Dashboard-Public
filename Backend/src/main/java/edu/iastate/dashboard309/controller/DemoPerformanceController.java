@@ -53,9 +53,10 @@ public class DemoPerformanceController {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
     public DemoPerformanceRequest create(@Valid @RequestBody DemoPerformanceRequest request) {
-        DemoPerformance demoPerformance = new DemoPerformance();
+        DemoPerformance demoPerformance = demoPerformanceRepository
+            .findByStudentNetidAndDemoNumber(request.studentNetid(), request.demoNumber())
+            .orElseGet(DemoPerformance::new);
         applyRequest(demoPerformance, request);
         demoPerformanceRepository.save(demoPerformance);
         return demoPerformanceService.getDemoPerformanceById(demoPerformance.getId());
@@ -85,6 +86,7 @@ public class DemoPerformanceController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
 
         demoPerformance.setStudent(student);
+        demoPerformance.setDemoNumber(request.demoNumber());
         demoPerformance.setCodeScore(request.codeScore());
         demoPerformance.setTeamworkScore(request.teamworkScore());
     }

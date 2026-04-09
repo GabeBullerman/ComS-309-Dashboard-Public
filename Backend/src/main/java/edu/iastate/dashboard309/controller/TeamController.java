@@ -144,6 +144,9 @@ public class TeamController {
         if(request.gitlab() != null){
             team.setGitlab(request.gitlab());
         }
+        if(request.discord() != null){
+            team.setDiscord(request.discord());
+        }
     }
 
     private String normalize(String value) {
