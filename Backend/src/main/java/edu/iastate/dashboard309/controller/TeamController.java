@@ -116,9 +116,7 @@ public class TeamController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        if (!teamRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found");
-        }
+        teamService.clearStudents(id);
         teamRepository.deleteById(id);
     }
 

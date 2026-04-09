@@ -31,10 +31,13 @@ public class User {
     @Column(name = "name", nullable = false)
     private String name;
 
+    @Column(name = "initials")
+    private String initials;
+
     @Column(name = "netid", nullable = false, unique = true)
     private String netid;
 
-    @Column(name = "password", nullable = false)
+    @Column(name = "password")
     private String password;
 
     @ManyToMany
@@ -85,6 +88,14 @@ public class User {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getInitials(){
+        return initials;
+    }
+
+    public void setInitials(String initials){
+        this.initials = initials;
     }
 
     public String getNetid() {
