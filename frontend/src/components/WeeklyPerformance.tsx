@@ -6,7 +6,6 @@ import {
   WeeklyPerformanceRecord,
   getWeeklyPerformanceForStudent,
   createWeeklyPerformance,
-  updateWeeklyPerformance,
 } from "@/api/weeklyPerformance";
 
 type ProgressLevel = "good" | "moderate" | "poor" | "ungraded";
@@ -134,8 +133,6 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
   const [selectedWeek, setSelectedWeek] = useState(weeks[0].key);
   // netid -> weekKey -> { code, teamwork }
   const [scores, setScores] = useState<Record<string, Record<string, MemberScore>>>({});
-  // netid -> weekKey -> existing record id (for PUT vs POST)
-  const [recordIds, setRecordIds] = useState<Record<string, Record<string, number>>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [unsaved, setUnsaved] = useState(false);
@@ -153,20 +150,16 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
         )
     ).then(results => {
       const newScores: typeof scores = {};
-      const newIds: typeof recordIds = {};
       for (const { netid, records } of results) {
         newScores[netid] = {};
-        newIds[netid] = {};
         for (const r of records) {
           newScores[netid][r.weekStartDate] = {
             code: SCORE_TO_LEVEL[r.codeScore] ?? 'ungraded',
             teamwork: SCORE_TO_LEVEL[r.teamworkScore] ?? 'ungraded',
           };
-          newIds[netid][r.weekStartDate] = r.id;
         }
       }
       setScores(newScores);
-      setRecordIds(newIds);
     }).finally(() => setLoading(false));
   }, [members]);
 
@@ -196,16 +189,8 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
             if (score.code === 'ungraded' && score.teamwork === 'ungraded') return;
             const codeScore = LEVEL_TO_SCORE[score.code] ?? 0;
             const teamworkScore = LEVEL_TO_SCORE[score.teamwork] ?? 0;
-            const existingId = recordIds[netid]?.[selectedWeek];
-            if (existingId != null) {
-              await updateWeeklyPerformance(existingId, netid, selectedWeek, codeScore, teamworkScore);
-            } else {
-              const created = await createWeeklyPerformance(netid, selectedWeek, codeScore, teamworkScore);
-              setRecordIds(prev => ({
-                ...prev,
-                [netid]: { ...prev[netid], [selectedWeek]: created.id },
-              }));
-            }
+            // Always POST — backend upserts by (studentNetid, weekStartDate)
+            await createWeeklyPerformance(netid, selectedWeek, codeScore, teamworkScore);
           })
       );
       setUnsaved(false);

@@ -355,23 +355,6 @@ export default function TaskAssignmentScreen() {
         </View>
   );
 
-  const taskGroups = (() => {
-    const map = new Map<string, { rep: typeof myTasks[0]; ids: number[]; netids: string[] }>();
-    for (const t of myTasks) {
-      const key = `${t.title}||${t.description ?? ''}||${t.dueDate ?? ''}`;
-      if (!map.has(key)) map.set(key, { rep: t, ids: [], netids: [] });
-      const g = map.get(key)!;
-      g.ids.push(t.id);
-      if (t.assignedToNetid) g.netids.push(t.assignedToNetid);
-    }
-    return [...map.values()].sort((a, b) => (a.rep.dueDate ?? '').localeCompare(b.rep.dueDate ?? ''));
-  })();
-
-  const handleDeleteGroup = async (ids: number[]) => {
-    await Promise.allSettled(ids.map((id) => deleteTask(id)));
-    setMyTasks((prev) => prev.filter((t) => !ids.includes(t.id)));
-  };
-
   const taskListPanel = (
     <View style={{ flex: isMobile ? undefined : 1, backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden' }}>
       <View style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>

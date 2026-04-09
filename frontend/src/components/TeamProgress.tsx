@@ -5,7 +5,6 @@ import {
   DemoPerformanceRecord,
   getDemoPerformanceForStudent,
   createDemoPerformance,
-  updateDemoPerformance,
 } from "@/api/demoPerformance";
 
 type ProgressLevel = "good" | "moderate" | "poor" | "ungraded";
@@ -88,6 +87,7 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [unsaved, setUnsaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!netid) { setLoading(false); return; }
@@ -117,25 +117,22 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
   const handleSave = async () => {
     if (!netid) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const updated = await Promise.all(
         demos.map(async (row) => {
           if (row.code === 'ungraded' && row.teamwork === 'ungraded') return row;
           const codeScore = LEVEL_TO_SCORE[row.code] ?? 0;
           const teamworkScore = LEVEL_TO_SCORE[row.teamwork] ?? 0;
-          if (row.recordId != null) {
-            await updateDemoPerformance(row.recordId, netid, row.demoNumber, codeScore, teamworkScore);
-            return row;
-          } else {
-            const created = await createDemoPerformance(netid, row.demoNumber, codeScore, teamworkScore);
-            return { ...row, recordId: created.id };
-          }
+          // Always POST — backend upserts by (studentNetid, demoNumber)
+          const saved = await createDemoPerformance(netid, row.demoNumber, codeScore, teamworkScore);
+          return { ...row, recordId: saved.id };
         })
       );
       setDemos(updated);
       setUnsaved(false);
-    } catch {
-      // silently ignore
+    } catch (e: any) {
+      setSaveError(e?.response?.data?.message ?? e?.message ?? 'Save failed');
     } finally {
       setSaving(false);
     }
@@ -148,7 +145,12 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>Team Progress</Text>
           {loading && <ActivityIndicator size="small" color="#dc2626" />}
-          {!readOnly && unsaved && !loading && (
+          {saveError && (
+            <View style={{ backgroundColor: '#fee2e2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, marginRight: 8 }}>
+              <Text style={{ color: '#dc2626', fontSize: 11, fontWeight: '500' }}>{saveError}</Text>
+            </View>
+          )}
+          {!readOnly && unsaved && !loading && !saveError && (
             <View style={{ backgroundColor: '#fef9c3', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
               <Text style={{ color: '#a16207', fontSize: 11, fontWeight: '500' }}>Unsaved Changes</Text>
             </View>
