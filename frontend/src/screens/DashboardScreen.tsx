@@ -1,5 +1,4 @@
 import { View, Text, TouchableOpacity, Image, Dimensions, StatusBar, Platform } from "react-native";
-import CoursesScreen from "../screens/Courses";
 import TeamsScreen from "../screens/TeamsScreen";
 import TAManager from "../screens/TAManager";
 import TaskAssignmentScreen from "../screens/TaskAssignmentScreen";
@@ -65,7 +64,6 @@ export default function DashboardScreen({route}: Props) {
   const renderScreen = () => {
     switch (activeScreen) {
       case "Teams":        return <TeamsScreen userRole={route.params.userRole} />;
-      case "Courses":      return <CoursesScreen />;
       case "Assign Tasks": return <TaskAssignmentScreen />;
       case "TA Manager":   return <TAManager />;
       case "Upload":       return <UploadScreen/>;
