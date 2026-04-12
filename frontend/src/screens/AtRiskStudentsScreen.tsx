@@ -82,7 +82,7 @@ interface Props {
 export default function AtRiskStudentsScreen({ userRole }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { width } = useWindowDimensions();
-  const numColumns = width < 640 ? 1 : width < 960 ? 2 : 3;
+  const numColumns = width < 640 ? 1 : width < 960 ? 2 : width < 1280 ? 3 : 4;
   const isMobile = width < 640;
   const effectiveRole = normalizeRole(String(userRole));
 

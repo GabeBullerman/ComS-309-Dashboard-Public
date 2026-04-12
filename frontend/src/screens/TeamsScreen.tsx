@@ -98,15 +98,18 @@ export default function ClassTeamsScreen({ userRole }: Props) {
     };
 
     const mapTeam = (team: TeamApiResponse): Team => {
-      const members: TeamMember[] = (team.students ?? []).map((student) => ({
-        id: student.id,
-        name: student.name || student.netid || 'Unknown Student',
-        netid: student.netid,
-        initials: toInitials(student.name || student.netid),
-        color: 'bg-[#F1BE48] text-gray-800',
-        photo: require('../Images/PersonIcon.png'),
-        demoResults: [],
-      }));
+      const members: TeamMember[] = (team.students ?? [])
+        .slice()
+        .sort((a, b) => (a.name || a.netid || '').localeCompare(b.name || b.netid || ''))
+        .map((student) => ({
+          id: student.id,
+          name: student.name || student.netid || 'Unknown Student',
+          netid: student.netid,
+          initials: toInitials(student.name || student.netid),
+          color: 'bg-[#F1BE48] text-gray-800',
+          photo: require('../Images/PersonIcon.png'),
+          demoResults: [],
+        }));
 
       return {
         id: team.id,
