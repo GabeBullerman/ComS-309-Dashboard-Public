@@ -32,6 +32,14 @@ import {
   GitLabContributor,
   GitLabCommit,
 } from '../utils/gitlab';
+import {
+  AttendanceStatus,
+  AttendanceType,
+  createAttendance,
+  updateAttendance,
+  getAttendanceForStudent,
+  AttendanceRecord,
+} from '../api/attendance';
 
 type TeamDetailProps = NativeStackScreenProps<RootStackParamList, 'TeamDetail'>;
 
@@ -71,6 +79,37 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   const [glError, setGlError] = useState<string | null>(null);
 
   const canEditRepo = userRole === 'TA' || userRole === 'HTA' || userRole === 'Instructor';
+
+  // Bulk attendance state
+  const today = new Date().toISOString().split('T')[0];
+  const [bulkDate, setBulkDate] = useState(today);
+  const [bulkType, setBulkType] = useState<AttendanceType>('LECTURE');
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkDone, setBulkDone] = useState('');
+
+  const handleBulkAttendance = async (status: AttendanceStatus) => {
+    if (!bulkDate.match(/^\d{4}-\d{2}-\d{2}$/)) return;
+    const members = team.members.filter(m => m.netid);
+    if (members.length === 0) return;
+    setBulkSaving(true);
+    setBulkDone('');
+    try {
+      await Promise.all(members.map(async (m) => {
+        const existing = await getAttendanceForStudent(m.netid!).catch((): AttendanceRecord[] => []);
+        const record = existing.find(r => r.attendanceDate === bulkDate && r.type === bulkType);
+        if (record) {
+          await updateAttendance(record.id, m.netid!, bulkDate, status, bulkType);
+        } else {
+          await createAttendance(m.netid!, bulkDate, status, bulkType);
+        }
+      }));
+      setBulkDone(`Marked ${members.length} member${members.length !== 1 ? 's' : ''} as ${status.charAt(0) + status.slice(1).toLowerCase()}`);
+    } catch {
+      setBulkDone('Error saving attendance — check date format.');
+    } finally {
+      setBulkSaving(false);
+    }
+  };
 
   // Fetch fresh team data and project roles from the backend on mount
   useEffect(() => {
@@ -427,6 +466,65 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       <View style={{ marginHorizontal: pad, marginBottom: 12 }}>
         <WeeklyPerformance members={team.members} readOnly={userRole === 'Student'} />
       </View>
+
+      {/* Bulk Attendance — staff only */}
+      {userRole !== 'Student' && (
+        <View style={{ marginHorizontal: pad, marginBottom: 12, backgroundColor: 'white', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 2 }}>Bulk Attendance</Text>
+          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>Mark all {team.members.length} team members at once</Text>
+
+          {/* Date + Type row */}
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <TextInput
+              value={bulkDate}
+              onChangeText={setBulkDate}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#9ca3af"
+              style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, fontSize: 13, color: '#111827', flex: 1, minWidth: 120 }}
+            />
+            <View style={{ flexDirection: 'row', gap: 4 }}>
+              {(['LECTURE', 'MEETING'] as AttendanceType[]).map(t => (
+                <TouchableOpacity
+                  key={t}
+                  onPress={() => setBulkType(t)}
+                  style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, backgroundColor: bulkType === t ? '#1e40af' : '#f3f4f6', borderWidth: 1, borderColor: bulkType === t ? '#1e40af' : '#e5e7eb' }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: bulkType === t ? 'white' : '#374151' }}>
+                    {t === 'LECTURE' ? 'Class' : 'TA Meeting'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Status buttons */}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {([
+              { status: 'PRESENT' as AttendanceStatus, bg: '#dcfce7', text: '#166534', border: '#86efac' },
+              { status: 'LATE'    as AttendanceStatus, bg: '#fef9c3', text: '#854d0e', border: '#fde047' },
+              { status: 'ABSENT'  as AttendanceStatus, bg: '#fee2e2', text: '#991b1b', border: '#fca5a5' },
+            ]).map(({ status, bg, text, border }) => (
+              <TouchableOpacity
+                key={status}
+                onPress={() => handleBulkAttendance(status)}
+                disabled={bulkSaving}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 8, backgroundColor: bg, borderWidth: 1, borderColor: border, opacity: bulkSaving ? 0.6 : 1 }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '700', color: text }}>
+                  All {status.charAt(0) + status.slice(1).toLowerCase()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {bulkSaving && <ActivityIndicator size="small" color="#6b7280" style={{ marginTop: 10, alignSelf: 'center' }} />}
+          {!!bulkDone && (
+            <Text style={{ fontSize: 12, color: bulkDone.startsWith('Error') ? '#dc2626' : '#16a34a', marginTop: 8, textAlign: 'center' }}>
+              {bulkDone}
+            </Text>
+          )}
+        </View>
+      )}
 
       <MemberComments teamId={team.id} authorNetid={authorNetid} isStudent={userRole === 'Student'} />
 

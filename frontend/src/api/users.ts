@@ -58,3 +58,7 @@ export const updateUser = async (id: number, data: { role?: string[]; name?: str
 export const deleteUser = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/api/users/${id}`);
 };
+
+export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+  await axiosInstance.put('/api/users/self/password', { currentPassword, newPassword });
+};

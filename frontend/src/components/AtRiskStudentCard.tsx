@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import MemberAvatar from './MemberAvatar';
 
 export type RiskSeverity = 'warning' | 'critical';
 
@@ -10,6 +11,7 @@ export interface AtRiskFlag {
 }
 
 export interface AtRiskStudentProps {
+  netid: string;
   studentName: string;
   teamName: string;
   ta: string;
@@ -19,7 +21,7 @@ export interface AtRiskStudentProps {
 }
 
 export const AtRiskStudentCard: React.FC<AtRiskStudentProps> = ({
-  studentName, teamName, ta, section, flags, onPress,
+  netid, studentName, teamName, ta, section, flags, onPress,
 }) => {
   const isCritical = flags.some(f => f.severity === 'critical');
   const borderColor = isCritical ? '#dc2626' : '#f59e0b';
@@ -52,8 +54,8 @@ export const AtRiskStudentCard: React.FC<AtRiskStudentProps> = ({
         {/* Header row */}
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 }}>
           {/* Avatar */}
-          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#F1BE48', alignItems: 'center', justifyContent: 'center', marginRight: 10, borderWidth: 1.5, borderColor: '#d97706' }}>
-            <Text style={{ color: '#1f2937', fontWeight: '700', fontSize: 14 }}>{initials}</Text>
+          <View style={{ marginRight: 10 }}>
+            <MemberAvatar memberId={netid || studentName} initials={initials} size={44} />
           </View>
 
           {/* Name + meta */}

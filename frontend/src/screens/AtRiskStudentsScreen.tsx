@@ -3,6 +3,9 @@ import {
   View, Text, TextInput, FlatList, ActivityIndicator, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../App';
 import { UserRole, normalizeRole } from '../utils/auth';
 import { getCurrentUser } from '../api/users';
 import { getTeams, TeamApiResponse } from '../api/teams';
@@ -10,6 +13,7 @@ import { getAttendanceForStudent, AttendanceRecord } from '../api/attendance';
 import { getDemoPerformanceForStudent, DemoPerformanceRecord } from '../api/demoPerformance';
 import { getWeeklyPerformanceForStudent, WeeklyPerformanceRecord } from '../api/weeklyPerformance';
 import { AtRiskStudentCard, AtRiskFlag } from '@/components/AtRiskStudentCard';
+import { getAllAtRiskOverrides, AtRiskOverride } from '../api/atRiskOverrides';
 
 // ── At-Risk Algorithm ─────────────────────────────────────────────────────────
 // Based on professor Mitra's guidelines:
@@ -76,6 +80,7 @@ interface Props {
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function AtRiskStudentsScreen({ userRole }: Props) {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { width } = useWindowDimensions();
   const numColumns = width < 640 ? 1 : width < 960 ? 2 : 3;
   const isMobile = width < 640;
@@ -110,44 +115,74 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
             studentMap.set(student.netid, {
               name: student.name || student.netid,
               teamName: team.name || 'Unnamed Team',
-              teamId: team.id,
+              teamId: Number(team.id),
               ta: team.taNetid || 'Unassigned',
-              section: (team.section ?? 0) as number,
+              section: team.section ?? 0,
             });
           }
         }
 
-        // Fetch performance data for all students in parallel
-        const results = await Promise.all(
-          [...studentMap.entries()].map(async ([studentNetid, info]) => {
-            const [attendance, demos, weekly] = await Promise.all([
-              getAttendanceForStudent(studentNetid).catch((): AttendanceRecord[] => []),
-              getDemoPerformanceForStudent(studentNetid).catch((): DemoPerformanceRecord[] => []),
-              getWeeklyPerformanceForStudent(studentNetid).catch((): WeeklyPerformanceRecord[] => []),
-            ]);
-            const flags = computeAtRiskFlags(attendance, demos, weekly);
-            return { studentNetid, info, flags };
-          })
-        );
+        // Fetch performance data + manual overrides in parallel
+        const [results, overrides] = await Promise.all([
+          Promise.all(
+            [...studentMap.entries()].map(async ([studentNetid, info]) => {
+              const [attendance, demos, weekly] = await Promise.all([
+                getAttendanceForStudent(studentNetid).catch((): AttendanceRecord[] => []),
+                getDemoPerformanceForStudent(studentNetid).catch((): DemoPerformanceRecord[] => []),
+                getWeeklyPerformanceForStudent(studentNetid).catch((): WeeklyPerformanceRecord[] => []),
+              ]);
+              const flags = computeAtRiskFlags(attendance, demos, weekly);
+              return { studentNetid, info, flags };
+            })
+          ),
+          getAllAtRiskOverrides().catch((): AtRiskOverride[] => []),
+        ]);
 
-        // Keep only at-risk students, sorted critical first then by name
-        const flagged: AtRiskStudent[] = results
-          .filter(r => r.flags.length > 0)
-          .map(r => ({
-            netid: r.studentNetid,
-            studentName: r.info.name,
-            teamName: r.info.teamName,
-            teamId: r.info.teamId,
-            ta: r.info.ta,
-            section: r.info.section,
-            flags: r.flags,
-          }))
-          .sort((a, b) => {
-            const aHasCritical = a.flags.some(f => f.severity === 'critical');
-            const bHasCritical = b.flags.some(f => f.severity === 'critical');
-            if (aHasCritical !== bHasCritical) return aHasCritical ? -1 : 1;
-            return a.studentName.localeCompare(b.studentName);
+        // Build override map: netid → manual flag
+        const overrideMap = new Map<string, AtRiskOverride[]>();
+        for (const o of overrides) {
+          if (!overrideMap.has(o.studentNetid)) overrideMap.set(o.studentNetid, []);
+          overrideMap.get(o.studentNetid)!.push(o);
+        }
+
+        // Merge algorithm flags with manual overrides
+        const allNetids = new Set([
+          ...results.map(r => r.studentNetid),
+          ...overrideMap.keys(),
+        ]);
+
+        const flagged: AtRiskStudent[] = [];
+        for (const netid of allNetids) {
+          const result = results.find(r => r.studentNetid === netid);
+          const manualOverrides = overrideMap.get(netid) ?? [];
+          const algoFlags = result?.flags ?? [];
+          const manualFlags: AtRiskFlag[] = manualOverrides.map(o => ({
+            reason: `Manually flagged: ${o.reason}`,
+            severity: 'warning' as const,
+          }));
+          const allFlags = [...algoFlags, ...manualFlags];
+          if (allFlags.length === 0) continue;
+
+          const info = result?.info ?? studentMap.get(netid);
+          if (!info) continue;
+
+          flagged.push({
+            netid,
+            studentName: info.name,
+            teamName: info.teamName,
+            teamId: info.teamId,
+            ta: info.ta,
+            section: info.section,
+            flags: allFlags,
           });
+        }
+
+        flagged.sort((a, b) => {
+          const aHasCritical = a.flags.some(f => f.severity === 'critical');
+          const bHasCritical = b.flags.some(f => f.severity === 'critical');
+          if (aHasCritical !== bHasCritical) return aHasCritical ? -1 : 1;
+          return a.studentName.localeCompare(b.studentName);
+        });
 
         setAtRiskStudents(flagged);
       } catch {
@@ -266,11 +301,23 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
               ) : (
                 <View style={{ flex: 1 }}>
                   <AtRiskStudentCard
+                    netid={item.netid}
                     studentName={item.studentName}
                     teamName={item.teamName}
                     ta={item.ta}
                     section={item.section}
                     flags={item.flags}
+                    onPress={() => navigation.navigate('TeamMemberDetail', {
+                      member: {
+                        name: item.studentName,
+                        netid: item.netid,
+                        initials: item.studentName.trim().split(/\s+/).slice(0, 2).map(n => n[0]?.toUpperCase() ?? '').join(''),
+                        color: 'bg-[#F1BE48] text-gray-800',
+                        photo: require('../Images/PersonIcon.png'),
+                      },
+                      teamId: item.teamId,
+                      teamName: item.teamName,
+                    })}
                   />
                 </View>
               )

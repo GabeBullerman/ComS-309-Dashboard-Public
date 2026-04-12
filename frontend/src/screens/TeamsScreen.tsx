@@ -259,6 +259,26 @@ export default function ClassTeamsScreen({ userRole }: Props) {
           Class Teams
         </Text>
 
+        {/* Summary dashboard — HTA / Instructor only */}
+        {canFilterSemester && teams.length > 0 && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+            {[
+              { label: 'Total Teams', value: teamStats.total, icon: 'people-outline' as const,           color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe' },
+              { label: 'Good',        value: teamStats.good,  icon: 'checkmark-circle-outline' as const, color: '#15803d', bg: '#f0fdf4', border: '#86efac' },
+              { label: 'Moderate',       value: teamStats.moderate,      icon: 'remove-circle-outline' as const, color: '#92400e', bg: '#fefce8', border: '#fde047' },
+              { label: 'Poor',           value: teamStats.poor,          icon: 'alert-circle-outline' as const,  color: '#b91c1c', bg: '#fef2f2', border: '#fca5a5' },
+            ].map(({ label, value, icon, color, bg, border }) => (
+              <View key={label} style={{ backgroundColor: bg, borderRadius: 10, borderWidth: 1, borderColor: border, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: isMobile ? '45%' : 110 }}>
+                <Ionicons name={icon} size={20} color={color} />
+                <View>
+                  <Text style={{ fontSize: isMobile ? 20 : 22, fontWeight: '700', color, lineHeight: isMobile ? 24 : 26 }}>{value}</Text>
+                  <Text style={{ fontSize: 11, color, opacity: 0.75, fontWeight: '500' }}>{label}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {!isStudentView && (
           <>
             {/* Search */}
@@ -304,12 +324,12 @@ export default function ClassTeamsScreen({ userRole }: Props) {
                 {/* Status */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                   <Text style={{ fontSize: 14, color: '#4B5563', width: 64 }}>Status</Text>
-                  <View style={{ flex: 1, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}>
+                  <View style={{ flex: 1, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8, overflow: 'hidden' }}>
                     <Picker
                       selectedValue={statusFilter}
                       onValueChange={(value: string) => setStatusFilter(value as StatusFilter)}
                       dropdownIconColor="#000"
-                      style={{ height: 44 }}
+                      style={{ height: 44, borderWidth: 0 }}
                     >
                       {(['All', 'Poor', 'Moderate', 'Good'] as StatusFilter[]).map((status) => (
                         <Picker.Item key={status} label={status} value={status} />
@@ -321,12 +341,12 @@ export default function ClassTeamsScreen({ userRole }: Props) {
                 {canFilterSection && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                     <Text style={{ fontSize: 14, color: '#4B5563', width: 64 }}>Section</Text>
-                    <View style={{ flex: 1, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}>
+                    <View style={{ flex: 1, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8, overflow: 'hidden' }}>
                       <Picker
                         selectedValue={sectionFilter}
                         onValueChange={(value: string) => setSectionFilter(value)}
                         dropdownIconColor="#000"
-                        style={{ height: 44 }}
+                        style={{ height: 44, borderWidth: 0 }}
                       >
                         {sectionOptions.map((section) => (
                           <Picker.Item key={section} label={section} value={section} />
@@ -339,12 +359,12 @@ export default function ClassTeamsScreen({ userRole }: Props) {
                 {canFilterSemester && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                     <Text style={{ fontSize: 14, color: '#4B5563', width: 64 }}>Semester</Text>
-                    <View style={{ flex: 1, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8 }}>
+                    <View style={{ flex: 1, backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8, overflow: 'hidden' }}>
                       <Picker
                         selectedValue={semesterFilter}
                         onValueChange={(value: string) => setSemesterFilter(value as SemesterFilter)}
                         dropdownIconColor="#000"
-                        style={{ height: 44 }}
+                        style={{ height: 44, borderWidth: 0 }}
                       >
                         {(['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map((semester) => (
                           <Picker.Item key={semester} label={semester} value={semester} />
@@ -359,26 +379,10 @@ export default function ClassTeamsScreen({ userRole }: Props) {
         )}
 
         {/* Stats row */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+        <View style={{ marginBottom: 10 }}>
           <Text style={{ fontSize: 13, color: '#6B7280' }}>
-            Showing {filteredTeams.length} teams
+            Showing {filteredTeams.length} of {teams.length} team{teams.length !== 1 ? 's' : ''}
           </Text>
-          {!isStudentView && teams.length > 0 && (
-            <>
-              {[
-                { label: 'Total',      value: teamStats.total,      color: '#1e3a8a', bg: '#eff6ff' },
-                { label: 'Good',       value: teamStats.good,       color: '#15803d', bg: '#f0fdf4' },
-                { label: 'Moderate',   value: teamStats.moderate,   color: '#92400E', bg: '#fefce8' },
-                { label: 'Poor',       value: teamStats.poor,       color: '#B91C1C', bg: '#fef2f2' },
-                { label: 'Unassigned', value: teamStats.unassigned, color: '#6B7280', bg: '#f9fafb' },
-              ].map((stat) => (
-                <View key={stat.label} style={{ backgroundColor: stat.bg, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: stat.color }}>{stat.value}</Text>
-                  <Text style={{ fontSize: 12, color: stat.color, opacity: 0.8 }}>{stat.label}</Text>
-                </View>
-              ))}
-            </>
-          )}
         </View>
 
         {/* Teams List — pad last row so all cards stay equal width */}
