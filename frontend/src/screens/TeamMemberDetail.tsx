@@ -40,7 +40,7 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
   const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
   const pad = isMobile ? 12 : 20;
 
-  const INNER = isMobile ? 80 : 128;
+  const INNER = isMobile ? 80 : 200;
   const RADIUS_INNER = isMobile ? 20 : 32;
 
   // At-risk override state
