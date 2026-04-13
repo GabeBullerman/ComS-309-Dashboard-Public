@@ -55,7 +55,7 @@ export default function DashboardScreen({route}: Props) {
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
       ? [{ label: "Assign Tasks", mobileLabel: "Assign", icon: "clipboard-outline" }] : []),
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
-      ? [{ label: "Student List", mobileLabel: "Students", icon: "clipboard-outline" }] : []),
+      ? [{ label: "Student List", mobileLabel: "Students", icon: "people-outline" }] : []),
     ...(permissions.canManageTAs
       ? [{ label: "TA Manager",   mobileLabel: "TAs",    icon: "shield-outline" }] : []),
     ...(role == 'Instructor' || role == "HTA"

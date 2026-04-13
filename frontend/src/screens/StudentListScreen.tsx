@@ -1,227 +1,159 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, TextInput, FlatList, ActivityIndicator, useWindowDimensions,
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  ActivityIndicator,
+  useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
+import { UserRole, normalizeRole, getUserPermissions } from '../utils/auth';
+import { getCurrentUser, getUsersByRole } from '../api/users';
+import { getTeams, TeamApiResponse } from '../api/teams';
+import { StudentListCard } from '../components/StudentListCard';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
-import { UserRole, normalizeRole } from '../utils/auth';
-import { getCurrentUser, getUsersByRole } from '../api/users';
-import { getTeams, TeamApiResponse } from '../api/teams';
-import { getAttendanceForStudent, AttendanceRecord } from '../api/attendance';
-import { getDemoPerformanceForStudent, DemoPerformanceRecord } from '../api/demoPerformance';
-import { getWeeklyPerformanceForStudent, WeeklyPerformanceRecord } from '../api/weeklyPerformance';
-import { AtRiskStudentCard, AtRiskFlag } from '@/components/AtRiskStudentCard';
-import { getAllAtRiskOverrides, AtRiskOverride } from '../api/atRiskOverrides';
 
-// ── At-Risk Algorithm ─────────────────────────────────────────────────────────
-// Based on professor Mitra's guidelines:
-//  - 5 lecture absences = failing threshold (critical at 5+, warning at 3-4)
-//  - Habitual lateness (3+ lates to lecture) = warning
-//  - Poor demo performance on 2+ of 4 demos = warning
-//  - Poor weekly performance for 3+ weeks = warning
-
-function computeAtRiskFlags(
-  attendance: AttendanceRecord[],
-  demos: DemoPerformanceRecord[],
-  weekly: WeeklyPerformanceRecord[],
-): AtRiskFlag[] {
-  const flags: AtRiskFlag[] = [];
-
-  // Lecture attendance only
-  const lectureAbsences = attendance.filter(r => r.type === 'LECTURE' && r.status === 'ABSENT').length;
-  const lectureLates    = attendance.filter(r => r.type === 'LECTURE' && r.status === 'LATE').length;
-
-  if (lectureAbsences >= 5) {
-    flags.push({ reason: `${lectureAbsences} lecture absences — at failing threshold`, severity: 'critical' });
-  } else if (lectureAbsences >= 3) {
-    flags.push({ reason: `${lectureAbsences} lecture absences — approaching 5-absence limit`, severity: 'warning' });
-  }
-
-  if (lectureLates >= 3) {
-    flags.push({ reason: `${lectureLates} late arrivals to lecture (habitual)`, severity: 'warning' });
-  }
-
-  // Demo performance: poor = score 0 on code or teamwork
-  const poorDemos = demos.filter(d => d.codeScore === 0 || d.teamworkScore === 0).length;
-  if (poorDemos >= 2) {
-    flags.push({
-      reason: `Poor performance in ${poorDemos} of ${demos.length} demo${demos.length !== 1 ? 's' : ''}`,
-      severity: 'warning',
-    });
-  }
-
-  // Weekly performance: 3+ weeks with poor scores on both code AND teamwork
-  const poorWeeks = weekly.filter(w => w.codeScore === 0 && w.teamworkScore === 0).length;
-  if (poorWeeks >= 3) {
-    flags.push({ reason: `Poor weekly performance for ${poorWeeks} weeks`, severity: 'warning' });
-  }
-
-  return flags;
-}
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface AtRiskStudent {
+interface StudentRow {
   netid: string;
-  studentName: string;
-  teamName: string;
-  teamId: number;
+  studentFirstName: string;
+  studentLastName: string;
   ta: string;
-  flags: AtRiskFlag[];
+  section: number;
+  teamId?: number;
+  teamName: string;
 }
 
 interface Props {
   userRole: UserRole;
 }
 
-// ── Screen ────────────────────────────────────────────────────────────────────
-
-export default function AtRiskStudentsScreen({ userRole }: Props) {
+export default function ClassStudentsScreen({ userRole }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { width } = useWindowDimensions();
-  const numColumns = width < 640 ? 1 : width < 960 ? 2 : width < 1280 ? 3 : 4;
   const isMobile = width < 640;
+
   const effectiveRole = normalizeRole(String(userRole));
 
-  const [atRiskStudents, setAtRiskStudents] = useState<AtRiskStudent[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sectionFilter, setSectionFilter] = useState('All');
+  const [students, setStudents] = useState<StudentRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    const load = async () => {
+    const loadStudents = async () => {
       setIsLoading(true);
       setErrorMessage('');
+
       try {
         const currentUser = await getCurrentUser();
         const netid = currentUser?.netid;
-        if (!netid) { setErrorMessage('Could not identify current user.'); return; }
 
-        let rawTeams: TeamApiResponse[] = [];
-        if (effectiveRole === 'TA') {
-          rawTeams = await getTeams(netid);
-        } else {
-          rawTeams = await getTeams();
+        if (!netid) {
+          setErrorMessage('Could not identify current user.');
+          setIsLoading(false);
+          return;
         }
 
-        // Build TA netid → full name map
-        const [taUsers, htaUsers] = await Promise.all([
+        const normalizedRole = normalizeRole(String(effectiveRole));
+
+        // Fetch teams — TAs only get their own teams
+        let rawTeams: TeamApiResponse[] =
+          normalizedRole === 'TA' ? await getTeams(netid) : await getTeams();
+
+        // Build netid → full name map for TAs/HTAs
+        const taNames = new Map<string, string>();
+        const [tas, htas] = await Promise.all([
           getUsersByRole('TA').catch(() => []),
           getUsersByRole('HTA').catch(() => []),
         ]);
-        const taNameMap = new Map<string, string>();
-        for (const u of [...taUsers, ...htaUsers]) {
-          if (u.netid) taNameMap.set(u.netid, u.name?.trim() || u.netid);
+        for (const u of [...tas, ...htas]) {
+          if (u.netid && u.name) taNames.set(u.netid, u.name);
         }
 
-        // Collect all unique students across teams
-        const studentMap = new Map<string, { name: string; teamName: string; teamId: number; ta: string }>();
+        // Flatten teams → individual student rows, deduplicating by netid
+        const seen = new Set<string>();
+        const rows: StudentRow[] = [];
+
         for (const team of rawTeams) {
+          const taLabel =
+            (team.taNetid && taNames.get(team.taNetid)) ||
+            team.taNetid ||
+            'Unassigned';
+
           for (const student of team.students ?? []) {
-            if (!student.netid || studentMap.has(student.netid)) continue;
-            const taNetid = team.taNetid || '';
-            studentMap.set(student.netid, {
-              name: student.name || student.netid,
+            if (!student.netid || seen.has(student.netid)) continue;
+            seen.add(student.netid);
+
+            const fullName = (student.name || student.netid || '').trim();
+            const parts = fullName.split(/\s+/);
+            const firstName = parts[0] ?? 'Unknown';
+            const lastName = parts.slice(1).join(' ') || '';
+
+            rows.push({
+              netid: student.netid,
+              studentFirstName: firstName,
+              studentLastName: lastName,
+              ta: taLabel,
+              section: team.section ?? 0,
+              teamId: team.id,
               teamName: team.name || 'Unnamed Team',
-              teamId: Number(team.id),
-              ta: taNameMap.get(taNetid) || taNetid || 'Unassigned',
             });
           }
         }
 
-        // Fetch performance data + manual overrides in parallel
-        const [results, overrides] = await Promise.all([
-          Promise.all(
-            [...studentMap.entries()].map(async ([studentNetid, info]) => {
-              const [attendance, demos, weekly] = await Promise.all([
-                getAttendanceForStudent(studentNetid).catch((): AttendanceRecord[] => []),
-                getDemoPerformanceForStudent(studentNetid).catch((): DemoPerformanceRecord[] => []),
-                getWeeklyPerformanceForStudent(studentNetid).catch((): WeeklyPerformanceRecord[] => []),
-              ]);
-              const flags = computeAtRiskFlags(attendance, demos, weekly);
-              return { studentNetid, info, flags };
-            })
-          ),
-          getAllAtRiskOverrides().catch((): AtRiskOverride[] => []),
-        ]);
+        // Sort alphabetically by last name, then first name
+        rows.sort((a, b) =>
+          a.studentLastName.localeCompare(b.studentLastName) ||
+          a.studentFirstName.localeCompare(b.studentFirstName)
+        );
 
-        // Build override map: netid → manual flag
-        const overrideMap = new Map<string, AtRiskOverride[]>();
-        for (const o of overrides) {
-          if (!overrideMap.has(o.studentNetid)) overrideMap.set(o.studentNetid, []);
-          overrideMap.get(o.studentNetid)!.push(o);
-        }
-
-        // Merge algorithm flags with manual overrides
-        const allNetids = new Set([
-          ...results.map(r => r.studentNetid),
-          ...overrideMap.keys(),
-        ]);
-
-        const flagged: AtRiskStudent[] = [];
-        for (const netid of allNetids) {
-          const result = results.find(r => r.studentNetid === netid);
-          const manualOverrides = overrideMap.get(netid) ?? [];
-          const algoFlags = result?.flags ?? [];
-          const manualFlags: AtRiskFlag[] = manualOverrides.map(o => ({
-            reason: `Manually flagged: ${o.reason}`,
-            severity: 'warning' as const,
-          }));
-          const allFlags = [...algoFlags, ...manualFlags];
-          if (allFlags.length === 0) continue;
-
-          const info = result?.info ?? studentMap.get(netid);
-          if (!info) continue;
-
-          flagged.push({
-            netid,
-            studentName: info.name,
-            teamName: info.teamName,
-            teamId: info.teamId,
-            ta: info.ta,
-            flags: allFlags,
-          });
-        }
-
-        flagged.sort((a, b) => {
-          const aHasCritical = a.flags.some(f => f.severity === 'critical');
-          const bHasCritical = b.flags.some(f => f.severity === 'critical');
-          if (aHasCritical !== bHasCritical) return aHasCritical ? -1 : 1;
-          return a.studentName.localeCompare(b.studentName);
-        });
-
-        setAtRiskStudents(flagged);
+        setStudents(rows);
       } catch {
-        setErrorMessage('Failed to load student data.');
+        setErrorMessage('Failed to load students from backend.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    load();
+    loadStudents();
   }, [effectiveRole]);
 
-  const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return atRiskStudents;
-    const q = searchQuery.toLowerCase();
-    return atRiskStudents.filter(s =>
-      s.studentName.toLowerCase().includes(q) ||
-      s.netid.toLowerCase().includes(q) ||
-      s.teamName.toLowerCase().includes(q) ||
-      s.ta.toLowerCase().includes(q)
-    );
-  }, [atRiskStudents, searchQuery]);
+  const sectionOptions = useMemo(() => {
+    const sections = Array.from(new Set(students.map((s) => s.section)))
+      .filter(Number.isFinite)
+      .sort((a, b) => a - b)
+      .map(String);
+    return ['All', ...sections];
+  }, [students]);
 
-  const criticalCount = atRiskStudents.filter(s => s.flags.some(f => f.severity === 'critical')).length;
-  const warningCount  = atRiskStudents.length - criticalCount;
+  const filteredStudents = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return students.filter((s) => {
+      const fullName = `${s.studentFirstName} ${s.studentLastName}`.toLowerCase();
+      const matchesSearch =
+        !q ||
+        fullName.includes(q) ||
+        s.netid.toLowerCase().includes(q) ||
+        s.ta.toLowerCase().includes(q);
+
+      const matchesSection =
+        sectionFilter === 'All' || String(s.section) === sectionFilter;
+
+      return matchesSearch && matchesSection;
+    });
+  }, [students, searchQuery, sectionFilter]);
 
   if (isLoading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
         <ActivityIndicator size="large" color="#C8102E" />
-        <Text style={{ color: '#6b7280', marginTop: 12 }}>Analyzing student data...</Text>
+        <Text style={{ color: '#6B7280', marginTop: 12 }}>Loading students...</Text>
       </View>
     );
   }
@@ -229,107 +161,121 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
   if (errorMessage) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 16, fontWeight: '600', color: '#dc2626' }}>Unable to load students</Text>
-        <Text style={{ color: '#6b7280', marginTop: 8, textAlign: 'center' }}>{errorMessage}</Text>
+        <Text style={{ fontSize: 18, fontWeight: '600', color: '#DC2626' }}>Unable to load students</Text>
+        <Text style={{ color: '#6B7280', marginTop: 8, textAlign: 'center' }}>{errorMessage}</Text>
       </View>
     );
   }
 
-  const remainder = numColumns > 1 ? filtered.length % numColumns : 0;
-  const padded: (AtRiskStudent | null)[] = remainder === 0
-    ? filtered
-    : [...filtered, ...Array(numColumns - remainder).fill(null)];
+  const canFilterSection =
+    effectiveRole === 'Instructor' || effectiveRole === 'HTA' || effectiveRole === 'TA';
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
       <View style={{ flex: 1, paddingHorizontal: isMobile ? 12 : 24, paddingTop: isMobile ? 12 : 24 }}>
-
-        <Text style={{ fontSize: isMobile ? 22 : 28, fontWeight: '700', color: '#111827', marginBottom: 10 }}>
-          At-Risk Students
+        {/* Title */}
+        <Text style={{ fontSize: isMobile ? 24 : 32, fontWeight: '800', color: '#111827', marginBottom: 14 }}>
+          All Students
         </Text>
 
-        {/* Summary badges */}
-        {atRiskStudents.length > 0 && (
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-            {criticalCount > 0 && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fee2e2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
-                <Ionicons name="alert-circle" size={13} color="#dc2626" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#b91c1c' }}>{criticalCount} Critical</Text>
-              </View>
-            )}
-            {warningCount > 0 && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fefce8', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
-                <Ionicons name="warning" size={13} color="#d97706" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#92400e' }}>{warningCount} Warning</Text>
-              </View>
-            )}
-          </View>
-        )}
-
         {/* Search */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', paddingHorizontal: 10, paddingVertical: 8, marginBottom: 12 }}>
-          <Ionicons name="search" size={16} color="#9ca3af" style={{ marginRight: 6 }} />
+        <View style={{
+          flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
+          borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB',
+          paddingHorizontal: 10, paddingVertical: 8, marginBottom: 8,
+        }}>
+          <Ionicons name="search" size={16} color="#9CA3AF" style={{ marginRight: 6 }} />
           <TextInput
-            placeholder="Search by student, team, TA, or section..."
+            placeholder="Search by name, Net ID, or TA..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             style={{ flex: 1, fontSize: 14, color: '#1e293b' }}
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor="#9CA3AF"
           />
         </View>
 
-        {/* Empty state */}
-        {filtered.length === 0 && (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="checkmark-circle-outline" size={48} color="#86efac" />
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#374151', marginTop: 12 }}>
-              {atRiskStudents.length === 0 ? 'No at-risk students' : 'No results match your search'}
-            </Text>
-            <Text style={{ fontSize: 13, color: '#9ca3af', marginTop: 4 }}>
-              {atRiskStudents.length === 0 ? 'All students are within acceptable thresholds.' : 'Try a different search term.'}
-            </Text>
-          </View>
+        {/* Section filter */}
+        {canFilterSection && (
+          Platform.OS !== 'web' ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {sectionOptions.map((opt) => {
+                const active = sectionFilter === opt;
+                return (
+                  <Text
+                    key={opt}
+                    onPress={() => setSectionFilter(opt)}
+                    style={{
+                      paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
+                      backgroundColor: active ? '#b91c1c' : '#f3f4f6',
+                      color: active ? '#fff' : '#374151',
+                      fontSize: 12, fontWeight: '500', overflow: 'hidden',
+                    }}
+                  >
+                    {opt === 'All' ? 'All Sections' : `Section ${opt}`}
+                  </Text>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16 }}>
+              <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>Section</Text>
+              <View style={{
+                backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1,
+                borderRadius: 8, overflow: 'hidden', width: 130,
+              }}>
+                <Picker
+                  selectedValue={sectionFilter}
+                  onValueChange={(v) => setSectionFilter(v)}
+                  dropdownIconColor="#000"
+                  style={{ height: 36, borderWidth: 0 }}
+                >
+                  {sectionOptions.map((opt) => (
+                    <Picker.Item
+                      key={opt}
+                      label={opt === 'All' ? 'All Sections' : `Section ${opt}`}
+                      value={opt}
+                    />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+          )
         )}
 
-        {/* Student list */}
-        {filtered.length > 0 && (
-          <FlatList
-            style={{ flex: 1 }}
-            key={numColumns}
-            data={padded}
-            keyExtractor={(_, i) => i.toString()}
-            numColumns={numColumns}
-            columnWrapperStyle={numColumns > 1 ? { gap: 8, alignItems: 'stretch' } : undefined}
-            contentContainerStyle={{ paddingBottom: 24, gap: 8 }}
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item }) =>
-              item === null ? (
-                <View style={{ flex: 1 }} />
-              ) : (
-                <View style={{ flex: 1 }}>
-                  <AtRiskStudentCard
-                    netid={item.netid}
-                    studentName={item.studentName}
-                    teamName={item.teamName}
-                    ta={item.ta}
-                    flags={item.flags}
-                    onPress={() => navigation.navigate('TeamMemberDetail', {
-                      member: {
-                        name: item.studentName,
-                        netid: item.netid,
-                        initials: item.studentName.trim().split(/\s+/).slice(0, 2).map(n => n[0]?.toUpperCase() ?? '').join(''),
-                        color: 'bg-[#F1BE48] text-gray-800',
-                        photo: require('../Images/PersonIcon.png'),
-                      },
-                      teamId: item.teamId,
-                      teamName: item.teamName,
-                    })}
-                  />
-                </View>
-              )
-            }
-          />
-        )}
+        {/* Count */}
+        <View style={{ marginBottom: 10 }}>
+          <Text style={{ fontSize: 13, color: '#6B7280' }}>
+            Showing {filteredStudents.length} of {students.length} student{students.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
+
+        {/* Student list — single column, full width */}
+        <FlatList
+          style={{ flex: 1 }}
+          data={filteredStudents}
+          keyExtractor={(item) => item.netid}
+          contentContainerStyle={{ paddingBottom: 24, gap: 8 }}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => (
+            <StudentListCard
+              netid={item.netid}
+              studentFirstName={item.studentFirstName}
+              studentLastName={item.studentLastName}
+              ta={item.ta}
+              onPress={() => navigation.navigate('TeamMemberDetail', {
+                member: {
+                  name: item.studentFirstName + ' ' + item.studentLastName,
+                  netid: item.netid,
+                  initials: item.studentFirstName.charAt(0) + item.studentLastName.charAt(0),
+                  color: 'bg-[#F1BE48] text-gray-800',
+                  photo: require('../Images/PersonIcon.png'),
+                },
+                teamId: item.teamId,
+                teamName: item.teamName,
+              })}
+            />
+          )}
+        />
       </View>
     </View>
   );
