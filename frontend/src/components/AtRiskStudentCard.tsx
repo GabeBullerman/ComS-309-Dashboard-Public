@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, TouchableOpacity, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MemberAvatar from './MemberAvatar';
 
@@ -105,6 +105,23 @@ export const AtRiskStudentCard: React.FC<AtRiskStudentProps> = ({
             </View>
           ))}
         </View>
+
+        {/* Contact button */}
+        <TouchableOpacity
+          onPress={(e) => {
+            e.stopPropagation?.();
+            const email = `${netid}@iastate.edu`;
+            if (Platform.OS === 'web') {
+              window.open(`https://outlook.office.com/mail/deeplink/compose?to=${email}`, '_blank');
+            } else {
+              Linking.openURL(`mailto:${email}`);
+            }
+          }}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: '#b91c1c' }}
+        >
+          <Ionicons name="mail-outline" size={14} color="white" />
+          <Text style={{ fontSize: 12, fontWeight: '600', color: 'white' }}>Email {netid}@iastate.edu</Text>
+        </TouchableOpacity>
       </View>
     </Pressable>
   );

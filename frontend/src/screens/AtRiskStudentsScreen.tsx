@@ -210,8 +210,7 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
       s.studentName.toLowerCase().includes(q) ||
       s.netid.toLowerCase().includes(q) ||
       s.teamName.toLowerCase().includes(q) ||
-      s.ta.toLowerCase().includes(q) ||
-      s.section.toString().includes(q)
+      s.ta.toLowerCase().includes(q)
     );
   }, [atRiskStudents, searchQuery]);
 
@@ -313,7 +312,6 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
                     studentName={item.studentName}
                     teamName={item.teamName}
                     ta={item.ta}
-                    section={item.section}
                     flags={item.flags}
                     onPress={() => navigation.navigate('TeamMemberDetail', {
                       member: {
