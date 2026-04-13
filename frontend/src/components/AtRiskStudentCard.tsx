@@ -15,13 +15,13 @@ export interface AtRiskStudentProps {
   studentName: string;
   teamName: string;
   ta: string;
-  section: number;
+
   flags: AtRiskFlag[];
   onPress?: () => void;
 }
 
 export const AtRiskStudentCard: React.FC<AtRiskStudentProps> = ({
-  netid, studentName, teamName, ta, section, flags, onPress,
+  netid, studentName, teamName, ta, flags, onPress,
 }) => {
   const isCritical = flags.some(f => f.severity === 'critical');
   const borderColor = isCritical ? '#dc2626' : '#f59e0b';
@@ -76,10 +76,6 @@ export const AtRiskStudentCard: React.FC<AtRiskStudentProps> = ({
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Ionicons name="person-sharp" size={14} color="#9ca3af" />
                 <Text style={{ fontSize: 13, color: '#6b7280' }}>TA: {ta}</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Ionicons name="book-outline" size={14} color="#9ca3af" />
-                <Text style={{ fontSize: 13, color: '#6b7280' }}>Section {section}</Text>
               </View>
             </View>
           </View>
