@@ -42,7 +42,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
-      <View className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm elevation-2" style={{ padding: 16 }}>
+      <View style={{ flex: 1, backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
 
         {/* Header */}
         <View className="flex-row items-start justify-between" style={{ marginBottom: 12 }}>
