@@ -94,21 +94,24 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     if (members.length === 0) return;
     setBulkSaving(true);
     setBulkDone('');
-    try {
-      await Promise.all(members.map(async (m) => {
-        const existing = await getAttendanceForStudent(m.netid!).catch((): AttendanceRecord[] => []);
-        const record = existing.find(r => r.attendanceDate === bulkDate && r.type === bulkType);
-        if (record) {
-          await updateAttendance(record.id, m.netid!, bulkDate, status, bulkType);
-        } else {
-          await createAttendance(m.netid!, bulkDate, status, bulkType);
-        }
-      }));
-      setBulkDone(`Marked ${members.length} member${members.length !== 1 ? 's' : ''} as ${status.charAt(0) + status.slice(1).toLowerCase()}`);
-    } catch {
-      setBulkDone('Error saving attendance — check date format.');
-    } finally {
-      setBulkSaving(false);
+    const results = await Promise.allSettled(members.map(async (m) => {
+      const existing = await getAttendanceForStudent(m.netid!).catch((): AttendanceRecord[] => []);
+      const record = existing.find(r => r.attendanceDate === bulkDate && r.type === bulkType);
+      if (record) {
+        await updateAttendance(record.id, m.netid!, bulkDate, status, bulkType);
+      } else {
+        await createAttendance(m.netid!, bulkDate, status, bulkType);
+      }
+    }));
+    setBulkSaving(false);
+    const failed = results.filter(r => r.status === 'rejected').length;
+    const succeeded = results.length - failed;
+    if (failed === 0) {
+      setBulkDone(`Marked ${succeeded} member${succeeded !== 1 ? 's' : ''} as ${status.charAt(0) + status.slice(1).toLowerCase()}`);
+    } else if (succeeded === 0) {
+      setBulkDone(`Failed to save attendance — please try again.`);
+    } else {
+      setBulkDone(`Saved ${succeeded} of ${results.length} — ${failed} failed, please retry.`);
     }
   };
 

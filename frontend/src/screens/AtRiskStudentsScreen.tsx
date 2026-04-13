@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { UserRole, normalizeRole } from '../utils/auth';
-import { getCurrentUser } from '../api/users';
+import { getCurrentUser, getUsersByRole } from '../api/users';
 import { getTeams, TeamApiResponse } from '../api/teams';
 import { getAttendanceForStudent, AttendanceRecord } from '../api/attendance';
 import { getDemoPerformanceForStudent, DemoPerformanceRecord } from '../api/demoPerformance';
@@ -69,7 +69,6 @@ interface AtRiskStudent {
   teamName: string;
   teamId: number;
   ta: string;
-  section: number;
   flags: AtRiskFlag[];
 }
 
@@ -107,17 +106,27 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
           rawTeams = await getTeams();
         }
 
+        // Build TA netid → full name map
+        const [taUsers, htaUsers] = await Promise.all([
+          getUsersByRole('TA').catch(() => []),
+          getUsersByRole('HTA').catch(() => []),
+        ]);
+        const taNameMap = new Map<string, string>();
+        for (const u of [...taUsers, ...htaUsers]) {
+          if (u.netid) taNameMap.set(u.netid, u.name?.trim() || u.netid);
+        }
+
         // Collect all unique students across teams
-        const studentMap = new Map<string, { name: string; teamName: string; teamId: number; ta: string; section: number }>();
+        const studentMap = new Map<string, { name: string; teamName: string; teamId: number; ta: string }>();
         for (const team of rawTeams) {
           for (const student of team.students ?? []) {
             if (!student.netid || studentMap.has(student.netid)) continue;
+            const taNetid = team.taNetid || '';
             studentMap.set(student.netid, {
               name: student.name || student.netid,
               teamName: team.name || 'Unnamed Team',
               teamId: Number(team.id),
-              ta: team.taNetid || 'Unassigned',
-              section: team.section ?? 0,
+              ta: taNameMap.get(taNetid) || taNetid || 'Unassigned',
             });
           }
         }
@@ -172,7 +181,6 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
             teamName: info.teamName,
             teamId: info.teamId,
             ta: info.ta,
-            section: info.section,
             flags: allFlags,
           });
         }
@@ -202,8 +210,7 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
       s.studentName.toLowerCase().includes(q) ||
       s.netid.toLowerCase().includes(q) ||
       s.teamName.toLowerCase().includes(q) ||
-      s.ta.toLowerCase().includes(q) ||
-      s.section.toString().includes(q)
+      s.ta.toLowerCase().includes(q)
     );
   }, [atRiskStudents, searchQuery]);
 
@@ -305,7 +312,6 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
                     studentName={item.studentName}
                     teamName={item.teamName}
                     ta={item.ta}
-                    section={item.section}
                     flags={item.flags}
                     onPress={() => navigation.navigate('TeamMemberDetail', {
                       member: {
