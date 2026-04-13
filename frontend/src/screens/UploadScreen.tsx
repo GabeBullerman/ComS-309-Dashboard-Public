@@ -12,10 +12,6 @@ import DropZone from "@/components/DropZone";
 
 // Accepted file types
 const ACCEPTED_TYPES: string[] = [
-  "application/pdf",
-  "image/png",
-  "image/jpeg",
-  "image/jpg",
   "text/csv",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
@@ -116,8 +112,7 @@ export default function UploadScreen(): React.JSX.Element {
                 <Text className="text-rose-400 text-base mt-0.5">⚠️</Text>
                 <Text className="text-rose-300 text-xs leading-5 flex-1">
                   {invalidCount} file{invalidCount > 1 ? "s have" : " has"} an
-                  unsupported format. Only PDF, PNG, JPEG, CSV, and XLSX files
-                  are accepted.
+                  unsupported format. Only CSV and XLSX files are accepted.
                 </Text>
               </View>
             )}

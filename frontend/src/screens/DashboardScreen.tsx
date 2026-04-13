@@ -79,7 +79,7 @@ export default function DashboardScreen({route}: Props) {
 
   const renderSidebarContent = () => (
     <>
-      <View className="p-4 border-b border-white/10">
+      <View className="p-4" style={{ borderBottomWidth: 1.5, borderBottomColor: 'rgba(241,190,72,0.45)' }}>
         <Image
           source={require("../Images/Iowa_State_Cyclones_logo.png")}
           style={{ width: 80, height: 80, transform: [{ scale: 1.2 }], alignSelf: 'center' }}
@@ -114,7 +114,7 @@ export default function DashboardScreen({route}: Props) {
       })}
 
       {/* User Section */}
-      <View className="mt-auto pt-6 border-t border-white/10">
+      <View className="mt-auto pt-6" style={{ borderTopWidth: 1.5, borderTopColor: 'rgba(241,190,72,0.45)' }}>
         <TouchableOpacity
           className="flex-row items-center gap-3"
           onPress={() => setActiveScreen('Profile')}
@@ -168,8 +168,8 @@ export default function DashboardScreen({route}: Props) {
           backgroundColor: '#b91c1c',
           paddingTop: 6,
           paddingBottom: Platform.OS === 'android' ? 8 : 20,
-          borderTopWidth: 1,
-          borderTopColor: 'rgba(255,255,255,0.15)',
+          borderTopWidth: 1.5,
+          borderTopColor: 'rgba(241,190,72,0.45)',
         }}>
           {navItems.map((item) => {
             const isActive = activeScreen === item.label;

@@ -9,7 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getCurrentUser } from '../api/users';
+import { getCurrentUser, changePassword } from '../api/users';
 import { getGitLabToken, saveGitLabToken } from '../utils/gitlab';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProfileAvatar from '../components/ProfileAvatar';
@@ -26,6 +26,14 @@ export default function ProfileScreen({ userRole, onLogout }: Props) {
   const [tokenInput, setTokenInput] = useState('');
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Change password state
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState(false);
 
   useEffect(() => {
     getCurrentUser().then((user) => {
@@ -188,6 +196,85 @@ export default function ProfileScreen({ userRole, onLogout }: Props) {
             </TouchableOpacity>
           </View>
         )}
+      </View>
+
+      {/* Change Password card */}
+      <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 20, marginTop: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+          <Ionicons name="lock-closed-outline" size={18} color="#C8102E" />
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginLeft: 8 }}>Change Password</Text>
+        </View>
+        <Text style={{ fontSize: 12, color: '#6B7280', marginBottom: 16 }}>
+          Use this to set a new password. Enter your current (or temporary) password to confirm.
+        </Text>
+
+        <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563', marginBottom: 4 }}>Current Password</Text>
+        <TextInput
+          value={pwCurrent}
+          onChangeText={t => { setPwCurrent(t); setPwError(''); setPwSuccess(false); }}
+          placeholder="Your current or temporary password"
+          placeholderTextColor="#9ca3af"
+          secureTextEntry
+          style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, backgroundColor: '#F9FAFB', marginBottom: 10 }}
+        />
+
+        <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563', marginBottom: 4 }}>New Password</Text>
+        <TextInput
+          value={pwNew}
+          onChangeText={t => { setPwNew(t); setPwError(''); setPwSuccess(false); }}
+          placeholder="At least 6 characters"
+          placeholderTextColor="#9ca3af"
+          secureTextEntry
+          style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, backgroundColor: '#F9FAFB', marginBottom: 10 }}
+        />
+
+        <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563', marginBottom: 4 }}>Confirm New Password</Text>
+        <TextInput
+          value={pwConfirm}
+          onChangeText={t => { setPwConfirm(t); setPwError(''); setPwSuccess(false); }}
+          placeholder="Repeat new password"
+          placeholderTextColor="#9ca3af"
+          secureTextEntry
+          style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, backgroundColor: '#F9FAFB', marginBottom: 12 }}
+        />
+
+        {!!pwError && (
+          <Text style={{ fontSize: 12, color: '#dc2626', marginBottom: 8 }}>{pwError}</Text>
+        )}
+        {pwSuccess && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+            <Ionicons name="checkmark-circle" size={14} color="#16a34a" />
+            <Text style={{ fontSize: 12, color: '#16a34a', fontWeight: '600' }}>Password changed successfully.</Text>
+          </View>
+        )}
+
+        <TouchableOpacity
+          onPress={async () => {
+            setPwError('');
+            setPwSuccess(false);
+            if (!pwCurrent.trim()) { setPwError('Enter your current password.'); return; }
+            if (pwNew.length < 6) { setPwError('New password must be at least 6 characters.'); return; }
+            if (pwNew !== pwConfirm) { setPwError('New passwords do not match.'); return; }
+            setPwSaving(true);
+            try {
+              await changePassword(pwCurrent, pwNew);
+              setPwCurrent(''); setPwNew(''); setPwConfirm('');
+              setPwSuccess(true);
+            } catch (e: any) {
+              const status = e?.response?.status;
+              setPwError(status === 401 ? 'Current password is incorrect.' : 'Failed to change password.');
+            } finally {
+              setPwSaving(false);
+            }
+          }}
+          disabled={pwSaving || !pwCurrent.trim() || !pwNew.trim() || !pwConfirm.trim()}
+          style={{ backgroundColor: '#C8102E', borderRadius: 8, paddingVertical: 10, alignItems: 'center', opacity: (pwSaving || !pwCurrent.trim() || !pwNew.trim() || !pwConfirm.trim()) ? 0.6 : 1 }}
+        >
+          {pwSaving
+            ? <ActivityIndicator size="small" color="white" />
+            : <Text style={{ color: 'white', fontWeight: '600' }}>Update Password</Text>
+          }
+        </TouchableOpacity>
       </View>
 
       {/* Logout — mobile only, below GitLab token */}

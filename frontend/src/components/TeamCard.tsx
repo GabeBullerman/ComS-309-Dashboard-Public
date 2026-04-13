@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MemberAvatar from './MemberAvatar';
@@ -24,6 +24,13 @@ export const TeamCard: React.FC<TeamCardProps> = ({
   name, memberCount, ta, section, status, members, onPress,
 }) => {
   const { bg, text } = STATUS_STYLES[status];
+  const [rowWidth, setRowWidth] = useState(0);
+
+  const GAP = 6;
+  const n = members.length || 1;
+  const avatarSize = rowWidth > 0
+    ? Math.min(72, Math.floor((rowWidth - GAP * (n - 1)) / n))
+    : 48;
 
   return (
     <Pressable
@@ -35,47 +42,50 @@ export const TeamCard: React.FC<TeamCardProps> = ({
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
-      <View className="flex-1 bg-white rounded-xl border border-gray-200 px-3.5 py-3 shadow-sm elevation-2">
+      <View className="flex-1 bg-white rounded-xl border border-gray-200 shadow-sm elevation-2" style={{ padding: 16 }}>
 
         {/* Header */}
-        <View className="flex-row items-start justify-between mb-2">
-          <Text className="flex-1 pr-2 text-base font-semibold text-gray-900">
+        <View className="flex-row items-start justify-between" style={{ marginBottom: 12 }}>
+          <Text style={{ flex: 1, paddingRight: 8, fontSize: 18, fontWeight: '700', color: '#111827' }}>
             {name}
           </Text>
-          <View className="rounded-full px-2.5 py-0.5" style={{ backgroundColor: bg }}>
-            <Text className="text-[11px] font-semibold" style={{ color: text }}>
+          <View className="rounded-full" style={{ backgroundColor: bg, paddingHorizontal: 10, paddingVertical: 3 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: text }}>
               {status}
             </Text>
           </View>
         </View>
 
         {/* Member count */}
-        <View className="flex-row items-center mb-1">
-          <Ionicons name="people" size={15} color="#F1BE48" className="mr-1.5" />
-          <Text className="text-[13px] text-gray-600">{memberCount} members</Text>
+        <View className="flex-row items-center" style={{ marginBottom: 6 }}>
+          <Ionicons name="people" size={17} color="#F1BE48" style={{ marginRight: 6 }} />
+          <Text style={{ fontSize: 14, color: '#4B5563' }}>{memberCount} members</Text>
         </View>
 
         {/* TA */}
-        <View className="flex-row items-center mb-1">
-          <Ionicons name="person-sharp" size={15} color="#64f0cd" className="mr-1.5" />
-          <Text className="text-[13px] text-gray-600">TA: {ta}</Text>
+        <View className="flex-row items-center" style={{ marginBottom: 6 }}>
+          <Ionicons name="person-sharp" size={17} color="#64f0cd" style={{ marginRight: 6 }} />
+          <Text style={{ fontSize: 14, color: '#4B5563' }}>TA: {ta}</Text>
         </View>
 
         {/* Section */}
-        <View className="flex-row items-center mb-2.5">
-          <Ionicons name="book" size={15} color="#C8102E" className="mr-1.5" />
-          <Text className="text-[13px] text-gray-600">Section: {section}</Text>
+        <View className="flex-row items-center" style={{ marginBottom: 16 }}>
+          <Ionicons name="book" size={17} color="#C8102E" style={{ marginRight: 6 }} />
+          <Text style={{ fontSize: 14, color: '#4B5563' }}>Section: {section}</Text>
         </View>
 
-        {/* Member avatars */}
-        <View className="flex-row flex-wrap gap-1.5">
+        {/* Member avatars — fill full card width */}
+        <View
+          style={{ flexDirection: 'row', gap: GAP }}
+          onLayout={e => setRowWidth(e.nativeEvent.layout.width)}
+        >
           {members.map((member, index) => (
             <MemberAvatar
               key={index}
               memberId={member.netid || member.name}
               initials={member.initials}
-              size={40}
-              borderRadius={20}
+              size={avatarSize}
+              borderRadius={avatarSize / 2}
               canEdit={false}
               bordered
             />
