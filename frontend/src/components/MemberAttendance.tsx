@@ -59,7 +59,6 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
-  const [containerWidth, setContainerWidth] = useState(0);
   const [activeTab, setActiveTab] = useState<AttendanceTab>("class");
 
   // Keyed by `${attendanceDate}_${type}` to distinguish LECTURE vs MEETING
@@ -159,9 +158,6 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
   const monthLabel = new Date(currentYear, currentMonth).toLocaleString("default", { month: "short", year: "numeric" });
 
-  const calendarCells: (number | null)[] = [];
-  for (let i = 0; i < firstDay; i++) calendarCells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) calendarCells.push(d);
 
   const prevMonth = () => {
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
@@ -174,13 +170,19 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
     setSelectedDay(null);
   };
 
-  const CELL_W = containerWidth > 0 ? Math.floor((containerWidth - (readOnly ? 24 : 148)) / 7) : 0;
-  const CELL_H = CELL_W > 0 ? Math.min(Math.round(CELL_W * 0.75), 44) : 0;
+  // Build rows of exactly 7 so layout is never affected by pixel rounding
+  const allCells: (number | null)[] = [];
+  for (let i = 0; i < firstDay; i++) allCells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) allCells.push(d);
+  while (allCells.length % 7 !== 0) allCells.push(null);
+  const calendarRows: (number | null)[][] = [];
+  for (let i = 0; i < allCells.length; i += 7) calendarRows.push(allCells.slice(i, i + 7));
+
+  const CELL_H = 36;
 
   return (
     <View
       style={[{ backgroundColor: "white", borderRadius: 12, marginBottom: 8, overflow: "hidden", shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }, style]}
-      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
     >
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#E5E7EB" }}>
@@ -203,63 +205,65 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
             </TouchableOpacity>
           </View>
 
-          {/* Day headers */}
-          {CELL_W > 0 && (
-            <View style={{ flexDirection: "row", marginBottom: 2 }}>
-              {DAYS_OF_WEEK.map(d => (
-                <View key={d} style={{ width: CELL_W, alignItems: "center" }}>
-                  <Text style={{ fontSize: 10, color: "#9ca3af", fontWeight: "600" }}>{d}</Text>
-                </View>
-              ))}
-            </View>
-          )}
+          {/* Day headers — flex: 1 per cell guarantees exact 7-column alignment */}
+          <View style={{ flexDirection: "row", marginBottom: 2 }}>
+            {DAYS_OF_WEEK.map(d => (
+              <View key={d} style={{ flex: 1, alignItems: "center" }}>
+                <Text style={{ fontSize: 10, color: "#9ca3af", fontWeight: "600" }}>{d}</Text>
+              </View>
+            ))}
+          </View>
 
           {/* Calendar Grid */}
           {loading ? (
             <View style={{ alignItems: "center", paddingVertical: 24 }}>
               <ActivityIndicator color="#be123c" />
             </View>
-          ) : CELL_W > 0 && (
-            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-              {calendarCells.map((day, idx) => {
-                if (!day) return <View key={`e-${idx}`} style={{ width: CELL_W, height: CELL_H }} />;
+          ) : (
+            <View style={{ gap: 2 }}>
+              {calendarRows.map((row, ri) => (
+                <View key={ri} style={{ flexDirection: "row" }}>
+                  {row.map((day, ci) => {
+                    if (!day) return <View key={ci} style={{ flex: 1, height: CELL_H }} />;
 
-                const status = getDayStatus(day);
-                const isSelected = selectedDay === day;
-                const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
-                const dotColor = status ? STATUS_CONFIG[status].color : null;
+                    const status = getDayStatus(day);
+                    const isSelected = selectedDay === day;
+                    const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
+                    const dotColor = status ? STATUS_CONFIG[status].color : null;
 
-                return (
-                  <TouchableOpacity
-                    key={day}
-                    onPress={() => setSelectedDay(day)}
-                    style={{ width: CELL_W, height: CELL_H, padding: 1 }}
-                  >
-                    <View style={{
-                      flex: 1,
-                      borderRadius: 4,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: dotColor ?? "transparent",
-                      borderWidth: (isSelected || isToday) ? 1 : 0,
-                      borderColor: isSelected ? "#be123c" : "#9ca3af",
-                    }}>
-                      {isToday && (
-                        <Text style={{ fontSize: 6, color: dotColor ? "white" : "#be123c", fontWeight: "700", lineHeight: 8 }}>
-                          Today
-                        </Text>
-                      )}
-                      <Text style={{
-                        fontSize: 11,
-                        color: dotColor ? "white" : isToday ? "#be123c" : "#374151",
-                        fontWeight: isToday ? "700" : "500",
-                      }}>
-                        {day}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+                    return (
+                      <TouchableOpacity
+                        key={day}
+                        onPress={() => setSelectedDay(day)}
+                        style={{ flex: 1, height: CELL_H, padding: 1 }}
+                      >
+                        <View style={{
+                          flex: 1,
+                          borderRadius: 4,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: dotColor ?? "transparent",
+                          borderWidth: (isSelected || isToday) ? 1 : 0,
+                          borderColor: isSelected ? "#be123c" : "#9ca3af",
+                        }}>
+                          {isToday && (
+                            <Text style={{ fontSize: 6, color: dotColor ? "white" : "#be123c", fontWeight: "700", lineHeight: 8 }}>
+                              Today
+                            </Text>
+                          )}
+                          <Text style={{
+                            fontSize: 11,
+                            color: dotColor ? "white" : isToday ? "#be123c" : "#374151",
+                            fontWeight: isToday ? "700" : "500",
+                          }}>
+                            {day}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ))}
             </View>
           )}
         </View>

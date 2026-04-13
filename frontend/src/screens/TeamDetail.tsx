@@ -82,6 +82,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
   // Bulk attendance state
   const today = new Date().toISOString().split('T')[0];
+  const datePickerRef = useRef<any>(null);
   const [bulkDate, setBulkDate] = useState(today);
   const [bulkType, setBulkType] = useState<AttendanceType>('LECTURE');
   const [bulkSaving, setBulkSaving] = useState(false);
@@ -475,19 +476,38 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
           {/* Date + Type row */}
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <TextInput
-              value={bulkDate}
-              onChangeText={setBulkDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#9ca3af"
-              style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, fontSize: 13, color: '#111827', flex: 1, minWidth: 120 }}
-            />
+            {/* Date picker — calendar popout on web, text input fallback on native */}
+            {Platform.OS === 'web' ? (
+              <TouchableOpacity
+                onPress={() => { (datePickerRef.current as any)?.showPicker?.() ?? (datePickerRef.current as any)?.click?.(); }}
+                style={{ flex: 1, minWidth: 120, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#f9fafb' }}
+              >
+                <Ionicons name="calendar-outline" size={14} color="#6b7280" />
+                <Text style={{ fontSize: 13, color: '#111827' }}>{bulkDate}</Text>
+                {/* Hidden native date input */}
+                <input
+                  ref={datePickerRef}
+                  type="date"
+                  value={bulkDate}
+                  onChange={(e: any) => setBulkDate(e.target.value)}
+                  style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+                />
+              </TouchableOpacity>
+            ) : (
+              <TextInput
+                value={bulkDate}
+                onChangeText={setBulkDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#9ca3af"
+                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, fontSize: 13, color: '#111827', flex: 1, minWidth: 120 }}
+              />
+            )}
             <View style={{ flexDirection: 'row', gap: 4 }}>
               {(['LECTURE', 'MEETING'] as AttendanceType[]).map(t => (
                 <TouchableOpacity
                   key={t}
                   onPress={() => setBulkType(t)}
-                  style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, backgroundColor: bulkType === t ? '#1e40af' : '#f3f4f6', borderWidth: 1, borderColor: bulkType === t ? '#1e40af' : '#e5e7eb' }}
+                  style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, backgroundColor: bulkType === t ? '#b91c1c' : '#f3f4f6', borderWidth: 1, borderColor: bulkType === t ? '#b91c1c' : '#e5e7eb' }}
                 >
                   <Text style={{ fontSize: 12, fontWeight: '600', color: bulkType === t ? 'white' : '#374151' }}>
                     {t === 'LECTURE' ? 'Class' : 'TA Meeting'}
