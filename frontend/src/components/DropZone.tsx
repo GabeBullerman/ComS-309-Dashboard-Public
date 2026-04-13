@@ -6,7 +6,7 @@ import {
   Platform,
 } from "react-native";
 
-const ACCEPTED_EXTENSIONS: string[] = [".pdf", ".csv"];
+const ACCEPTED_EXTENSIONS: string[] = [".csv", ".xlsx"];
 
 interface UploadedFile {
   name: string;
@@ -131,7 +131,7 @@ export default function DropZone({
                 Tap to upload a file
               </Text>
               <Text className="text-zinc-500 text-sm text-center">
-                PDF, PNG, JPEG, CSV, XLSX
+                CSV, XLSX
               </Text>
             </View>
           </View>

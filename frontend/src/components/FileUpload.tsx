@@ -6,13 +6,11 @@ import {
 } from "react-native";
 
 const ACCEPTED_TYPES: string[] = [
-  "application/pdf",
   "text/csv",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
 
 const FILE_TYPE_LABELS: Record<string, string> = {
-  "application/pdf": "PDF",
   "text/csv": "CSV",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
 };
@@ -60,8 +58,6 @@ function formatBytes(bytes: number): string {
 }
 
 function getFileIcon(type: string | undefined): string {
-  if (type?.startsWith("image/")) return "🖼️";
-  if (type === "application/pdf") return "📄";
   if (type === "text/csv") return "📊";
   if (type?.includes("spreadsheet")) return "📊";
   return "📁";
