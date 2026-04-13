@@ -97,17 +97,18 @@ export default function MemberAvatar({ memberId, initials, size, borderRadius, c
   };
 
   const badgeSize = Math.round(size * 0.28);
-  const borderStyle = bordered ? { borderWidth: 2, borderColor: '#111827' } : {};
 
   return (
-    <View style={[{ width: size, height: size, borderRadius: radius, overflow: 'hidden', backgroundColor: '#F1BE48', alignItems: 'center', justifyContent: 'center', ...borderStyle }, style]}>
-      {uri ? (
-        <Image source={{ uri }} style={{ width: size, height: size }} resizeMode="cover" />
-      ) : (
-        <Text style={{ fontSize: size * 0.35, fontWeight: '600', color: '#1f2937' }}>
-          {initials}
-        </Text>
-      )}
+    <View style={[{ width: size, height: size, borderRadius: radius, ...(bordered ? { borderWidth: 2, borderColor: '#111827' } : {}) }, style]}>
+      <View style={{ width: '100%', height: '100%', borderRadius: bordered ? radius - 2 : radius, overflow: 'hidden', backgroundColor: '#F1BE48', alignItems: 'center', justifyContent: 'center' }}>
+        {uri ? (
+          <Image source={{ uri }} style={{ width: size, height: size }} resizeMode="cover" />
+        ) : (
+          <Text style={{ fontSize: size * 0.35, fontWeight: '600', color: '#1f2937' }}>
+            {initials}
+          </Text>
+        )}
+      </View>
       {canEdit && (
         <TouchableOpacity
           onPress={pickImage}
