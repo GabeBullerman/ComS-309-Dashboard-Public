@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import ProfileAvatar from "../components/ProfileAvatar";
 import UploadScreen from "./UploadScreen";
 import AtRiskStudentsScreen from "./AtRiskStudentsScreen";
+import StudentListScreen from "./StudentListScreen";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DashboardScreen'>;
 
@@ -53,6 +54,8 @@ export default function DashboardScreen({route}: Props) {
     { label: "Teams",        mobileLabel: "Teams",  icon: "people-outline" },
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
       ? [{ label: "Assign Tasks", mobileLabel: "Assign", icon: "clipboard-outline" }] : []),
+    ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
+      ? [{ label: "Student List", mobileLabel: "Students", icon: "clipboard-outline" }] : []),
     ...(permissions.canManageTAs
       ? [{ label: "TA Manager",   mobileLabel: "TAs",    icon: "shield-outline" }] : []),
     ...(role == 'Instructor' || role == "HTA"
@@ -67,6 +70,7 @@ export default function DashboardScreen({route}: Props) {
   const renderScreen = () => {
     switch (activeScreen) {
       case "Teams":        return <TeamsScreen userRole={route.params.userRole} />;
+      case "Student List": return <StudentListScreen userRole={route.params.userRole} />;
       case "Assign Tasks": return <TaskAssignmentScreen />;
       case "TA Manager":   return <TAManager />;
       case "Upload":       return <UploadScreen/>;
