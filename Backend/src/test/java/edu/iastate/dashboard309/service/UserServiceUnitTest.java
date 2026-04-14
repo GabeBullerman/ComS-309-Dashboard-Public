@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import edu.iastate.dashboard309.dto.UserRequest;
 import edu.iastate.dashboard309.model.User;
+import edu.iastate.dashboard309.repository.RefreshTokenRepository;
 import edu.iastate.dashboard309.repository.RoleRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
 import java.util.List;
@@ -25,6 +26,9 @@ class UserServiceUnitTest {
 
     @Mock
     private RoleRepository roleRepository;
+
+    @Mock
+    private RefreshTokenRepository refreshTokenRepository;
 
     @InjectMocks
     private UserService userService;

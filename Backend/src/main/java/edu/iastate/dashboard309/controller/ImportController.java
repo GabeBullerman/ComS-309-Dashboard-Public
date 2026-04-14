@@ -46,7 +46,7 @@ public class ImportController {
 
         } catch(Exception e){
             return ResponseEntity.internalServerError()
-                .body("Error processing file: " + e.getMessage());
+                .body(e.getMessage());
         }
     }
     

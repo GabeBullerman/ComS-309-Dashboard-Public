@@ -1,17 +1,21 @@
 package edu.iastate.dashboard309.service;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.oauth2.client.RefreshTokenReactiveOAuth2AuthorizedClientProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import edu.iastate.dashboard309.dto.UserRequest;
+import edu.iastate.dashboard309.model.RefreshToken;
 import edu.iastate.dashboard309.model.User;
+import edu.iastate.dashboard309.repository.RefreshTokenRepository;
 import edu.iastate.dashboard309.repository.RoleRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
 
@@ -19,10 +23,12 @@ import edu.iastate.dashboard309.repository.UserRepository;
 public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
-    public UserService(UserRepository userRepository, RoleRepository roleRepository) {
+    public UserService(UserRepository userRepository, RoleRepository roleRepository, RefreshTokenRepository refreshTokenRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
     @Transactional
@@ -99,5 +105,19 @@ public class UserService {
         return users.stream()
             .map(u -> userToRequest(u))
             .toList();
+    }
+
+    @Transactional
+    public void deleteUser(Long id){
+        if (!userRepository.existsById(id)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+        User user = userRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        Set<RefreshToken> tokens = user.getRefreshTokens();
+        for(RefreshToken token : tokens){
+            refreshTokenRepository.deleteById(token.getId());
+        }
+        userRepository.deleteById(id);
     }
 }

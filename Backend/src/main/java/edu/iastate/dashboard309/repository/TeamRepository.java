@@ -2,6 +2,8 @@ package edu.iastate.dashboard309.repository;
 
 import edu.iastate.dashboard309.model.Team;
 import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,4 +24,7 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
                          @Param("section") Integer section,
                          @Param("status") Integer status,
                          Pageable pageable);
+
+    boolean existsByName(String name);
+    Optional<Team> findByName(String name);
 }

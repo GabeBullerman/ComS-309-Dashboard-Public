@@ -7,8 +7,10 @@ import edu.iastate.dashboard309.model.User;
 import edu.iastate.dashboard309.repository.UserRepository;
 import edu.iastate.dashboard309.service.TeamService;
 import edu.iastate.dashboard309.repository.TeamRepository;
+import edu.iastate.dashboard309.service.UserService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,14 +33,16 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/teams")
 public class TeamController {
+    private final UserService userService;
     private final TeamRepository teamRepository;
     private final UserRepository userRepository;
     private final TeamService teamService;
 
-    public TeamController(TeamRepository teamRepository, UserRepository userRepository, TeamService teamService) {
+    public TeamController(TeamRepository teamRepository, UserRepository userRepository, TeamService teamService, UserService userService) {
         this.teamRepository = teamRepository;
         this.userRepository = userRepository;
         this.teamService = teamService;
+        this.userService = userService;
     }
 
     // @PreAuthorize("hasAuthority('SEE_ALL_TEAMS')")
@@ -118,6 +122,20 @@ public class TeamController {
     public void delete(@PathVariable Long id) {
         teamService.clearStudents(id);
         teamRepository.deleteById(id);
+    }
+
+    // Deletes all teams and students in deleted teams. Does not delete students that aren't in a team
+    @PreAuthorize("hasAuthority('CAN_DELETE_SEMESTER')")
+    @DeleteMapping("/clear")
+    public void clearSemester(){
+        List<Team> teams = teamRepository.findAll();
+        for(Team team : teams){
+            Set<User> students = teamService.clearStudents(team.getId());
+            for(User student : students){
+                userService.deleteUser(student.getId());
+            }
+            teamRepository.deleteById(team.getId());
+        }
     }
 
     private void applyRequest(Team team, TeamRequest request) {
