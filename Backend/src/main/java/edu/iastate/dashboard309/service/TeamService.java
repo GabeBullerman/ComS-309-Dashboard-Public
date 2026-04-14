@@ -1,6 +1,8 @@
 package edu.iastate.dashboard309.service;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -126,9 +128,14 @@ public class TeamService {
     }
 
     @Transactional
-    public void clearStudents(Long id){
+    public Set<User> clearStudents(Long id){
         Team team = teamRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found"));
+        Set<User> students = new HashSet<>();
+        for(User student : team.getStudents()){
+            students.add(student);
+        }
         team.clearStudents();
+        return students;
     }
 }

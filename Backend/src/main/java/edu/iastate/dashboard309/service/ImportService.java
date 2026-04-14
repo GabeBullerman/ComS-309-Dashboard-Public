@@ -47,8 +47,11 @@ public class ImportService {
     Role taRole;
     Role htaRole;
 
-    int temp = 0;
-    
+    private final int FIRST_NAME_COLUMN = 0; 
+    private final int LAST_NAME_COLUMN = 1;
+    private final int NETID_COLUMN = 2;
+    private final int TEAM_NAME_COLUMN = 3;
+
     @Transactional
     public void processCSV(MultipartFile file) throws Exception{
         try {
@@ -64,7 +67,7 @@ public class ImportService {
             int row = 1;
 
             // Skip the header line. You can delete this if you don't have a header line
-            csvReader.readNext();
+            features = csvReader.readNext();
             // Find users and put them in a list
             while((features = csvReader.readNext()) != null){
                 for(int i = 0; i < features.length; i++){
@@ -122,9 +125,9 @@ public class ImportService {
                     
                 }
                 // Add the student to the teams
-                teamMap.computeIfAbsent(features[3], k -> new ArrayList<>()).add(createStudent(features));
-                if(!teamNames.contains(features[3])){
-                    teamNames.add(features[3]);
+                teamMap.computeIfAbsent(features[TEAM_NAME_COLUMN], k -> new ArrayList<>()).add(createStudent(features));
+                if(!teamNames.contains(features[TEAM_NAME_COLUMN])){
+                    teamNames.add(features[TEAM_NAME_COLUMN]);
                 }
 
                 // Prints the features
@@ -156,13 +159,13 @@ public class ImportService {
     @Transactional
     private User createStudent(String[] features){
         User user = new User();
-        String name = features[0] + ' ' + features[1];
-        String netid = features[2];
+        String name = features[FIRST_NAME_COLUMN] + ' ' + features[LAST_NAME_COLUMN];
+        String netid = features[NETID_COLUMN];
 
         // If the user already exists in the database, check if they have the student role
         if(userRepository.existsByNetid(netid)){
             User checkIfStudent = userRepository.findByNetid(netid)
-                .orElseThrow();
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User \'" + netid + "\' already exists, but could not be found."));
             if(!checkIfStudent.getRole().contains(studentRole)){
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User with netid \'" + netid + "\' not a student.");
             }
@@ -182,23 +185,36 @@ public class ImportService {
             Team team = new Team();
 
             String[] parts = teamName.split("_");
+            if(parts.length != 3){
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid team name: " + teamName);
+            }
             int section = Integer.parseInt(parts[0]);
+            int teamNum = Integer.parseInt(parts[2]);
             String initials = parts[1];
- 
-            // Set features
-            team.setName(teamName);
-            team.setSection(section);
-            // Find TA based on initials
-            List<User> tas = userRepository.findTaByInitials(initials);
-            if(tas.size() > 1){
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Multiple TAs found with initials"  + initials);
+
+            if(teamRepository.existsByName(teamName)){
+                team = teamRepository.findByName(teamName)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Team \'" + teamName + "\' already exists, but could not be found."));
             }
-            else if(tas.size() == 0){
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No TAs found with initials"  + initials);
+            else{
+                // Set features
+                team.setName(teamName);
+                team.setSection(section);
+
+                // Find TA based on initials
+                List<User> tas = userRepository.findTaByInitials(initials);
+                if(tas.size() > 1){
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Multiple TAs found with initials \'"  + initials + "\'");
+                }
+                else if(tas.size() == 0){
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No TAs found with initials \'"  + initials + "\'");
+                }
+                team.setTa(tas.get(0));
             }
-            team.setTa(tas.get(0));
 
             return team;
+        } catch(NumberFormatException e){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid team name: " + teamName);
         } catch (Exception e){
             throw e;
         }
