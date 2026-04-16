@@ -13,6 +13,7 @@ frontend/ios/
 # Backend
 backend/dist/
 backend/build/
+Backend/src/main/resources/static/
 
 # IDE
 .vscode/
