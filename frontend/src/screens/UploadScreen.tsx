@@ -2,13 +2,14 @@ import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 
 import FileUpload from "@/components/FileUpload";
 import DropZone from "@/components/DropZone";
+import axiosInstance from "@/api/client";
 
 // Accepted file types
 const ACCEPTED_TYPES: string[] = [
@@ -24,11 +25,16 @@ interface UploadedFile {
   type: string;
 }
 
+type UploadResult = { name: string; ok: boolean; message: string };
+
 export default function UploadScreen(): React.JSX.Element {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [uploading, setUploading] = useState(false);
+  const [results, setResults] = useState<UploadResult[]>([]);
 
   const handleFilesSelected = useCallback((newFiles: UploadedFile[]) => {
+    setResults([]);
     setFiles((prev) => {
       const existingNames = new Set(prev.map((f) => f.name));
       const unique = newFiles.filter((f) => !existingNames.has(f.name));
@@ -38,7 +44,36 @@ export default function UploadScreen(): React.JSX.Element {
 
   const handleRemove = useCallback((name: string) => {
     setFiles((prev) => prev.filter((f) => f.name !== name));
+    setResults((prev) => prev.filter((r) => r.name !== name));
   }, []);
+
+  const handleUpload = useCallback(async () => {
+    const validFiles = files.filter((f) => ACCEPTED_TYPES.includes(f.type));
+    setUploading(true);
+    setResults([]);
+
+    const uploadResults: UploadResult[] = await Promise.all(
+      validFiles.map(async (f) => {
+        const formData = new FormData();
+        formData.append('file', f as unknown as File);
+        try {
+          await axiosInstance.post('/api/import', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          return { name: f.name, ok: true, message: 'Uploaded successfully' };
+        } catch (err: any) {
+          const msg = err?.response?.data || err?.message || 'Upload failed';
+          return { name: f.name, ok: false, message: String(msg) };
+        }
+      })
+    );
+
+    setResults(uploadResults);
+    setUploading(false);
+    // Remove successfully uploaded files from the list
+    const failedNames = new Set(uploadResults.filter((r) => !r.ok).map((r) => r.name));
+    setFiles((prev) => prev.filter((f) => failedNames.has(f.name)));
+  }, [files]);
 
   const validCount = files.filter((f) => ACCEPTED_TYPES.includes(f.type)).length;
   const invalidCount = files.length - validCount;
@@ -119,25 +154,56 @@ export default function UploadScreen(): React.JSX.Element {
           </View>
         )}
 
+        {/* Upload results */}
+        {results.length > 0 && (
+          <View style={{ marginTop: 16, gap: 6 }}>
+            {results.map((r) => (
+              <View
+                key={r.name}
+                style={{
+                  flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+                  backgroundColor: r.ok ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                  borderRadius: 10, padding: 12,
+                }}
+              >
+                <Text style={{ fontSize: 14 }}>{r.ok ? '✅' : '❌'}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: r.ok ? '#059669' : '#DC2626' }}>
+                    {r.name}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: r.ok ? '#065f46' : '#991b1b', marginTop: 2 }}>
+                    {r.message}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Upload CTA */}
         {files.length > 0 && (
           <TouchableOpacity
             className={`mt-6 rounded-2xl py-4 items-center ${
-              invalidCount === 0 && validCount > 0 ? "bg-yellow-400" : "bg-zinc-700"
+              invalidCount === 0 && validCount > 0 && !uploading ? "bg-yellow-400" : "bg-zinc-700"
             }`}
-            disabled={invalidCount > 0 || validCount === 0}
+            disabled={invalidCount > 0 || validCount === 0 || uploading}
+            onPress={handleUpload}
           >
-            <Text
-              className={`text-sm font-bold tracking-wide ${
-                invalidCount === 0 && validCount > 0
-                  ? "text-zinc-900"
-                  : "text-zinc-500"
-              }`}
-            >
-              {invalidCount > 0
-                ? "RESOLVE ERRORS TO CONTINUE"
-                : `UPLOAD ${validCount} FILE${validCount !== 1 ? "S" : ""}`}
-            </Text>
+            {uploading ? (
+              <ActivityIndicator color="#18181b" />
+            ) : (
+              <Text
+                className={`text-sm font-bold tracking-wide ${
+                  invalidCount === 0 && validCount > 0
+                    ? "text-zinc-900"
+                    : "text-zinc-500"
+                }`}
+              >
+                {invalidCount > 0
+                  ? "RESOLVE ERRORS TO CONTINUE"
+                  : `UPLOAD ${validCount} FILE${validCount !== 1 ? "S" : ""}`}
+              </Text>
+            )}
           </TouchableOpacity>
         )}
       </ScrollView>
