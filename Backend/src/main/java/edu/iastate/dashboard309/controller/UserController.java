@@ -3,8 +3,10 @@ package edu.iastate.dashboard309.controller;
 import edu.iastate.dashboard309.dto.GitlabTokenRequest;
 import edu.iastate.dashboard309.dto.TeamRequest;
 import edu.iastate.dashboard309.dto.UserRequest;
+import edu.iastate.dashboard309.model.RefreshToken;
 import edu.iastate.dashboard309.model.Role;
 import edu.iastate.dashboard309.model.User;
+import edu.iastate.dashboard309.repository.RefreshTokenRepository;
 import edu.iastate.dashboard309.repository.RoleRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
 import edu.iastate.dashboard309.service.TeamService;
@@ -14,6 +16,8 @@ import jakarta.websocket.server.PathParam;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -48,7 +52,8 @@ public class UserController {
     public UserController(UserRepository userRepository,
                           RoleRepository roleRepository,
                           UserService userService,
-                          TeamService teamService, PasswordEncoder passwordEncoder) {
+                          TeamService teamService, 
+                          PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userService = userService;
@@ -236,13 +241,14 @@ public class UserController {
     @PreAuthorize("hasAuthority('CAN_CHANGE_INITIALS')")
     @PutMapping("/{id}/initials")
     public UserRequest updateInitials(@PathVariable Long id, @Valid @RequestParam String initials){
-        if(initials == null || !initials.isBlank()){
+        if(initials == null || initials.isBlank()){
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No \'initials\' provided");
         }
         User user = userRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         
         user.setInitials(initials);
+        userRepository.save(user);
 
         return userService.getUserById(id);
     }
@@ -263,14 +269,7 @@ public class UserController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
-        }
-        userRepository.deleteById(id);
-
-        // Remove all roles from user
-        // Remove user from all teams
-        //
+        userService.deleteUser(id);
     }
 
     private String normalize(String value) {

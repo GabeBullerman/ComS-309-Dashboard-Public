@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import edu.iastate.dashboard309.dto.UserRequest;
 import edu.iastate.dashboard309.model.Role;
 import edu.iastate.dashboard309.model.User;
+import edu.iastate.dashboard309.repository.RefreshTokenRepository;
 import edu.iastate.dashboard309.repository.RoleRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,9 @@ class UserServiceTest {
 
     @Autowired
     private RoleRepository roleRepository;
+
+    @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
     private UserService userService;

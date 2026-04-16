@@ -16,6 +16,8 @@ import edu.iastate.dashboard309.model.User;
 import edu.iastate.dashboard309.repository.TeamRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
 import edu.iastate.dashboard309.service.TeamService;
+import edu.iastate.dashboard309.service.UserService;
+
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -43,6 +45,9 @@ class TeamControllerTest {
 
     @MockBean
     private UserRepository userRepository;
+
+    @MockBean 
+    private UserService userService;
 
     @MockBean
     private TeamService teamService;
