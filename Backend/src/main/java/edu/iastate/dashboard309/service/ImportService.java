@@ -64,6 +64,7 @@ public class ImportService {
             Set<String> teamNames = new HashSet<>();
             // [first_name, last_name, net_id, team_name]
             String[] features;
+            List<String> netids = new ArrayList<>();
             int row = 1;
 
             // Skip the header line. You can delete this if you don't have a header line
@@ -76,7 +77,7 @@ public class ImportService {
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Empty cell at row " + row + " column " + i);
                     }
                 }
-                teamMap.computeIfAbsent(features[3], k -> new ArrayList<>()).add(createStudent(features));
+                teamMap.computeIfAbsent(features[3], k -> new ArrayList<>()).add(createStudent(features, netids));
                 if(!teamNames.contains(features[3])){
                     teamNames.add(features[3]);
                 }
@@ -108,8 +109,9 @@ public class ImportService {
 
             Map<String, List<User>> teamMap = new HashMap<>();
             Set<String> teamNames = new HashSet<>();
+            // [first_name, last_name, net_id, team_name]
             String[] features = new String[4];
-            
+            List<String> netids = new ArrayList<>();
 
             for (Row row : sheet) {
                 // Skip the header line. You can delete this if you don't have a header line
@@ -125,7 +127,7 @@ public class ImportService {
                     
                 }
                 // Add the student to the teams
-                teamMap.computeIfAbsent(features[TEAM_NAME_COLUMN], k -> new ArrayList<>()).add(createStudent(features));
+                teamMap.computeIfAbsent(features[TEAM_NAME_COLUMN], k -> new ArrayList<>()).add(createStudent(features, netids));
                 if(!teamNames.contains(features[TEAM_NAME_COLUMN])){
                     teamNames.add(features[TEAM_NAME_COLUMN]);
                 }
@@ -157,7 +159,7 @@ public class ImportService {
     }
 
     @Transactional
-    private User createStudent(String[] features){
+    private User createStudent(String[] features, List<String> netids){
         User user = new User();
         String name = features[FIRST_NAME_COLUMN] + ' ' + features[LAST_NAME_COLUMN];
         String netid = features[NETID_COLUMN];
@@ -170,11 +172,17 @@ public class ImportService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User with netid \'" + netid + "\' not a student.");
             }
         }
+        // If the student already exists in the spreadsheet
+        if(netids.contains(netid)){
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User with netid \'" + netid + "\' is represented multiple times."); 
+        }
 
         // Set features
         user.setName(name);
         user.setNetid(netid);
         user.setRole(studentRole);
+        // Add to netids
+        netids.add(netid);
 
         return user;
     }
