@@ -33,6 +33,9 @@ npm run electron:dev  # Terminal 2 — launch desktop app
 
 ### Deployment (VM: coms-4020-006.class.las.iastate.edu)
 
+The frontend is built locally (Node 18+ required) and copied into Spring Boot's static resources folder. Spring Boot serves both the API and the frontend on **port 8080**.
+
+**First-time setup on the server:**
 ```bash
 ssh gbulle@coms-4020-006.class.las.iastate.edu
 cd ~/ug_mk_4
@@ -49,14 +52,32 @@ SERVER_PORT=8080
 JWT_SECRET=Pu5XofXF6IEnT0ud+uLJ2rfe96Wyr/OWRoIp7F8A8PM
 GOOGLE_CLIENT_ID=124195890479-kh157q1foah7sc96ckjbvdvrdt9esu0q.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=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
+FRONTEND_URL=http://coms-4020-006.class.las.iastate.edu:8080
 EOF
+```
 
-# Kill existing backend and restart
+**Deploy (run on your local machine after every frontend change):**
+```bash
+# 1. Build the frontend locally (requires Node 18+)
+cd frontend
+npm run build:web
+
+# 2. Copy the build output to the server's static folder
+scp -r dist/* gbulle@coms-4020-006.class.las.iastate.edu:/home/gbulle/ug_mk_4/Backend/src/main/resources/static/
+
+# 3. On the server — pull latest backend changes and restart
+ssh gbulle@coms-4020-006.class.las.iastate.edu
+cd ~/ug_mk_4
+git pull
 pkill -f "dashboard309" 2>/dev/null; sleep 1
 cd Backend
 nohup ./mvnw spring-boot:run > backend.log 2>&1 &
 tail -f backend.log   # wait for "Started Dashboard309Application"
 ```
+
+The site is accessible at **http://coms-4020-006.class.las.iastate.edu:8080** (campus network / VPN required).
+
+> **Note:** The class server only exposes port 8080 externally. The frontend build must be done locally because the server runs Node.js 16, which is too old for Expo's build tools (Node 18+ required). The built `dist/` files are gitignored — they live only on the server.
 
 ## Features
 
@@ -113,10 +134,10 @@ Test students (24 accounts across 6 teams, password: Password123!):
 ## API Endpoints
 
 **Auth** (`/api/auth`)
-- `POST /login` — password login, returns JWT; sets refresh token cookie
-- `POST /login/google` — Google OAuth login
-- `POST /refresh` — refresh access token via cookie
-- `POST /logout`
+- `POST /login` — password login, returns `{ accessToken, refreshToken }`
+- `POST /login/google` — Google OAuth login, returns `{ accessToken, refreshToken }`
+- `POST /refresh` — body: `{ refreshToken }`, returns `{ accessToken, refreshToken }`
+- `POST /logout` — body: `{ refreshToken }`
 
 **Users** (`/api/users`)
 - `GET /self` — current user
@@ -237,13 +258,13 @@ npm run type-check
 - Check DB is reachable
 
 **All data disappears after ~15 minutes / "Could not identify current user"**
-- JWT access tokens expire after 15 min; the backend refresh endpoint requires a valid cookie
-- Fix: ensure the latest backend is deployed (the refresh endpoint null-checks cookies)
-- Workaround: log out and log back in to get a fresh token
+- JWT access tokens expire after 15 min; refresh tokens are stored in AsyncStorage and sent as JSON body on refresh
+- Fix: ensure the latest backend is deployed and both `accessToken` + `refreshToken` are returned from `/api/auth/login`
+- Workaround: log out and log back in to get a fresh token pair
 
 **Frontend 403 errors after inactivity**
 - Token expired and refresh failed — log out and log back in
-- Check the backend is running and reachable
+- Check the backend is running and reachable at port 8080
 
 **Demo/weekly performance not saving**
 - Ensure `demo_number` and `week_start_date` columns exist in the DB (added by Hibernate on startup)
