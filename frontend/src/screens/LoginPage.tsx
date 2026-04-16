@@ -24,7 +24,45 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     iosClientId: '124195890479-ajdf86d36ik5mfv6262ujrlga2ghrail.apps.googleusercontent.com',
   });
 
+  // Handle web OAuth redirect: backend redirects back with #googleToken=...&refreshToken=... or ?error=...
   useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    // Check for error in query string (e.g., ?error=user_not_found)
+    const queryError = new URLSearchParams(window.location.search).get('error');
+    if (queryError) {
+      window.history.replaceState(null, '', window.location.pathname);
+      setLoginError(queryError === 'user_not_found'
+        ? 'No account found for your ISU email. Contact your instructor.'
+        : 'Google sign-in failed. Try again.');
+      return;
+    }
+
+    const hash = window.location.hash;
+    if (!hash.includes('googleToken=')) return;
+
+    const params = new URLSearchParams(hash.slice(1));
+    const accessToken = params.get('googleToken');
+    const refreshToken = params.get('refreshToken');
+
+    // Clear the fragment from URL immediately
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+
+    if (!accessToken || !refreshToken) {
+      setLoginError('Google sign-in failed: missing tokens.');
+      return;
+    }
+
+    storeToken(accessToken);
+    storeRefreshToken(refreshToken);
+    const payload = JSON.parse(atob(accessToken.split('.')[1]));
+    const role = Array.isArray(payload.roles) ? payload.roles[0] : payload.roles ?? '';
+    onLogin('', role);
+  }, []);
+
+  // Handle native Google OAuth response
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
     if (response?.type === 'success') {
       const idToken = response.authentication?.idToken;
       if (!idToken) { setLoginError('Google sign-in failed: no ID token'); setGoogleLoading(false); return; }

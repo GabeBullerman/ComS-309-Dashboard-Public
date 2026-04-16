@@ -17,7 +17,6 @@ import edu.iastate.dashboard309.model.User;
 import edu.iastate.dashboard309.repository.UserRepository;
 import edu.iastate.dashboard309.service.JwtService;
 import edu.iastate.dashboard309.service.UserService;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -74,10 +73,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         String accessToken = jwtService.createAccessToken(userRequest);
         String refreshToken = jwtService.createRefreshToken(userRequest);
 
-        Cookie cookie = jwtService.createRefreshTokenCookie(refreshToken);
-        response.addCookie(cookie);
-
-        // Pass access token in URL fragment so it is never sent to the server
-        response.sendRedirect(frontendUrl + "#googleToken=" + accessToken);
+        // Pass both tokens in URL fragment so they are never sent to the server
+        response.sendRedirect(frontendUrl + "#googleToken=" + accessToken + "&refreshToken=" + refreshToken);
     }
 }
