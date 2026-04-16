@@ -31,7 +31,8 @@ public class SecurityConfig {
             "http://localhost:*",
             "http://127.0.0.1:*",
             "http://coms-4020-006.class.las.iastate.edu:8080",
-            "http://coms-4020-006.class.las.iastate.edu"
+            "http://coms-4020-006.class.las.iastate.edu",
+            "https://*.vercel.app"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

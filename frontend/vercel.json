@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*",    "destination": "http://coms-4020-006.class.las.iastate.edu:8080/api/:path*" },
+    { "source": "/oauth2/:path*", "destination": "http://coms-4020-006.class.las.iastate.edu:8080/oauth2/:path*" },
+    { "source": "/login/:path*",  "destination": "http://coms-4020-006.class.las.iastate.edu:8080/login/:path*" },
+    { "source": "/(.*)",          "destination": "/" }
+  ]
+}
