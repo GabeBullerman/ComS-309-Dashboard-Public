@@ -11,7 +11,7 @@ import TAManager from "./src/screens/TAManager";
 import UploadScreen from "./src/screens/UploadScreen";
 import DashboardScreen from "./src/screens/DashboardScreen";
 import TeamDetailScreen from "./src/screens/TeamDetail";
-import { logout as apiLogout, storeToken, getRoleFromToken, getToken } from './src/utils/auth';
+import { logout as apiLogout, getToken } from './src/utils/auth';
 import type { UserRole } from './src/utils/auth';
 import { Team, TeamMember } from "@/data/teams";
 import TeamMemberDetail from "@/screens/TeamMemberDetail";
@@ -41,47 +41,17 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('Student');
 
-  // Handle redirect back from backend Google OAuth (web only)
   useEffect(() => {
-    if (Platform.OS !== 'web') return;
-    const hash = window.location.hash;
-    if (!hash.startsWith('#googleToken=')) return;
-
-    const token = hash.slice('#googleToken='.length);
-    // Clear the token from the URL immediately
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-
-    storeToken(token).then(() => {
-      const role = getRoleFromToken(token);
-      handleLogin('', role);
-    }).catch(() => {
-      console.warn('Failed to store Google OAuth token');
-    });
-  }, []);
-
-  useEffect(() => {
-    // Only auto-login during development to avoid accidental persistence in production
-    if (!__DEV__) return;
-
     const loadUser = async () => {
       try {
         const token = await getToken();
-        if (token) {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          const isExpired = payload.exp && (Date.now() / 1000) > payload.exp;
-          if (isExpired) {
-            await AsyncStorage.multiRemove(['userEmail', 'user_role']);
-            return;
-          }
-        }
+        if (!token) return;
 
         const role = await AsyncStorage.getItem('user_role');
-        if (token) {
-          setIsLoggedIn(true);
-          if (role) setUserRole(role as UserRole);
-        }
+        setIsLoggedIn(true);
+        if (role) setUserRole(role as UserRole);
       } catch (e) {
-        console.warn('Failed to load stored user email', e);
+        console.warn('Failed to load stored session', e);
       }
     };
 
@@ -91,8 +61,6 @@ export default function App() {
   const handleLogin = async (_email: string, role?: UserRole) => {
     if (role) setUserRole(role);
     setIsLoggedIn(true);
-
-    if (!__DEV__) return;
     try {
       if (role) await AsyncStorage.setItem('user_role', String(role));
     } catch (e) {
@@ -101,7 +69,6 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    // Call backend logout and clear stored credentials
     try {
       await apiLogout();
     } catch {
@@ -110,8 +77,6 @@ export default function App() {
 
     setIsLoggedIn(false);
     setUserRole('Student');
-
-    if (!__DEV__) return;
     try {
       await AsyncStorage.removeItem('user_role');
     } catch (e) {
