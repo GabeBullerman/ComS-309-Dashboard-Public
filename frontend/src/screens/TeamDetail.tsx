@@ -369,7 +369,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       {/* Member tiles — wrapping row on mobile, horizontal scroll on desktop */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: pad, gap: 12 }}>
         {team.members.map((m) => {
-          const INNER = isMobile ? 64 : 128;
+          const INNER = isMobile ? 64 : 200;
           const RADIUS = isMobile ? 20 : 35;
           const memberKey = m.netid || m.name;
           const role = memberRoles[memberKey];
@@ -377,7 +377,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
             <TouchableOpacity
               key={memberKey}
               onPress={() => navigation.navigate('TeamMemberDetail', { member: m, gitlabUrl: gitlab || undefined, teamId: team.id, teamName: teamName })}
-              style={{ alignItems: 'center', width: isMobile ? 80 : 152 }}
+              style={{ alignItems: 'center', width: isMobile ? 80 : 152, marginHorizontal: INNER / 4 }}
             >
               {/* Role badge — above photo, always same position */}
               {canEditRepo ? (
@@ -400,6 +400,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                 memberId={m.netid || m.name}
                 initials={m.initials}
                 size={INNER}
+                
                 borderRadius={RADIUS - 4}
                 bordered
               />
