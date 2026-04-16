@@ -58,6 +58,9 @@ public class SecurityConfig {
                     .requestMatchers("/swagger-ui/**").permitAll()
                     .requestMatchers("/v3/api-docs/**").permitAll()
                     .requestMatchers("/api/users/testing/hashAllPasswords").permitAll()
+                    // Frontend static files and SPA routes
+                    .requestMatchers("/", "/index.html", "/_expo/**", "/assets/**", "/favicon.ico", "/metadata.json").permitAll()
+                    .requestMatchers(req -> req.getRequestURI() != null && !req.getRequestURI().startsWith("/api/")).permitAll()
                     .anyRequest().authenticated())
             .httpBasic(httpBasic -> httpBasic.disable())
             .formLogin(form -> form.disable())
