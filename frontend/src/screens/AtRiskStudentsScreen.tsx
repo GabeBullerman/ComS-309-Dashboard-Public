@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-  View, Text, TextInput, FlatList, ActivityIndicator, useWindowDimensions,
+  View, Text, TextInput, FlatList, ActivityIndicator, useWindowDimensions, TouchableOpacity, Platform, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -217,6 +217,18 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
   const criticalCount = atRiskStudents.filter(s => s.flags.some(f => f.severity === 'critical')).length;
   const warningCount  = atRiskStudents.length - criticalCount;
 
+  const openBulkEmail = (students: AtRiskStudent[]) => {
+    const to = students.map(s => `${s.netid}@iastate.edu`).join(',');
+    const url = Platform.OS === 'web'
+      ? `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(to)}`
+      : `mailto:${to}`;
+    if (Platform.OS === 'web') {
+      window.open(url, '_blank');
+    } else {
+      Linking.openURL(url);
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
@@ -250,7 +262,7 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
 
         {/* Summary badges */}
         {atRiskStudents.length > 0 && (
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             {criticalCount > 0 && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fee2e2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
                 <Ionicons name="alert-circle" size={13} color="#dc2626" />
@@ -263,6 +275,37 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
                 <Text style={{ fontSize: 12, fontWeight: '600', color: '#92400e' }}>{warningCount} Warning</Text>
               </View>
             )}
+          </View>
+        )}
+
+        {/* Bulk email buttons */}
+        {atRiskStudents.length > 0 && (
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            {criticalCount > 0 && (
+              <TouchableOpacity
+                onPress={() => openBulkEmail(atRiskStudents.filter(s => s.flags.some(f => f.severity === 'critical')))}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#b91c1c', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 }}
+              >
+                <Ionicons name="mail-outline" size={13} color="white" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: 'white' }}>Email All Critical</Text>
+              </TouchableOpacity>
+            )}
+            {warningCount > 0 && (
+              <TouchableOpacity
+                onPress={() => openBulkEmail(atRiskStudents.filter(s => !s.flags.some(f => f.severity === 'critical')))}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#d97706', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 }}
+              >
+                <Ionicons name="mail-outline" size={13} color="white" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: 'white' }}>Email All Warning</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={() => openBulkEmail(atRiskStudents)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#374151', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 }}
+            >
+              <Ionicons name="mail-outline" size={13} color="white" />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: 'white' }}>Email All At-Risk</Text>
+            </TouchableOpacity>
           </View>
         )}
 

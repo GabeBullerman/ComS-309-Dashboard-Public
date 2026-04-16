@@ -193,9 +193,9 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
           .map(async (m) => {
             const netid = m.netid!;
             const score = getScore(netid);
-            if (score.code === 'ungraded' && score.teamwork === 'ungraded') return;
-            const codeScore = LEVEL_TO_SCORE[score.code] ?? 0;
-            const teamworkScore = LEVEL_TO_SCORE[score.teamwork] ?? 0;
+            if (score.code === 'ungraded' || score.teamwork === 'ungraded') return;
+            const codeScore = LEVEL_TO_SCORE[score.code];
+            const teamworkScore = LEVEL_TO_SCORE[score.teamwork];
             // Always POST — backend upserts by (studentNetid, weekStartDate)
             await createWeeklyPerformance(netid, selectedWeek, codeScore, teamworkScore);
           })

@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Platform,
 } from "react-native";
+import * as DocumentPicker from 'expo-document-picker';
 
 const ACCEPTED_EXTENSIONS: string[] = [".csv", ".xlsx"];
 
@@ -72,11 +73,23 @@ export default function DropZone({
 
   return (
     <View
-      className={`rounded-2xl border-2 border-dashed transition-all overflow-hidden ${
-        isDragging
-          ? "border-yellow-400 bg-yellow-400/5"
-          : "border-zinc-600 bg-zinc-800/30"
-      }`}
+      style={Platform.OS === 'web'
+        ? {
+            borderRadius: 16,
+            borderWidth: 2,
+            borderStyle: 'dashed' as any,
+            borderColor: isDragging ? '#facc15' : '#52525b',
+            backgroundColor: isDragging ? 'rgba(250,204,21,0.05)' : 'rgba(39,39,42,0.3)',
+            overflow: 'hidden',
+          }
+        : {
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: '#e5e7eb',
+            backgroundColor: '#f9fafb',
+            overflow: 'hidden',
+          }
+      }
     >
       {Platform.OS === "web" ? (
         <div
@@ -128,18 +141,37 @@ export default function DropZone({
           </View>
         </div>
       ) : (
-        // Native (iOS/Android) — browse only
-        <TouchableOpacity onPress={() => {}}>
-          <View className="items-center justify-center py-12 px-6 gap-4">
-            <View className="w-16 h-16 rounded-2xl bg-zinc-700/50 items-center justify-center">
-              <Text className="text-4xl">☁️</Text>
+        // Native (iOS/Android) — document picker
+        <TouchableOpacity
+          onPress={async () => {
+            const result = await DocumentPicker.getDocumentAsync({
+              type: [
+                'text/csv',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'text/comma-separated-values',
+              ],
+              multiple: true,
+              copyToCacheDirectory: true,
+            });
+            if (result.canceled) return;
+            const picked: UploadedFile[] = result.assets.map((a) => ({
+              name: a.name,
+              size: a.size ?? 0,
+              type: a.mimeType ?? '',
+            }));
+            onFilesSelected(picked);
+          }}
+        >
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 48, paddingHorizontal: 24, gap: 12 }}>
+            <View style={{ width: 64, height: 64, borderRadius: 16, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 32 }}>📂</Text>
             </View>
-            <View className="items-center gap-1">
-              <Text className="text-zinc-100 text-lg font-semibold text-center">
-                Tap to upload a file
+            <View style={{ alignItems: 'center', gap: 4 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827', textAlign: 'center' }}>
+                Tap to browse files
               </Text>
-              <Text className="text-zinc-500 text-sm text-center">
-                CSV, XLSX
+              <Text style={{ fontSize: 13, color: '#6b7280', textAlign: 'center' }}>
+                CSV and XLSX files accepted
               </Text>
             </View>
           </View>
