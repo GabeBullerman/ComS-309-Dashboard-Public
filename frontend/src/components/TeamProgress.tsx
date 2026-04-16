@@ -118,24 +118,35 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
     if (!netid) return;
     setSaving(true);
     setSaveError(null);
-    try {
-      const updated = await Promise.all(
-        demos.map(async (row) => {
-          if (row.code === 'ungraded' || row.teamwork === 'ungraded') return row;
-          const codeScore = LEVEL_TO_SCORE[row.code];
-          const teamworkScore = LEVEL_TO_SCORE[row.teamwork];
-          // Always POST — backend upserts by (studentNetid, demoNumber)
-          const saved = await createDemoPerformance(netid, row.demoNumber, codeScore, teamworkScore);
-          return { ...row, recordId: saved.id };
-        })
+    const results = await Promise.allSettled(
+      demos.map(async (row) => {
+        if (row.code === 'ungraded' || row.teamwork === 'ungraded') return row;
+        const saved = await createDemoPerformance(
+          netid,
+          row.demoNumber,
+          LEVEL_TO_SCORE[row.code],
+          LEVEL_TO_SCORE[row.teamwork],
+        );
+        return { ...row, recordId: saved.id };
+      })
+    );
+    const updated = results.map((r, i) =>
+      r.status === 'fulfilled' ? r.value : demos[i]
+    );
+    setDemos(updated);
+    const failed = results.filter(r => r.status === 'rejected').length;
+    const saved = results.filter(r => r.status === 'fulfilled' && (r.value as DemoRow).recordId !== undefined).length;
+    if (failed > 0) {
+      const firstErr = results.find(r => r.status === 'rejected') as PromiseRejectedResult;
+      setSaveError(
+        saved > 0
+          ? `${saved} saved, ${failed} failed: ${firstErr.reason?.response?.data?.message ?? firstErr.reason?.message ?? 'error'}`
+          : firstErr.reason?.response?.data?.message ?? firstErr.reason?.message ?? 'Save failed'
       );
-      setDemos(updated);
+    } else {
       setUnsaved(false);
-    } catch (e: any) {
-      setSaveError(e?.response?.data?.message ?? e?.message ?? 'Save failed');
-    } finally {
-      setSaving(false);
     }
+    setSaving(false);
   };
 
   return (

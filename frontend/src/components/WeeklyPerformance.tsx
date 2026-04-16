@@ -143,6 +143,7 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [unsaved, setUnsaved] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{ ok: number; failed: number } | null>(null);
 
   useEffect(() => {
     if (members.length === 0) { setLoading(false); return; }
@@ -186,26 +187,28 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
 
   const handleSave = async () => {
     setSaving(true);
-    try {
-      await Promise.all(
-        members
-          .filter(m => m.netid)
-          .map(async (m) => {
-            const netid = m.netid!;
-            const score = getScore(netid);
-            if (score.code === 'ungraded' || score.teamwork === 'ungraded') return;
-            const codeScore = LEVEL_TO_SCORE[score.code];
-            const teamworkScore = LEVEL_TO_SCORE[score.teamwork];
-            // Always POST — backend upserts by (studentNetid, weekStartDate)
-            await createWeeklyPerformance(netid, selectedWeek, codeScore, teamworkScore);
-          })
-      );
-      setUnsaved(false);
-    } catch {
-      // silently ignore
-    } finally {
-      setSaving(false);
-    }
+    setSaveStatus(null);
+    const toSave = members.filter(m => {
+      if (!m.netid) return false;
+      const score = getScore(m.netid);
+      return score.code !== 'ungraded' && score.teamwork !== 'ungraded';
+    });
+    const results = await Promise.allSettled(
+      toSave.map((m) => {
+        const score = getScore(m.netid!);
+        return createWeeklyPerformance(
+          m.netid!,
+          selectedWeek,
+          LEVEL_TO_SCORE[score.code],
+          LEVEL_TO_SCORE[score.teamwork],
+        );
+      })
+    );
+    const ok = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+    setSaveStatus({ ok, failed });
+    if (failed === 0) setUnsaved(false);
+    setSaving(false);
   };
 
   return (
@@ -215,7 +218,18 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
         <Ionicons name="bar-chart-outline" size={18} color="#be123c" />
         <Text style={{ fontSize: 15, fontWeight: '600', marginLeft: 8, color: '#111827', flex: 1 }}>Weekly Performance</Text>
         {loading && <ActivityIndicator size="small" color="#be123c" style={{ marginRight: 8 }} />}
-        {!readOnly && unsaved && !loading && (
+        {!readOnly && saveStatus && !saving && (
+          <View style={{ backgroundColor: saveStatus.failed > 0 ? '#fee2e2' : '#dcfce7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginRight: 8 }}>
+            <Text style={{ color: saveStatus.failed > 0 ? '#b91c1c' : '#15803d', fontSize: 11, fontWeight: '500' }}>
+              {saveStatus.failed > 0
+                ? saveStatus.ok > 0
+                  ? `${saveStatus.ok} saved, ${saveStatus.failed} failed`
+                  : `Save failed (${saveStatus.failed} error${saveStatus.failed > 1 ? 's' : ''})`
+                : `Saved ${saveStatus.ok}`}
+            </Text>
+          </View>
+        )}
+        {!readOnly && unsaved && !loading && !saveStatus && (
           <View style={{ backgroundColor: '#fef9c3', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginRight: 8 }}>
             <Text style={{ color: '#a16207', fontSize: 11, fontWeight: '500' }}>Unsaved</Text>
           </View>
