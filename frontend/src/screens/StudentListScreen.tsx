@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   Platform,
+  TouchableOpacity,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -242,11 +244,29 @@ export default function ClassStudentsScreen({ userRole }: Props) {
           )
         )}
 
-        {/* Count */}
-        <View style={{ marginBottom: 10 }}>
+        {/* Count + Email button */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <Text style={{ fontSize: 13, color: '#6B7280' }}>
             Showing {filteredStudents.length} of {students.length} student{students.length !== 1 ? 's' : ''}
           </Text>
+          {filteredStudents.length > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                const to = filteredStudents.map(s => `${s.netid}@iastate.edu`).join(',');
+                const url = Platform.OS === 'web'
+                  ? `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(to)}`
+                  : `mailto:${to}`;
+                if (Platform.OS === 'web') window.open(url, '_blank');
+                else Linking.openURL(url);
+              }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#b91c1c', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 }}
+            >
+              <Ionicons name="mail-outline" size={13} color="white" />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: 'white' }}>
+                Email All ({filteredStudents.length})
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Student list — single column, full width */}
