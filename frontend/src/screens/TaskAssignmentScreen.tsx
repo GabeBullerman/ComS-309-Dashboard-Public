@@ -357,24 +357,7 @@ export default function TaskAssignmentScreen() {
 
 
 
-  const taskListPanel = (
-    <View style={{ flex: isMobile ? undefined : 1, backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden' }}>
-      <View style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-        <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
-          Tasks I've Assigned ({taskGroups.length} task{taskGroups.length !== 1 ? 's' : ''})
-        </Text>
-      </View>
-      <FlatList
-        data={taskGroups}
-        keyExtractor={(g) => String(g.rep.id)}
-        contentContainerStyle={{ padding: 12, gap: 8 }}
-        scrollEnabled={!isMobile}
-        ListEmptyComponent={
-          <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 32, fontSize: 14 }}>
-            No tasks assigned yet.
-          </Text>
-        }
-        renderItem={({ item: g }) => {
+  const renderTaskItem = (g: typeof taskGroups[0]) => {
           const dateOnly = g.rep.dueDate ? g.rep.dueDate.split('T')[0] : null;
           const recipientLabel = taskLabelMap[g.rep.id]
             ?? (g.netids.length === 1 ? g.netids[0] : `${g.netids.length} recipients`);
@@ -445,8 +428,43 @@ export default function TaskAssignmentScreen() {
               )}
             </View>
           );
-        }}
-      />
+  };
+
+  const taskListPanel = (
+    <View style={{ flex: isMobile ? undefined : 1, backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden' }}>
+      <View style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
+        <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
+          Tasks I've Assigned ({taskGroups.length} task{taskGroups.length !== 1 ? 's' : ''})
+        </Text>
+      </View>
+      {isMobile ? (
+        // On mobile, use a plain View+map so items render inside the outer ScrollView
+        <View style={{ padding: 12, gap: 8 }}>
+          {taskGroups.length === 0 ? (
+            <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 32, marginBottom: 32, fontSize: 14 }}>
+              No tasks assigned yet.
+            </Text>
+          ) : (
+            taskGroups.map((g) => (
+              <View key={String(g.rep.id)} style={{ marginBottom: 8 }}>
+                {renderTaskItem(g)}
+              </View>
+            ))
+          )}
+        </View>
+      ) : (
+        <FlatList
+          data={taskGroups}
+          keyExtractor={(g) => String(g.rep.id)}
+          contentContainerStyle={{ padding: 12, gap: 8 }}
+          ListEmptyComponent={
+            <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 32, fontSize: 14 }}>
+              No tasks assigned yet.
+            </Text>
+          }
+          renderItem={({ item: g }) => renderTaskItem(g)}
+        />
+      )}
     </View>
   );
 

@@ -283,6 +283,175 @@ export async function fetchMemberMergeRequests(
   });
 }
 
+// ─── Compliance Analysis ──────────────────────────────────────────────────────
+
+export interface GitLabDiffFile {
+  diff: string;
+  new_path: string;
+  old_path: string;
+  new_file: boolean;
+  deleted_file: boolean;
+}
+
+/** File extensions excluded from frontend line-count (non-code / generated) */
+const SKIP_EXTENSIONS = new Set([
+  '.xml', '.json', '.lock', '.gradle', '.properties',
+  '.md', '.txt', '.yaml', '.yml', '.png', '.jpg', '.jpeg',
+  '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot',
+  '.map', '.pdf', '.zip', '.tar', '.gz', '.class', '.jar',
+]);
+
+/** Known artifact / config filenames regardless of extension */
+const SKIP_FILENAMES = new Set([
+  'package-lock.json', 'yarn.lock', 'podfile.lock', 'gemfile.lock',
+  '.gitignore', '.gitattributes', '.eslintrc', '.prettierrc', 'jest.config.js',
+  'babel.config.js', 'metro.config.js', 'app.config.js', 'app.json',
+]);
+
+/** Trivial line patterns for frontend — getters, setters, lone braces, whitespace */
+const TRIVIAL_FRONTEND: RegExp[] = [
+  // getter method signature
+  /^\s*(public\s+|private\s+|protected\s+)?\w[\w<>\[\], ]*\s+get[A-Z]\w*\s*\(\s*\)\s*\{?\s*$/,
+  // setter method signature
+  /^\s*(public\s+|private\s+|protected\s+)?void\s+set[A-Z]\w*\s*\([^)]*\)\s*\{?\s*$/,
+  // simple return this.field;
+  /^\s*return\s+this\.\w+;\s*$/,
+  // simple this.field = param;
+  /^\s*this\.\w+\s*=\s*\w+;\s*$/,
+  // lone brace or empty
+  /^\s*[{}]\s*$/,
+  /^\s*$/,
+];
+
+/** Java/Spring annotations that don't count as meaningful backend additions */
+const TRIVIAL_ANNOTATIONS = new Set([
+  '@Override', '@SuppressWarnings', '@Deprecated', '@SafeVarargs', '@FunctionalInterface',
+]);
+
+/** Fetches the full unified diff for a single commit (file content included) */
+export async function fetchCommitFullDiff(
+  gitlabUrl: string,
+  token: string,
+  sha: string
+): Promise<GitLabDiffFile[]> {
+  const path = extractProjectPath(gitlabUrl);
+  if (!path) throw new Error('Invalid GitLab URL');
+  return gitlabFetch<GitLabDiffFile[]>(
+    `${GITLAB_BASE}/projects/${path}/repository/commits/${sha}/diff?per_page=100`,
+    token
+  );
+}
+
+/**
+ * Counts non-trivial line additions across a set of diffs for a Frontend member.
+ * Skips generated/artifact files, getters, setters, lone braces, and whitespace.
+ */
+export function countFrontendAdditions(diffs: GitLabDiffFile[]): number {
+  let count = 0;
+  for (const file of diffs) {
+    const ext = '.' + (file.new_path.split('.').pop()?.toLowerCase() ?? '');
+    const filename = file.new_path.split('/').pop()?.toLowerCase() ?? '';
+    if (SKIP_EXTENSIONS.has(ext)) continue;
+    if (SKIP_FILENAMES.has(filename)) continue;
+    if (filename.endsWith('.min.js') || filename.endsWith('.min.css')) continue;
+
+    for (const line of file.diff.split('\n')) {
+      if (!line.startsWith('+') || line.startsWith('+++')) continue;
+      const content = line.slice(1); // strip leading +
+      if (TRIVIAL_FRONTEND.some((re) => re.test(content))) continue;
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Counts meaningful Spring/Jakarta annotation additions for a Backend member.
+ * Only counts lines like +@GetMapping, +@Service, +@Entity, etc.
+ * Excludes @Override, @SuppressWarnings, and other trivial meta-annotations.
+ */
+export function countBackendAnnotations(diffs: GitLabDiffFile[]): number {
+  let count = 0;
+  for (const file of diffs) {
+    for (const line of file.diff.split('\n')) {
+      if (!line.startsWith('+') || line.startsWith('+++')) continue;
+      const content = line.slice(1).trim();
+      if (!content.startsWith('@')) continue;
+      const annotationName = content.split(/[\s(]/)[0]; // e.g. "@GetMapping"
+      if (TRIVIAL_ANNOTATIONS.has(annotationName)) continue;
+      count++;
+    }
+  }
+  return count;
+}
+
+export interface MemberComplianceResult {
+  name: string;
+  netid: string;
+  role: 'Frontend' | 'Backend' | null;
+  metric: number;
+  threshold: number;
+  passed: boolean;
+  commitCount: number;
+}
+
+/**
+ * Analyzes one week's commits for all members and returns per-member compliance.
+ * Pass commits already filtered to the desired Sunday–Saturday window.
+ * Uses the member's projectRole to decide which criterion to apply.
+ */
+export async function analyzeWeekCompliance(
+  gitlabUrl: string,
+  token: string,
+  weekCommits: GitLabCommit[],
+  members: { name: string; netid?: string; role?: string | null }[]
+): Promise<MemberComplianceResult[]> {
+  return Promise.all(
+    members.map(async (member): Promise<MemberComplianceResult> => {
+      const role = member.role === 'Frontend' || member.role === 'Backend'
+        ? member.role
+        : null;
+      const memberCommits = filterCommitsByMember(weekCommits, member.netid ?? '', member.name);
+
+      // Fetch diffs — cap at 15 commits per member to avoid GitLab rate limits
+      const allDiffs: GitLabDiffFile[] = [];
+      for (const commit of memberCommits.slice(0, 15)) {
+        const fileDiffs = await fetchCommitFullDiff(gitlabUrl, token, commit.id)
+          .catch((): GitLabDiffFile[] => []);
+        allDiffs.push(...fileDiffs);
+      }
+
+      const threshold = role === 'Backend' ? 2 : 40;
+      const metric = role === 'Backend'
+        ? countBackendAnnotations(allDiffs)
+        : countFrontendAdditions(allDiffs);
+
+      return {
+        name: member.name,
+        netid: member.netid ?? '',
+        role,
+        metric,
+        threshold,
+        passed: role !== null && metric >= threshold,
+        commitCount: memberCommits.length,
+      };
+    })
+  );
+}
+
+/** Returns Sunday–Saturday bounds for a given week offset (0 = current week) */
+export function getWeekBounds(offsetWeeks = 0): { start: Date; end: Date; label: string } {
+  const now = new Date();
+  const sunday = new Date(now);
+  sunday.setDate(now.getDate() - now.getDay() + offsetWeeks * 7);
+  sunday.setHours(0, 0, 0, 0);
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate() + 6);
+  saturday.setHours(23, 59, 59, 999);
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return { start: sunday, end: saturday, label: `${fmt(sunday)} – ${fmt(saturday)}` };
+}
+
 /** Groups commits into weekly buckets (most recent first) */
 export function groupCommitsByWeek(
   commits: GitLabCommit[],

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, TouchableOpacity, Linking, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MemberAvatar from './MemberAvatar';
 
@@ -15,13 +15,13 @@ export interface AtRiskStudentProps {
   studentName: string;
   teamName: string;
   ta: string;
-  section: number;
+
   flags: AtRiskFlag[];
   onPress?: () => void;
 }
 
 export const AtRiskStudentCard: React.FC<AtRiskStudentProps> = ({
-  netid, studentName, teamName, ta, section, flags, onPress,
+  netid, studentName, teamName, ta, flags, onPress,
 }) => {
   const isCritical = flags.some(f => f.severity === 'critical');
   const borderColor = isCritical ? '#dc2626' : '#f59e0b';
@@ -77,10 +77,6 @@ export const AtRiskStudentCard: React.FC<AtRiskStudentProps> = ({
                 <Ionicons name="person-sharp" size={14} color="#9ca3af" />
                 <Text style={{ fontSize: 13, color: '#6b7280' }}>TA: {ta}</Text>
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Ionicons name="book-outline" size={14} color="#9ca3af" />
-                <Text style={{ fontSize: 13, color: '#6b7280' }}>Section {section}</Text>
-              </View>
             </View>
           </View>
         </View>
@@ -109,6 +105,23 @@ export const AtRiskStudentCard: React.FC<AtRiskStudentProps> = ({
             </View>
           ))}
         </View>
+
+        {/* Contact button */}
+        <TouchableOpacity
+          onPress={(e) => {
+            e.stopPropagation?.();
+            const email = `${netid}@iastate.edu`;
+            if (Platform.OS === 'web') {
+              window.open(`https://outlook.office.com/mail/deeplink/compose?to=${email}`, '_blank');
+            } else {
+              Linking.openURL(`mailto:${email}`);
+            }
+          }}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 10, paddingVertical: 8, borderRadius: 8, backgroundColor: '#b91c1c' }}
+        >
+          <Ionicons name="mail-outline" size={14} color="white" />
+          <Text style={{ fontSize: 12, fontWeight: '600', color: 'white' }}>Email {netid}@iastate.edu</Text>
+        </TouchableOpacity>
       </View>
     </Pressable>
   );

@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
 export const TOKEN_KEY = 'auth_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
 
 export const apiBaseUrl =
   process.env.EXPO_PUBLIC_API_URL ??
@@ -10,7 +11,6 @@ export const apiBaseUrl =
 
 const axiosInstance = axios.create({
   baseURL: apiBaseUrl,
-  withCredentials: Platform.OS === 'web', // cookies only relevant on web
 });
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
@@ -23,8 +23,16 @@ export const getToken = async (): Promise<string | null> => {
   return AsyncStorage.getItem(TOKEN_KEY);
 };
 
+export const storeRefreshToken = async (token: string) => {
+  await AsyncStorage.setItem(REFRESH_TOKEN_KEY, token);
+};
+
+export const getRefreshToken = async (): Promise<string | null> => {
+  return AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+};
+
 export const clearToken = async () => {
-  await AsyncStorage.removeItem(TOKEN_KEY);
+  await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY]);
 };
 
 // ── Request interceptor — attach Bearer token ─────────────────────────────────
@@ -58,8 +66,10 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const original = error.config;
     const skipRefresh = ['/api/auth/login', '/api/auth/refresh'];
+    const status = error.response?.status;
+    // 401 = expired token (JwtFilter), 403 = missing token (Spring Security auth check)
     if (
-      error.response?.status === 401 &&
+      (status === 401 || status === 403) &&
       !original._retry &&
       !skipRefresh.some((u) => original.url?.startsWith(u))
     ) {
@@ -74,12 +84,14 @@ axiosInstance.interceptors.response.use(
       original._retry = true;
       isRefreshing = true;
       try {
-        const res = await axiosInstance.post('/api/auth/refresh');
-        const newToken: string = res.data;
-        await storeToken(newToken);
-        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-        drainQueue(null, newToken);
-        original.headers['Authorization'] = `Bearer ${newToken}`;
+        const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+        const res = await axiosInstance.post('/api/auth/refresh', { refreshToken });
+        const { accessToken, refreshToken: newRefreshToken } = res.data;
+        await storeToken(accessToken);
+        await AsyncStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        drainQueue(null, accessToken);
+        original.headers['Authorization'] = `Bearer ${accessToken}`;
         return axiosInstance(original);
       } catch (refreshErr) {
         drainQueue(refreshErr);

@@ -26,11 +26,15 @@ import {
   fetchContributors,
   fetchRecentCommits,
   fetchProjectMembers,
+  fetchAllCommitsSince,
   getGitLabToken,
   groupCommitsByWeek,
   matchContributors,
+  analyzeWeekCompliance,
+  getWeekBounds,
   GitLabContributor,
   GitLabCommit,
+  MemberComplianceResult,
 } from '../utils/gitlab';
 import {
   AttendanceStatus,
@@ -43,7 +47,7 @@ import {
 
 type TeamDetailProps = NativeStackScreenProps<RootStackParamList, 'TeamDetail'>;
 
-type TabKey = 'contributions' | 'demoResults' | 'Push frequency';
+type TabKey = 'contributions' | 'Push frequency' | 'compliance';
 type ProjectRole = 'Frontend' | 'Backend';
 
 const PROJECT_ROLES: ProjectRole[] = ['Frontend', 'Backend'];
@@ -80,6 +84,36 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
   const canEditRepo = userRole === 'TA' || userRole === 'HTA' || userRole === 'Instructor';
 
+  // Compliance state
+  const [complianceWeekOffset, setComplianceWeekOffset] = useState(0);
+  const [complianceResults, setComplianceResults] = useState<MemberComplianceResult[]>([]);
+  const [complianceLoading, setComplianceLoading] = useState(false);
+  const [complianceError, setComplianceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeTab !== 'compliance' || !gitlab || !glToken) return;
+    let cancelled = false;
+    setComplianceLoading(true);
+    setComplianceError(null);
+    setComplianceResults([]);
+    const { start, end } = getWeekBounds(complianceWeekOffset);
+    fetchAllCommitsSince(gitlab, glToken, start.toISOString())
+      .then((commits) => {
+        if (cancelled) return;
+        const weekCommits = commits.filter((c) => new Date(c.created_at) <= end);
+        const membersWithRoles = team.members.map((m) => ({
+          name: m.name,
+          netid: m.netid,
+          role: memberRoles[m.netid || m.name] ?? null,
+        }));
+        return analyzeWeekCompliance(gitlab, glToken!, weekCommits, membersWithRoles);
+      })
+      .then((results) => { if (!cancelled && results) setComplianceResults(results); })
+      .catch((e: Error) => { if (!cancelled) setComplianceError(e.message); })
+      .finally(() => { if (!cancelled) setComplianceLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeTab, gitlab, glToken, complianceWeekOffset, memberRoles]);
+
   // Bulk attendance state
   const today = new Date().toISOString().split('T')[0];
   const datePickerRef = useRef<any>(null);
@@ -94,21 +128,24 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     if (members.length === 0) return;
     setBulkSaving(true);
     setBulkDone('');
-    try {
-      await Promise.all(members.map(async (m) => {
-        const existing = await getAttendanceForStudent(m.netid!).catch((): AttendanceRecord[] => []);
-        const record = existing.find(r => r.attendanceDate === bulkDate && r.type === bulkType);
-        if (record) {
-          await updateAttendance(record.id, m.netid!, bulkDate, status, bulkType);
-        } else {
-          await createAttendance(m.netid!, bulkDate, status, bulkType);
-        }
-      }));
-      setBulkDone(`Marked ${members.length} member${members.length !== 1 ? 's' : ''} as ${status.charAt(0) + status.slice(1).toLowerCase()}`);
-    } catch {
-      setBulkDone('Error saving attendance — check date format.');
-    } finally {
-      setBulkSaving(false);
+    const results = await Promise.allSettled(members.map(async (m) => {
+      const existing = await getAttendanceForStudent(m.netid!).catch((): AttendanceRecord[] => []);
+      const record = existing.find(r => r.attendanceDate === bulkDate && r.type === bulkType);
+      if (record) {
+        await updateAttendance(record.id, m.netid!, bulkDate, status, bulkType);
+      } else {
+        await createAttendance(m.netid!, bulkDate, status, bulkType);
+      }
+    }));
+    setBulkSaving(false);
+    const failed = results.filter(r => r.status === 'rejected').length;
+    const succeeded = results.length - failed;
+    if (failed === 0) {
+      setBulkDone(`Marked ${succeeded} member${succeeded !== 1 ? 's' : ''} as ${status.charAt(0) + status.slice(1).toLowerCase()}`);
+    } else if (succeeded === 0) {
+      setBulkDone(`Failed to save attendance — please try again.`);
+    } else {
+      setBulkDone(`Saved ${succeeded} of ${results.length} — ${failed} failed, please retry.`);
     }
   };
 
@@ -258,7 +295,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'contributions', label: 'Contributions' },
     { key: 'Push frequency', label: 'Push Frequency' },
-    { key: 'demoResults', label: 'Demo Results' },
+    { key: 'compliance', label: 'Compliance' },
   ];
 
   const pad = isMobile ? 12 : 20;
@@ -378,8 +415,8 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
     {/* Team Results Header */}
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
-      <Ionicons name="chatbubble-outline" size={18} color="#be123c" />
-      <Text style={{ fontSize: 16, fontWeight: '600', marginLeft: 8, color: '#111827' }}>Team Results</Text>
+      <Ionicons name="logo-gitlab" size={18} color="#be123c" />
+      <Text style={{ fontSize: 16, fontWeight: '600', marginLeft: 8, color: '#111827' }}>GitLab Analysis</Text>
     </View>
 
       {/* Tab Panel */}
@@ -433,9 +470,87 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
             );
           })()}
 
-          {activeTab === 'demoResults' && (
-            <Text>{team.members[0]?.demoResults?.map((d: any) => `${d.name}: ${d.result}`).join('\n')}</Text>
-          )}
+          {activeTab === 'compliance' && (() => {
+            if (!gitlab) return <Text style={{ color: '#9ca3af', fontSize: 13 }}>No GitLab repo linked.</Text>;
+            if (!glToken) return <Text style={{ color: '#9ca3af', fontSize: 13 }}>Enter your GitLab token in Profile to use compliance analysis.</Text>;
+            const { label } = getWeekBounds(complianceWeekOffset);
+            return (
+              <View>
+                {/* Week navigator */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <TouchableOpacity onPress={() => setComplianceWeekOffset(o => o - 1)} style={{ padding: 6 }}>
+                    <Ionicons name="chevron-back" size={16} color="#6b7280" />
+                  </TouchableOpacity>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>{label}</Text>
+                  <TouchableOpacity
+                    onPress={() => setComplianceWeekOffset(o => Math.min(0, o + 1))}
+                    disabled={complianceWeekOffset === 0}
+                    style={{ padding: 6, opacity: complianceWeekOffset === 0 ? 0.3 : 1 }}
+                  >
+                    <Ionicons name="chevron-forward" size={16} color="#6b7280" />
+                  </TouchableOpacity>
+                </View>
+
+                {complianceLoading && (
+                  <View style={{ alignItems: 'center', paddingVertical: 24 }}>
+                    <ActivityIndicator color="#C8102E" />
+                    <Text style={{ color: '#9ca3af', fontSize: 12, marginTop: 8 }}>Fetching diffs — this may take a moment…</Text>
+                  </View>
+                )}
+
+                {complianceError && (
+                  <Text style={{ color: '#dc2626', fontSize: 13 }}>{complianceError}</Text>
+                )}
+
+                {!complianceLoading && !complianceError && complianceResults.length > 0 && (
+                  <View style={{ gap: 8 }}>
+                    {complianceResults.map((r) => {
+                      const noRole = r.role === null;
+                      const borderColor = noRole ? '#e5e7eb' : r.passed ? '#86efac' : '#fca5a5';
+                      const metricLabel = r.role === 'Backend'
+                        ? `${r.metric} annotation${r.metric !== 1 ? 's' : ''} (need 2)`
+                        : `${r.metric} qualifying addition${r.metric !== 1 ? 's' : ''} (need 40)`;
+                      return (
+                        <View key={r.netid} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 8, borderWidth: 1, borderColor, padding: 10, gap: 10 }}>
+                          {/* Pass/fail icon */}
+                          {noRole
+                            ? <Ionicons name="help-circle-outline" size={18} color="#9ca3af" />
+                            : <Ionicons name={r.passed ? 'checkmark-circle' : 'close-circle'} size={18} color={r.passed ? '#16a34a' : '#dc2626'} />
+                          }
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }}>{r.name}</Text>
+                              {r.role && (
+                                <View style={{ backgroundColor: '#C8102E', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1 }}>
+                                  <Text style={{ fontSize: 10, fontWeight: '600', color: 'white' }}>{r.role}</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                              {noRole
+                                ? 'No role assigned — set a role to enable compliance tracking'
+                                : r.commitCount === 0
+                                  ? 'No commits this week'
+                                  : metricLabel
+                              }
+                            </Text>
+                          </View>
+                          {!noRole && r.commitCount > 0 && (
+                            <Text style={{ fontSize: 11, color: '#9ca3af' }}>{r.commitCount} commit{r.commitCount !== 1 ? 's' : ''}</Text>
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+
+                {!complianceLoading && !complianceError && complianceResults.length === 0 && (
+                  <Text style={{ color: '#9ca3af', fontSize: 13 }}>No results yet.</Text>
+                )}
+              </View>
+            );
+          })()}
+
 
           {activeTab === 'Push frequency' && (() => {
             if (!gitlab) return <Text style={{ color: '#9ca3af', fontSize: 13 }}>No GitLab repo linked.</Text>;

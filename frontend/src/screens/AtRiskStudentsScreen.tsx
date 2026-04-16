@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-  View, Text, TextInput, FlatList, ActivityIndicator, useWindowDimensions,
+  View, Text, TextInput, FlatList, ActivityIndicator, useWindowDimensions, TouchableOpacity, Platform, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
 import { UserRole, normalizeRole } from '../utils/auth';
-import { getCurrentUser } from '../api/users';
+import { getCurrentUser, getUsersByRole } from '../api/users';
 import { getTeams, TeamApiResponse } from '../api/teams';
 import { getAttendanceForStudent, AttendanceRecord } from '../api/attendance';
 import { getDemoPerformanceForStudent, DemoPerformanceRecord } from '../api/demoPerformance';
@@ -69,7 +69,6 @@ interface AtRiskStudent {
   teamName: string;
   teamId: number;
   ta: string;
-  section: number;
   flags: AtRiskFlag[];
 }
 
@@ -107,17 +106,27 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
           rawTeams = await getTeams();
         }
 
+        // Build TA netid → full name map
+        const [taUsers, htaUsers] = await Promise.all([
+          getUsersByRole('TA').catch(() => []),
+          getUsersByRole('HTA').catch(() => []),
+        ]);
+        const taNameMap = new Map<string, string>();
+        for (const u of [...taUsers, ...htaUsers]) {
+          if (u.netid) taNameMap.set(u.netid, u.name?.trim() || u.netid);
+        }
+
         // Collect all unique students across teams
-        const studentMap = new Map<string, { name: string; teamName: string; teamId: number; ta: string; section: number }>();
+        const studentMap = new Map<string, { name: string; teamName: string; teamId: number; ta: string }>();
         for (const team of rawTeams) {
           for (const student of team.students ?? []) {
             if (!student.netid || studentMap.has(student.netid)) continue;
+            const taNetid = team.taNetid || '';
             studentMap.set(student.netid, {
               name: student.name || student.netid,
               teamName: team.name || 'Unnamed Team',
               teamId: Number(team.id),
-              ta: team.taNetid || 'Unassigned',
-              section: team.section ?? 0,
+              ta: taNameMap.get(taNetid) || taNetid || 'Unassigned',
             });
           }
         }
@@ -172,7 +181,6 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
             teamName: info.teamName,
             teamId: info.teamId,
             ta: info.ta,
-            section: info.section,
             flags: allFlags,
           });
         }
@@ -202,13 +210,24 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
       s.studentName.toLowerCase().includes(q) ||
       s.netid.toLowerCase().includes(q) ||
       s.teamName.toLowerCase().includes(q) ||
-      s.ta.toLowerCase().includes(q) ||
-      s.section.toString().includes(q)
+      s.ta.toLowerCase().includes(q)
     );
   }, [atRiskStudents, searchQuery]);
 
   const criticalCount = atRiskStudents.filter(s => s.flags.some(f => f.severity === 'critical')).length;
   const warningCount  = atRiskStudents.length - criticalCount;
+
+  const openBulkEmail = (students: AtRiskStudent[]) => {
+    const to = students.map(s => `${s.netid}@iastate.edu`).join(',');
+    const url = Platform.OS === 'web'
+      ? `https://outlook.office.com/mail/deeplink/compose?to=${encodeURIComponent(to)}`
+      : `mailto:${to}`;
+    if (Platform.OS === 'web') {
+      window.open(url, '_blank');
+    } else {
+      Linking.openURL(url);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -243,7 +262,7 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
 
         {/* Summary badges */}
         {atRiskStudents.length > 0 && (
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             {criticalCount > 0 && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fee2e2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
                 <Ionicons name="alert-circle" size={13} color="#dc2626" />
@@ -256,6 +275,37 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
                 <Text style={{ fontSize: 12, fontWeight: '600', color: '#92400e' }}>{warningCount} Warning</Text>
               </View>
             )}
+          </View>
+        )}
+
+        {/* Bulk email buttons */}
+        {atRiskStudents.length > 0 && (
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            {criticalCount > 0 && (
+              <TouchableOpacity
+                onPress={() => openBulkEmail(atRiskStudents.filter(s => s.flags.some(f => f.severity === 'critical')))}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#b91c1c', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 }}
+              >
+                <Ionicons name="mail-outline" size={13} color="white" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: 'white' }}>Email All Critical</Text>
+              </TouchableOpacity>
+            )}
+            {warningCount > 0 && (
+              <TouchableOpacity
+                onPress={() => openBulkEmail(atRiskStudents.filter(s => !s.flags.some(f => f.severity === 'critical')))}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#d97706', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 }}
+              >
+                <Ionicons name="mail-outline" size={13} color="white" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: 'white' }}>Email All Warning</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={() => openBulkEmail(atRiskStudents)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#374151', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 }}
+            >
+              <Ionicons name="mail-outline" size={13} color="white" />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: 'white' }}>Email All At-Risk</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -305,7 +355,6 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
                     studentName={item.studentName}
                     teamName={item.teamName}
                     ta={item.ta}
-                    section={item.section}
                     flags={item.flags}
                     onPress={() => navigation.navigate('TeamMemberDetail', {
                       member: {

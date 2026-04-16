@@ -121,9 +121,9 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
     try {
       const updated = await Promise.all(
         demos.map(async (row) => {
-          if (row.code === 'ungraded' && row.teamwork === 'ungraded') return row;
-          const codeScore = LEVEL_TO_SCORE[row.code] ?? 0;
-          const teamworkScore = LEVEL_TO_SCORE[row.teamwork] ?? 0;
+          if (row.code === 'ungraded' || row.teamwork === 'ungraded') return row;
+          const codeScore = LEVEL_TO_SCORE[row.code];
+          const teamworkScore = LEVEL_TO_SCORE[row.teamwork];
           // Always POST — backend upserts by (studentNetid, demoNumber)
           const saved = await createDemoPerformance(netid, row.demoNumber, codeScore, teamworkScore);
           return { ...row, recordId: saved.id };
@@ -143,7 +143,7 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
       {/* Header */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>Team Progress</Text>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>Demo Performance</Text>
           {loading && <ActivityIndicator size="small" color="#dc2626" />}
           {saveError && (
             <View style={{ backgroundColor: '#fee2e2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, marginRight: 8 }}>

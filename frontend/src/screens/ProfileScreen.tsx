@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCurrentUser, changePassword } from '../api/users';
@@ -89,7 +90,7 @@ export default function ProfileScreen({ userRole, onLogout }: Props) {
     .toUpperCase() || '?';
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F3F4F6', padding: 24 }}>
+    <ScrollView style={{ flex: 1, backgroundColor: '#F3F4F6' }} contentContainerStyle={{ padding: 24 }} showsVerticalScrollIndicator={false}>
       {/* Profile card */}
       <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
@@ -287,6 +288,6 @@ export default function ProfileScreen({ userRole, onLogout }: Props) {
           <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>Logout</Text>
         </TouchableOpacity>
       )}
-    </View>
+    </ScrollView>
   );
 }

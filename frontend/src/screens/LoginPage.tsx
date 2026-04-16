@@ -3,7 +3,7 @@ import { Platform, View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollVi
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import axiosInstance, { apiBaseUrl } from '@/api/client';
-import { storeToken } from '@/utils/auth';
+import { storeToken, storeRefreshToken } from '@/utils/auth';
 
 if (Platform.OS === 'web') WebBrowser.maybeCompleteAuthSession();
 
@@ -30,8 +30,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       if (!idToken) { setLoginError('Google sign-in failed: no ID token'); setGoogleLoading(false); return; }
       axiosInstance.post('/api/auth/login/google', { tokenId: idToken })
         .then(({ data }) => {
-          storeToken(data);
-          const payload = JSON.parse(atob(data.split('.')[1]));
+          storeToken(data.accessToken);
+          storeRefreshToken(data.refreshToken);
+          const payload = JSON.parse(atob(data.accessToken.split('.')[1]));
           const role = Array.isArray(payload.roles) ? payload.roles[0] : payload.roles ?? '';
           onLogin('', role);
         })
