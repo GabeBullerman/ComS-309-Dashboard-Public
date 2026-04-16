@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axiosInstance, { storeToken, clearToken, apiBaseUrl } from '../api/client';
+import axiosInstance, { storeToken, storeRefreshToken, getRefreshToken, clearToken, apiBaseUrl } from '../api/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,7 +25,7 @@ export interface UserSummary {
 }
 
 // Re-export token helpers so existing callers don't break
-export { storeToken, clearToken } from '../api/client';
+export { storeToken, storeRefreshToken, clearToken } from '../api/client';
 export { getToken } from '../api/client';
 
 // ── Role utilities ────────────────────────────────────────────────────────────
@@ -87,8 +87,10 @@ export const login = async (netid: string, password: string): Promise<{ token: s
   if (!res.ok) {
     throw new Error(`Login failed: ${res.status}`);
   }
-  const token: string = await res.text();
+  const data = await res.json();
+  const token: string = data.accessToken;
   await storeToken(token);
+  await storeRefreshToken(data.refreshToken);
 
   const role = getRoleFromToken(token);
   let user: UserSummary | undefined;
@@ -112,7 +114,8 @@ export const login = async (netid: string, password: string): Promise<{ token: s
 };
 
 export const logout = async (): Promise<string> => {
-  const res = await axiosInstance.post('/api/auth/logout');
+  const refreshToken = await getRefreshToken();
+  const res = await axiosInstance.post('/api/auth/logout', { refreshToken });
   await clearToken();
   return typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
 };
