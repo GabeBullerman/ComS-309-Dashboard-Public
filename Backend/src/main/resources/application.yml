@@ -7,6 +7,10 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/class_dashboard}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+  web:
+    resources:
+      cache:
+        period: 0
   jpa:
     hibernate:
       ddl-auto: update
