@@ -10,4 +10,6 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByTeamIdAndReceiverNetidOrderByCreatedAtDesc(Long teamId, String receiverNetid);
 
     List<Comment> findByTeamIdAndReceiverTeamIdOrderByCreatedAtDesc(Long teamId, Long receiverTeamId);
+
+    void deleteBySenderIdOrReceiverId(Long senderId, Long receiverId);
 }

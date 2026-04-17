@@ -11,4 +11,5 @@ import edu.iastate.dashboard309.model.WeeklyPerformance;
 public interface WeeklyPerformanceRepository extends JpaRepository<WeeklyPerformance, Long> {
     List<WeeklyPerformance> findByStudentNetidOrderByIdDesc(String studentNetid);
     Optional<WeeklyPerformance> findByStudentNetidAndWeekStartDate(String studentNetid, LocalDate weekStartDate);
+    void deleteByStudentId(Long studentId);
 }

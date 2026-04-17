@@ -1,34 +1,62 @@
 package edu.iastate.dashboard309.service;
 
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.oauth2.client.RefreshTokenReactiveOAuth2AuthorizedClientProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import edu.iastate.dashboard309.dto.UserRequest;
-import edu.iastate.dashboard309.model.RefreshToken;
+import edu.iastate.dashboard309.model.Team;
 import edu.iastate.dashboard309.model.User;
+import edu.iastate.dashboard309.repository.AtRiskOverrideRepository;
+import edu.iastate.dashboard309.repository.AttendanceRepository;
+import edu.iastate.dashboard309.repository.CommentRepository;
+import edu.iastate.dashboard309.repository.DemoPerformanceRepository;
 import edu.iastate.dashboard309.repository.RefreshTokenRepository;
 import edu.iastate.dashboard309.repository.RoleRepository;
+import edu.iastate.dashboard309.repository.TaskRepository;
+import edu.iastate.dashboard309.repository.TeamRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
+import edu.iastate.dashboard309.repository.WeeklyPerformanceRepository;
 
 @Service
 public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final AttendanceRepository attendanceRepository;
+    private final DemoPerformanceRepository demoPerformanceRepository;
+    private final WeeklyPerformanceRepository weeklyPerformanceRepository;
+    private final AtRiskOverrideRepository atRiskOverrideRepository;
+    private final CommentRepository commentRepository;
+    private final TaskRepository taskRepository;
+    private final TeamRepository teamRepository;
 
-    public UserService(UserRepository userRepository, RoleRepository roleRepository, RefreshTokenRepository refreshTokenRepository) {
+    public UserService(UserRepository userRepository,
+                       RoleRepository roleRepository,
+                       RefreshTokenRepository refreshTokenRepository,
+                       AttendanceRepository attendanceRepository,
+                       DemoPerformanceRepository demoPerformanceRepository,
+                       WeeklyPerformanceRepository weeklyPerformanceRepository,
+                       AtRiskOverrideRepository atRiskOverrideRepository,
+                       CommentRepository commentRepository,
+                       TaskRepository taskRepository,
+                       TeamRepository teamRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.refreshTokenRepository = refreshTokenRepository;
+        this.attendanceRepository = attendanceRepository;
+        this.demoPerformanceRepository = demoPerformanceRepository;
+        this.weeklyPerformanceRepository = weeklyPerformanceRepository;
+        this.atRiskOverrideRepository = atRiskOverrideRepository;
+        this.commentRepository = commentRepository;
+        this.taskRepository = taskRepository;
+        this.teamRepository = teamRepository;
     }
 
     @Transactional
@@ -109,15 +137,31 @@ public class UserService {
 
     @Transactional
     public void deleteUser(Long id){
-        if (!userRepository.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
-        }
         User user = userRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        Set<RefreshToken> tokens = user.getRefreshTokens();
-        for(RefreshToken token : tokens){
-            refreshTokenRepository.deleteById(token.getId());
+
+        String netid = user.getNetid();
+
+        attendanceRepository.deleteByStudentId(id);
+        demoPerformanceRepository.deleteByStudentId(id);
+        weeklyPerformanceRepository.deleteByStudentId(id);
+        atRiskOverrideRepository.deleteByStudentNetid(netid);
+
+        commentRepository.deleteBySenderIdOrReceiverId(id, id);
+        taskRepository.deleteByAssignedToIdOrAssignedById(id, id);
+
+        List<Team> managedTeams = teamRepository.findByTaId(id);
+        for (Team team : managedTeams) {
+            team.setTa(null);
         }
-        userRepository.deleteById(id);
+        if (!managedTeams.isEmpty()) {
+            teamRepository.saveAll(managedTeams);
+        }
+
+        refreshTokenRepository.deleteByUserId(id);
+
+        user.getRole().clear();
+        userRepository.save(user);
+        userRepository.delete(user);
     }
 }

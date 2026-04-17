@@ -13,4 +13,6 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     long countByStudentNetidAndStatus(String studentNetid, AttendanceStatus status);
 
     long countByStudentNetidAndStatusIn(String studentNetid, List<AttendanceStatus> statuses);
+
+    void deleteByStudentId(Long studentId);
 }
