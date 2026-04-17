@@ -214,16 +214,22 @@ public class UserController {
     public void changePassword(Authentication authentication, @RequestBody Map<String, String> body) {
         String currentPassword = body.get("currentPassword");
         String newPassword = body.get("newPassword");
-        if (currentPassword == null || newPassword == null || newPassword.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "currentPassword and newPassword are required");
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "newPassword is required");
         }
         if (newPassword.length() < 6) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be at least 6 characters");
         }
         User user = userRepository.findByNetid(authentication.getName())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Current password is incorrect");
+        // If user has no password (e.g. imported via CSV, OAuth-only), allow setting one without current password
+        if (user.getPassword() != null) {
+            if (currentPassword == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "currentPassword is required");
+            }
+            if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Current password is incorrect");
+            }
         }
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
