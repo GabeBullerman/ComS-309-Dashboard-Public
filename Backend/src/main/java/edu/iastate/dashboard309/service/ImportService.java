@@ -150,12 +150,12 @@ public class ImportService {
 
     @Transactional
     private void findRoles(){
-        studentRole = roleRepository.findByRoleName("student")
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "\'student\' role not found"));
-        taRole = roleRepository.findByRoleName("ta")
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "\'ta\' role not found"));
-        htaRole = roleRepository.findByRoleName("hta")
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "\'hta\' role not found"));
+        studentRole = roleRepository.findByRoleName("STUDENT")
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "\'STUDENT\' role not found"));
+        taRole = roleRepository.findByRoleName("TA")
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "\'TA\' role not found"));
+        htaRole = roleRepository.findByRoleName("HTA")
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "\'HTA\' role not found"));
     }
 
     @Transactional
