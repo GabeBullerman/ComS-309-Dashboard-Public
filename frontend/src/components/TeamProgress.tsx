@@ -125,34 +125,37 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
         const bothGraded = row.code !== 'ungraded' && row.teamwork !== 'ungraded';
         if (bothUngraded && row.recordId) {
           await deleteDemoPerformance(row.recordId);
-          return { ...row, recordId: undefined };
         } else if (bothGraded) {
-          const saved = await createDemoPerformance(
+          await createDemoPerformance(
             netid, row.demoNumber,
             LEVEL_TO_SCORE[row.code], LEVEL_TO_SCORE[row.teamwork],
           );
-          return { ...row, recordId: saved.id };
         }
-        return row;
       })
     );
-    const updated = results.map((r, i) =>
-      r.status === 'fulfilled' ? r.value : demos[i]
-    );
-    setDemos(updated);
     const failed = results.filter(r => r.status === 'rejected').length;
-    const saved = results.filter(r => r.status === 'fulfilled' && (r.value as DemoRow).recordId !== undefined).length;
     if (failed > 0) {
       const firstErr = results.find(r => r.status === 'rejected') as PromiseRejectedResult;
-      setSaveError(
-        saved > 0
-          ? `${saved} saved, ${failed} failed: ${firstErr.reason?.response?.data?.message ?? firstErr.reason?.message ?? 'error'}`
-          : firstErr.reason?.response?.data?.message ?? firstErr.reason?.message ?? 'Save failed'
-      );
+      setSaveError(firstErr.reason?.response?.data ?? firstErr.reason?.message ?? 'Save failed');
     } else {
       setUnsaved(false);
     }
-    setSaving(false);
+    // Reload from backend to guarantee UI matches actual state
+    getDemoPerformanceForStudent(netid)
+      .then((records: DemoPerformanceRecord[]) => {
+        setDemos(DEMO_LABELS.map((_, i) => {
+          const demoNumber = i + 1;
+          const r = records.find(rec => rec.demoNumber === demoNumber);
+          return {
+            demoNumber,
+            code: r ? (SCORE_TO_LEVEL[r.codeScore] ?? 'ungraded') : 'ungraded',
+            teamwork: r ? (SCORE_TO_LEVEL[r.teamworkScore] ?? 'ungraded') : 'ungraded',
+            recordId: r?.id,
+          };
+        }));
+      })
+      .catch(() => {})
+      .finally(() => setSaving(false));
   };
 
   return (
