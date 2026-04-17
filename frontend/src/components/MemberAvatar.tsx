@@ -25,27 +25,29 @@ function broadcast(memberId: string, uri: string) {
   listeners[memberId]?.forEach((cb) => cb(uri));
 }
 
-// On web, resize to 300×300 JPEG and convert to base64 data URI.
-// This keeps each avatar under ~80 KB so localStorage quota isn't exceeded.
+// Resize to 200×200 JPEG before storing so each avatar stays under ~30 KB.
 async function toStorableUri(uri: string): Promise<string> {
   if (Platform.OS !== 'web') return uri;
-  return new Promise<string>((resolve, reject) => {
-    const img = new (window as any).Image() as HTMLImageElement;
-    img.onload = () => {
-      const MAX = 300;
-      const scale = Math.min(MAX / img.width, MAX / img.height, 1);
-      const w = Math.round(img.width * scale);
-      const h = Math.round(img.height * scale);
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', 0.6));
-    };
-    img.onerror = reject;
-    img.src = uri;
-  });
+  try {
+    const resp = await fetch(uri);
+    const blob = await resp.blob();
+    const bitmap = await (window as any).createImageBitmap(blob) as ImageBitmap;
+    const MAX = 200;
+    const scale = Math.min(MAX / bitmap.width, MAX / bitmap.height, 1);
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    const out = canvas.toDataURL('image/jpeg', 0.4);
+    console.log(`[avatar] compressed to ${w}x${h}, ${(out.length / 1024).toFixed(1)} KB`);
+    return out;
+  } catch (e) {
+    console.warn('[avatar] compression failed, storing original:', e);
+    return uri;
+  }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -83,6 +85,7 @@ export default function MemberAvatar({ memberId, initials, size, borderRadius, c
   }, [memberId]);
 
   const pickImage = async () => {
+    console.log('[avatar] pickImage called for', memberId);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission required', 'Please allow access to your photo library to upload an image.');
