@@ -28,6 +28,10 @@ export const createWeeklyPerformance = async (
   return res.data;
 };
 
+export const deleteWeeklyPerformance = async (id: number): Promise<void> => {
+  await axiosInstance.delete(`/api/weekly-performance/${id}`);
+};
+
 export const updateWeeklyPerformance = async (
   id: number,
   studentNetid: string,

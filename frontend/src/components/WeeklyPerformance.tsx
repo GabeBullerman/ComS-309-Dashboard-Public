@@ -6,6 +6,7 @@ import {
   WeeklyPerformanceRecord,
   getWeeklyPerformanceForStudent,
   createWeeklyPerformance,
+  deleteWeeklyPerformance,
 } from "@/api/weeklyPerformance";
 
 type ProgressLevel = "good" | "moderate" | "poor" | "ungraded";
@@ -30,7 +31,7 @@ const LEVELS: ProgressLevel[] = ["ungraded", "good", "moderate", "poor"];
 const SCORE_TO_LEVEL: Record<number, ProgressLevel> = { 0: "poor", 1: "moderate", 2: "good" };
 const LEVEL_TO_SCORE: Record<string, number> = { poor: 0, moderate: 1, good: 2 };
 
-type MemberScore = { code: ProgressLevel; teamwork: ProgressLevel };
+type MemberScore = { code: ProgressLevel; teamwork: ProgressLevel; id?: number };
 
 function buildWeeks(count: number): { label: string; key: string }[] {
   const weeks: { label: string; key: string }[] = [];
@@ -164,6 +165,7 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
           newScores[netid][r.weekStartDate] = {
             code: SCORE_TO_LEVEL[r.codeScore] ?? 'ungraded',
             teamwork: SCORE_TO_LEVEL[r.teamworkScore] ?? 'ungraded',
+            id: r.id,
           };
         }
       }
@@ -188,22 +190,36 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
   const handleSave = async () => {
     setSaving(true);
     setSaveStatus(null);
-    const toSave = members.filter(m => {
-      if (!m.netid) return false;
-      const score = getScore(m.netid);
-      return score.code !== 'ungraded' && score.teamwork !== 'ungraded';
-    });
-    const results = await Promise.allSettled(
-      toSave.map((m) => {
+
+    const ops = members
+      .filter(m => m.netid)
+      .map(m => {
         const score = getScore(m.netid!);
-        return createWeeklyPerformance(
-          m.netid!,
-          selectedWeek,
-          LEVEL_TO_SCORE[score.code],
-          LEVEL_TO_SCORE[score.teamwork],
-        );
-      })
-    );
+        const bothUngraded = score.code === 'ungraded' && score.teamwork === 'ungraded';
+        const bothGraded = score.code !== 'ungraded' && score.teamwork !== 'ungraded';
+        if (bothUngraded && score.id) {
+          return deleteWeeklyPerformance(score.id).then(() => {
+            setScores(prev => {
+              const updated = { ...prev[m.netid!] };
+              delete updated[selectedWeek];
+              return { ...prev, [m.netid!]: updated };
+            });
+          });
+        } else if (bothGraded) {
+          return createWeeklyPerformance(
+            m.netid!, selectedWeek,
+            LEVEL_TO_SCORE[score.code], LEVEL_TO_SCORE[score.teamwork],
+          ).then(saved => {
+            setScores(prev => ({
+              ...prev,
+              [m.netid!]: { ...prev[m.netid!], [selectedWeek]: { ...score, id: saved.id } },
+            }));
+          });
+        }
+        return Promise.resolve();
+      });
+
+    const results = await Promise.allSettled(ops);
     const ok = results.filter(r => r.status === 'fulfilled').length;
     const failed = results.filter(r => r.status === 'rejected').length;
     setSaveStatus({ ok, failed });
@@ -255,12 +271,17 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
         </View>
 
         {/* Column headers */}
-        <View style={{ flexDirection: 'row', marginBottom: 8, paddingHorizontal: 4 }}>
+        <View style={{ flexDirection: 'row', marginBottom: 4, paddingHorizontal: 4 }}>
           <Text style={{ flex: 2, fontSize: 12, color: '#6B7280', fontWeight: '500' }}>Member</Text>
           <Text style={{ flex: 2, fontSize: 12, color: '#6B7280', fontWeight: '500' }}>Code</Text>
           <View style={{ width: 8 }} />
           <Text style={{ flex: 2, fontSize: 12, color: '#6B7280', fontWeight: '500' }}>Teamwork</Text>
         </View>
+        {!readOnly && (
+          <Text style={{ fontSize: 10, color: '#9CA3AF', paddingHorizontal: 4, marginBottom: 8 }}>
+            Both fields must be set to save or ungrade a row.
+          </Text>
+        )}
 
         {/* Member rows */}
         <View style={{ gap: 8 }}>

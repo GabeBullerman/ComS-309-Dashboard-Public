@@ -5,6 +5,7 @@ import {
   DemoPerformanceRecord,
   getDemoPerformanceForStudent,
   createDemoPerformance,
+  deleteDemoPerformance,
 } from "@/api/demoPerformance";
 
 type ProgressLevel = "good" | "moderate" | "poor" | "ungraded";
@@ -120,14 +121,19 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
     setSaveError(null);
     const results = await Promise.allSettled(
       demos.map(async (row) => {
-        if (row.code === 'ungraded' || row.teamwork === 'ungraded') return row;
-        const saved = await createDemoPerformance(
-          netid,
-          row.demoNumber,
-          LEVEL_TO_SCORE[row.code],
-          LEVEL_TO_SCORE[row.teamwork],
-        );
-        return { ...row, recordId: saved.id };
+        const bothUngraded = row.code === 'ungraded' && row.teamwork === 'ungraded';
+        const bothGraded = row.code !== 'ungraded' && row.teamwork !== 'ungraded';
+        if (bothUngraded && row.recordId) {
+          await deleteDemoPerformance(row.recordId);
+          return { ...row, recordId: undefined };
+        } else if (bothGraded) {
+          const saved = await createDemoPerformance(
+            netid, row.demoNumber,
+            LEVEL_TO_SCORE[row.code], LEVEL_TO_SCORE[row.teamwork],
+          );
+          return { ...row, recordId: saved.id };
+        }
+        return row;
       })
     );
     const updated = results.map((r, i) =>
@@ -182,12 +188,17 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
       </View>
 
       {/* Column Headers */}
-      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+      <View style={{ flexDirection: 'row', marginBottom: 4 }}>
         <Text style={{ width: 64, color: '#6B7280', fontSize: 12 }}>Demo</Text>
         <Text style={{ flex: 1, color: '#6B7280', fontSize: 12 }}>Code Progress</Text>
         <View style={{ width: 8 }} />
         <Text style={{ flex: 1, color: '#6B7280', fontSize: 12 }}>Teamwork</Text>
       </View>
+      {!readOnly && (
+        <Text style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 8 }}>
+          Both fields must be set to save or ungrade a row.
+        </Text>
+      )}
 
       {/* Rows */}
       {demos.map((row, index) => (

@@ -28,6 +28,10 @@ export const createDemoPerformance = async (
   return res.data;
 };
 
+export const deleteDemoPerformance = async (id: number): Promise<void> => {
+  await axiosInstance.delete(`/api/demo-performance/${id}`);
+};
+
 export const updateDemoPerformance = async (
   id: number,
   studentNetid: string,
