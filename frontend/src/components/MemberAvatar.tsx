@@ -25,16 +25,26 @@ function broadcast(memberId: string, uri: string) {
   listeners[memberId]?.forEach((cb) => cb(uri));
 }
 
-// On web, blob: URIs die on page refresh — convert to base64 data URI so the
-// stored value survives across reloads.
+// On web, resize to 300×300 JPEG and convert to base64 data URI.
+// This keeps each avatar under ~80 KB so localStorage quota isn't exceeded.
 async function toStorableUri(uri: string): Promise<string> {
-  if (Platform.OS !== 'web' || !uri.startsWith('blob:')) return uri;
-  const blob = await fetch(uri).then((r) => r.blob());
+  if (Platform.OS !== 'web') return uri;
   return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
+    const img = new (window as any).Image() as HTMLImageElement;
+    img.onload = () => {
+      const MAX = 300;
+      const scale = Math.min(MAX / img.width, MAX / img.height, 1);
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.6));
+    };
+    img.onerror = reject;
+    img.src = uri;
   });
 }
 
