@@ -5,7 +5,7 @@ import {
   DemoPerformanceRecord,
   getDemoPerformanceForStudent,
   createDemoPerformance,
-  deleteDemoPerformance,
+  deleteDemoPerformanceBySlot,
 } from "@/api/demoPerformance";
 
 type ProgressLevel = "good" | "moderate" | "poor" | "ungraded";
@@ -123,8 +123,8 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
       demos.map(async (row) => {
         const bothUngraded = row.code === 'ungraded' && row.teamwork === 'ungraded';
         const bothGraded = row.code !== 'ungraded' && row.teamwork !== 'ungraded';
-        if (bothUngraded && row.recordId) {
-          await deleteDemoPerformance(row.recordId);
+        if (bothUngraded) {
+          await deleteDemoPerformanceBySlot(netid, row.demoNumber);
         } else if (bothGraded) {
           await createDemoPerformance(
             netid, row.demoNumber,

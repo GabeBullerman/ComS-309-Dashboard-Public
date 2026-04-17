@@ -32,6 +32,10 @@ export const deleteDemoPerformance = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/api/demo-performance/${id}`);
 };
 
+export const deleteDemoPerformanceBySlot = async (studentNetid: string, demoNumber: number): Promise<void> => {
+  await axiosInstance.delete(`/api/demo-performance/student/${studentNetid}/demo/${demoNumber}`);
+};
+
 export const updateDemoPerformance = async (
   id: number,
   studentNetid: string,
