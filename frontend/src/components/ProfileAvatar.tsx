@@ -31,7 +31,7 @@ async function toStorableUri(uri: string): Promise<string> {
     const resp = await fetch(uri);
     const blob = await resp.blob();
     const bitmap = await (window as any).createImageBitmap(blob) as ImageBitmap;
-    const MAX = 300;
+    const MAX = 400;
     const scale = Math.min(MAX / bitmap.width, MAX / bitmap.height, 1);
     const w = Math.max(1, Math.round(bitmap.width * scale));
     const h = Math.max(1, Math.round(bitmap.height * scale));
@@ -40,7 +40,7 @@ async function toStorableUri(uri: string): Promise<string> {
     canvas.height = h;
     canvas.getContext('2d')!.drawImage(bitmap, 0, 0, w, h);
     bitmap.close();
-    const out = canvas.toDataURL('image/jpeg', 0.6);
+    const out = canvas.toDataURL('image/jpeg', 0.8);
     console.log(`[profile-avatar] compressed to ${w}x${h}, ${(out.length / 1024).toFixed(1)} KB`);
     return out;
   } catch (e) {
