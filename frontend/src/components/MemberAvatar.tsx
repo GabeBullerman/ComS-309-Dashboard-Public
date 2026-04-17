@@ -32,7 +32,7 @@ async function toStorableUri(uri: string): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const img = new (window as any).Image() as HTMLImageElement;
     img.onload = () => {
-      const MAX = 300;
+      const MAX = 200;
       const scale = Math.min(MAX / img.width, MAX / img.height, 1);
       const w = Math.round(img.width * scale);
       const h = Math.round(img.height * scale);
@@ -41,7 +41,7 @@ async function toStorableUri(uri: string): Promise<string> {
       canvas.height = h;
       const ctx = canvas.getContext('2d')!;
       ctx.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', 0.6));
+      resolve(canvas.toDataURL('image/jpeg', 0.4));
     };
     img.onerror = reject;
     img.src = uri;
