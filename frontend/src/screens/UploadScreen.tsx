@@ -11,11 +11,19 @@ import FileUpload from "@/components/FileUpload";
 import DropZone from "@/components/DropZone";
 import axiosInstance from "@/api/client";
 
-// Accepted file types
-const ACCEPTED_TYPES: string[] = [
+const ACCEPTED_TYPES = new Set([
   "text/csv",
+  "text/comma-separated-values",
+  "application/csv",
+  "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-];
+]);
+
+function isAccepted(f: UploadedFile): boolean {
+  if (ACCEPTED_TYPES.has(f.type)) return true;
+  const lower = f.name.toLowerCase();
+  return lower.endsWith('.csv') || lower.endsWith('.xlsx');
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,7 +56,7 @@ export default function UploadScreen(): React.JSX.Element {
   }, []);
 
   const handleUpload = useCallback(async () => {
-    const validFiles = files.filter((f) => ACCEPTED_TYPES.includes(f.type));
+    const validFiles = files.filter(isAccepted);
     setUploading(true);
     setResults([]);
 
@@ -75,7 +83,7 @@ export default function UploadScreen(): React.JSX.Element {
     setFiles((prev) => prev.filter((f) => failedNames.has(f.name)));
   }, [files]);
 
-  const validCount = files.filter((f) => ACCEPTED_TYPES.includes(f.type)).length;
+  const validCount = files.filter(isAccepted).length;
   const invalidCount = files.length - validCount;
 
   return (
