@@ -22,7 +22,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
         SELECT DISTINCT u FROM User u
         JOIN u.roles r
         WHERE u.initials = :initials
-            AND r.roleName IN ('ta', 'hta')
+            AND LOWER(r.roleName) IN ('ta', 'hta')
     """)
     List<User> findTaByInitials(
         @Param("initials") String initials);
