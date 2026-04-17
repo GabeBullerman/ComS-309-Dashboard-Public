@@ -81,6 +81,12 @@ public class DemoPerformanceController {
         demoPerformanceRepository.deleteById(id);
     }
 
+    @DeleteMapping("/student/{netid}/demo/{demoNumber}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteByStudentAndDemo(@PathVariable String netid, @PathVariable Integer demoNumber) {
+        demoPerformanceRepository.deleteByStudentNetidAndDemoNumber(netid, demoNumber);
+    }
+
     private void applyRequest(DemoPerformance demoPerformance, DemoPerformanceRequest request) {
         User student = userRepository.findByNetid(request.studentNetid())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
