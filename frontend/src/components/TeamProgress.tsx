@@ -5,6 +5,7 @@ import {
   DemoPerformanceRecord,
   getDemoPerformanceForStudent,
   createDemoPerformance,
+  deleteDemoPerformance,
 } from "@/api/demoPerformance";
 
 type ProgressLevel = "good" | "moderate" | "poor" | "ungraded";
@@ -120,33 +121,41 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
     setSaveError(null);
     const results = await Promise.allSettled(
       demos.map(async (row) => {
-        if (row.code === 'ungraded' || row.teamwork === 'ungraded') return row;
-        const saved = await createDemoPerformance(
-          netid,
-          row.demoNumber,
-          LEVEL_TO_SCORE[row.code],
-          LEVEL_TO_SCORE[row.teamwork],
-        );
-        return { ...row, recordId: saved.id };
+        const bothUngraded = row.code === 'ungraded' && row.teamwork === 'ungraded';
+        const bothGraded = row.code !== 'ungraded' && row.teamwork !== 'ungraded';
+        if (bothUngraded && row.recordId) {
+          await deleteDemoPerformance(row.recordId);
+        } else if (bothGraded) {
+          await createDemoPerformance(
+            netid, row.demoNumber,
+            LEVEL_TO_SCORE[row.code], LEVEL_TO_SCORE[row.teamwork],
+          );
+        }
       })
     );
-    const updated = results.map((r, i) =>
-      r.status === 'fulfilled' ? r.value : demos[i]
-    );
-    setDemos(updated);
     const failed = results.filter(r => r.status === 'rejected').length;
-    const saved = results.filter(r => r.status === 'fulfilled' && (r.value as DemoRow).recordId !== undefined).length;
     if (failed > 0) {
       const firstErr = results.find(r => r.status === 'rejected') as PromiseRejectedResult;
-      setSaveError(
-        saved > 0
-          ? `${saved} saved, ${failed} failed: ${firstErr.reason?.response?.data?.message ?? firstErr.reason?.message ?? 'error'}`
-          : firstErr.reason?.response?.data?.message ?? firstErr.reason?.message ?? 'Save failed'
-      );
+      setSaveError(firstErr.reason?.response?.data ?? firstErr.reason?.message ?? 'Save failed');
     } else {
       setUnsaved(false);
     }
-    setSaving(false);
+    // Reload from backend to guarantee UI matches actual state
+    getDemoPerformanceForStudent(netid)
+      .then((records: DemoPerformanceRecord[]) => {
+        setDemos(DEMO_LABELS.map((_, i) => {
+          const demoNumber = i + 1;
+          const r = records.find(rec => rec.demoNumber === demoNumber);
+          return {
+            demoNumber,
+            code: r ? (SCORE_TO_LEVEL[r.codeScore] ?? 'ungraded') : 'ungraded',
+            teamwork: r ? (SCORE_TO_LEVEL[r.teamworkScore] ?? 'ungraded') : 'ungraded',
+            recordId: r?.id,
+          };
+        }));
+      })
+      .catch(() => {})
+      .finally(() => setSaving(false));
   };
 
   return (
@@ -182,12 +191,17 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
       </View>
 
       {/* Column Headers */}
-      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+      <View style={{ flexDirection: 'row', marginBottom: 4 }}>
         <Text style={{ width: 64, color: '#6B7280', fontSize: 12 }}>Demo</Text>
         <Text style={{ flex: 1, color: '#6B7280', fontSize: 12 }}>Code Progress</Text>
         <View style={{ width: 8 }} />
         <Text style={{ flex: 1, color: '#6B7280', fontSize: 12 }}>Teamwork</Text>
       </View>
+      {!readOnly && (
+        <Text style={{ fontSize: 10, color: '#9CA3AF', marginBottom: 8 }}>
+          Both fields must be set to save or ungrade a row.
+        </Text>
+      )}
 
       {/* Rows */}
       {demos.map((row, index) => (
