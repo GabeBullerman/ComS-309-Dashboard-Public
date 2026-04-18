@@ -5,12 +5,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  ChatMessage, CHANNELS,
+  ChatMessage, ChannelMeta, CHANNELS,
   getMessages, sendMessage, editMessage, deleteMessage,
-  markRead, getAllUnreadCounts,
+  markRead, getAllUnreadCounts, getChannels, updateChannel,
 } from '../api/chat';
 import { getUsersByRole } from '../api/users';
-import { UserSummary } from '../utils/auth';
+import { UserRole, UserSummary } from '../utils/auth';
 
 const POLL_MS = 5000;
 const ROLES = ['everyone', 'TA', 'HTA', 'Instructor'];
@@ -76,12 +76,19 @@ function MessageContent({ content, mentionedNetids, mentionedRoles, myNetid, sta
 interface Props {
   myNetid: string;
   myName: string;
+  userRole: UserRole;
   onUnreadChange: (count: number) => void;
 }
 
-export default function StaffChatScreen({ myNetid, myName, onUnreadChange }: Props) {
+export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadChange }: Props) {
+  const isInstructor = userRole === 'Instructor';
   const [activeChannel, setActiveChannel] = useState('general');
+  const [channelMeta, setChannelMeta] = useState<Record<string, ChannelMeta>>({});
   const [channelUnreads, setChannelUnreads] = useState<Record<string, number>>({});
+  const [editingChannel, setEditingChannel] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [savingChannel, setSavingChannel] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [staff, setStaff] = useState<UserSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +126,13 @@ export default function StaffChatScreen({ myNetid, myName, onUnreadChange }: Pro
       getUsersByRole('HTA').catch(() => [] as UserSummary[]),
       getUsersByRole('Instructor').catch(() => [] as UserSummary[]),
     ]).then(([a, b, c]) => setStaff([...a, ...b, ...c]));
+  }, []);
+
+  // Load channel metadata (names + descriptions)
+  useEffect(() => {
+    getChannels().then(list => {
+      setChannelMeta(Object.fromEntries(list.map(c => [c.id, c])));
+    }).catch(() => {});
   }, []);
 
   // Load messages when channel changes
@@ -317,7 +331,21 @@ export default function StaffChatScreen({ myNetid, myName, onUnreadChange }: Pro
     return rows;
   }, [messages]);
 
-  const activeChannelInfo = CHANNELS.find(c => c.id === activeChannel)!;
+  const activeChannelStatic = CHANNELS.find(c => c.id === activeChannel)!;
+  const activeMeta = channelMeta[activeChannel];
+  const activeDisplayName = activeMeta?.displayName ?? activeChannelStatic.defaultLabel;
+  const activeDescription = activeMeta?.description ?? null;
+
+  const handleSaveChannel = async () => {
+    setSavingChannel(true);
+    try {
+      const updated = await updateChannel(activeChannel, { displayName: editName.trim() || activeDisplayName, description: editDesc.trim() || null });
+      setChannelMeta(prev => ({ ...prev, [activeChannel]: updated }));
+      setEditingChannel(false);
+    } catch {
+      Alert.alert('Error', 'Failed to save channel.');
+    } finally { setSavingChannel(false); }
+  };
 
   return (
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: '#f9fafb' }}>
@@ -330,19 +358,25 @@ export default function StaffChatScreen({ myNetid, myName, onUnreadChange }: Pro
         {CHANNELS.map(ch => {
           const isActive = ch.id === activeChannel;
           const unread = channelUnreads[ch.id] ?? 0;
+          const label = channelMeta[ch.id]?.displayName ?? ch.defaultLabel;
           return (
             <TouchableOpacity
               key={ch.id}
-              onPress={() => setActiveChannel(ch.id)}
+              onPress={() => { setActiveChannel(ch.id); setEditingChannel(false); }}
               style={{
-                flexDirection: 'row', alignItems: 'center', gap: 6,
+                flexDirection: 'row', alignItems: 'center', gap: 8,
                 paddingHorizontal: 12, paddingVertical: 8, marginHorizontal: 4,
                 borderRadius: 6, marginBottom: 2,
                 backgroundColor: isActive ? '#F1BE48' : 'transparent',
               }}
             >
-              <Text style={{ fontSize: 14, color: isActive ? '#7c2d12' : unread > 0 ? 'white' : 'rgba(255,255,255,0.65)', fontWeight: isActive || unread > 0 ? '600' : '400', flex: 1 }}>
-                # {ch.label}
+              <Ionicons
+                name={ch.icon}
+                size={15}
+                color={isActive ? '#7c2d12' : unread > 0 ? 'white' : 'rgba(255,255,255,0.55)'}
+              />
+              <Text style={{ fontSize: 13, color: isActive ? '#7c2d12' : unread > 0 ? 'white' : 'rgba(255,255,255,0.65)', fontWeight: isActive || unread > 0 ? '600' : '400', flex: 1 }} numberOfLines={1}>
+                {label}
               </Text>
               {unread > 0 && !isActive && (
                 <View style={{ backgroundColor: '#F1BE48', borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
@@ -358,13 +392,60 @@ export default function StaffChatScreen({ myNetid, myName, onUnreadChange }: Pro
       <KeyboardAvoidingView style={{ flex: 1, flexDirection: 'column' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
 
         {/* Header */}
-        <View style={{ paddingHorizontal: 20, paddingVertical: 14, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Ionicons name={activeChannelInfo.icon} size={18} color="#b91c1c" />
-          <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}># {activeChannelInfo.label}</Text>
-          <Text style={{ fontSize: 12, color: '#9ca3af', marginLeft: 'auto' }}>
-            {staff.length} staff
-          </Text>
-        </View>
+        {editingChannel ? (
+          <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', gap: 6 }}>
+            <TextInput
+              value={editName}
+              onChangeText={setEditName}
+              placeholder={activeDisplayName}
+              placeholderTextColor="#9ca3af"
+              style={{ fontSize: 15, fontWeight: '700', color: '#111827', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f9fafb' }}
+            />
+            <TextInput
+              value={editDesc}
+              onChangeText={setEditDesc}
+              placeholder="Add a description..."
+              placeholderTextColor="#9ca3af"
+              style={{ fontSize: 13, color: '#6b7280', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f9fafb' }}
+            />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                onPress={handleSaveChannel}
+                disabled={savingChannel}
+                style={{ backgroundColor: '#b91c1c', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6 }}
+              >
+                {savingChannel
+                  ? <ActivityIndicator size="small" color="white" />
+                  : <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Save</Text>
+                }
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setEditingChannel(false)}
+                style={{ backgroundColor: '#e5e7eb', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6 }}
+              >
+                <Text style={{ color: '#374151', fontWeight: '600', fontSize: 13 }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <View style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Ionicons name={activeChannelStatic.icon} size={18} color="#b91c1c" />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827' }}>{activeDisplayName}</Text>
+              {activeDescription && (
+                <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 1 }}>{activeDescription}</Text>
+              )}
+            </View>
+            {isInstructor && (
+              <TouchableOpacity
+                onPress={() => { setEditName(activeDisplayName); setEditDesc(activeDescription ?? ''); setEditingChannel(true); }}
+                style={{ padding: 6 }}
+              >
+                <Ionicons name="pencil-outline" size={16} color="#9ca3af" />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         {/* Messages */}
         <ScrollView
@@ -541,7 +622,7 @@ export default function StaffChatScreen({ myNetid, myName, onUnreadChange }: Pro
             ref={inputRef}
             value={inputText}
             onChangeText={handleTextChange}
-            placeholder={`Message #${activeChannelInfo.label}... use @ to mention`}
+            placeholder={`Message ${activeDisplayName}... use @ to mention`}
             placeholderTextColor="#9ca3af"
             multiline
             // @ts-ignore — web-only prop

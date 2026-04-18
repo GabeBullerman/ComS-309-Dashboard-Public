@@ -1,5 +1,6 @@
 package edu.iastate.dashboard309.controller;
 
+import edu.iastate.dashboard309.dto.ChatChannelDto;
 import edu.iastate.dashboard309.dto.ChatMessageDto;
 import edu.iastate.dashboard309.model.User;
 import edu.iastate.dashboard309.repository.UserRepository;
@@ -94,6 +95,26 @@ public class ChatController {
     public Map<String, Long> getAllUnread(Authentication authentication) {
         requireStaff(authentication);
         return chatService.getAllUnreadCounts(authentication.getName(), extractRole(authentication));
+    }
+
+    @GetMapping("/channels")
+    public List<ChatChannelDto> getChannels(Authentication authentication) {
+        requireStaff(authentication);
+        return chatService.getChannels();
+    }
+
+    public record UpdateChannelRequest(String displayName, String description) {}
+
+    @PutMapping("/channels/{id}")
+    public ChatChannelDto updateChannel(@PathVariable String id,
+                                        @RequestBody UpdateChannelRequest req,
+                                        Authentication authentication) {
+        requireStaff(authentication);
+        if (!authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("INSTRUCTOR"))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Instructor only");
+        }
+        return chatService.updateChannel(id, req.displayName(), req.description());
     }
 
     public record MarkReadRequest(Long lastMessageId, String channel) {}

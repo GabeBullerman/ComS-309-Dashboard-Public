@@ -1,11 +1,15 @@
 package edu.iastate.dashboard309.service;
 
+import edu.iastate.dashboard309.dto.ChatChannelDto;
 import edu.iastate.dashboard309.dto.ChatMessageDto;
+import edu.iastate.dashboard309.model.ChatChannel;
 import edu.iastate.dashboard309.model.ChatMention;
 import edu.iastate.dashboard309.model.ChatMessage;
 import edu.iastate.dashboard309.model.ChatRead;
+import edu.iastate.dashboard309.repository.ChatChannelRepository;
 import edu.iastate.dashboard309.repository.ChatMessageRepository;
 import edu.iastate.dashboard309.repository.ChatReadRepository;
+import jakarta.annotation.PostConstruct;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,10 +27,43 @@ public class ChatService {
 
     private final ChatMessageRepository messageRepo;
     private final ChatReadRepository readRepo;
+    private final ChatChannelRepository channelRepo;
 
-    public ChatService(ChatMessageRepository messageRepo, ChatReadRepository readRepo) {
+    public ChatService(ChatMessageRepository messageRepo, ChatReadRepository readRepo,
+                       ChatChannelRepository channelRepo) {
         this.messageRepo = messageRepo;
         this.readRepo = readRepo;
+        this.channelRepo = channelRepo;
+    }
+
+    @PostConstruct
+    public void seedChannels() {
+        if (!channelRepo.existsById("general")) {
+            channelRepo.save(new ChatChannel("general", "General", null));
+        }
+        if (!channelRepo.existsById("system-feedback")) {
+            channelRepo.save(new ChatChannel("system-feedback", "System Feedback",
+                "Report bugs, suggest improvements, or discuss feature requests"));
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<ChatChannelDto> getChannels() {
+        return CHANNELS.stream()
+            .map(id -> channelRepo.findById(id)
+                .map(c -> new ChatChannelDto(c.getId(), c.getDisplayName(), c.getDescription()))
+                .orElse(new ChatChannelDto(id, id, null)))
+            .toList();
+    }
+
+    @Transactional
+    public ChatChannelDto updateChannel(String id, String displayName, String description) {
+        ChatChannel ch = channelRepo.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Channel not found"));
+        if (displayName != null && !displayName.isBlank()) ch.setDisplayName(displayName);
+        ch.setDescription(description);
+        channelRepo.save(ch);
+        return new ChatChannelDto(ch.getId(), ch.getDisplayName(), ch.getDescription());
     }
 
     @Transactional(readOnly = true)

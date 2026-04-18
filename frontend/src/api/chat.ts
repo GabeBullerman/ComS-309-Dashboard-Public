@@ -23,9 +23,25 @@ export interface ChatMessage {
 }
 
 export const CHANNELS = [
-  { id: 'general',         label: 'General',         icon: 'chatbubbles-outline' as const },
-  { id: 'system-feedback', label: 'System Feedback',  icon: 'construct-outline' as const },
+  { id: 'general',         defaultLabel: 'General',        icon: 'chatbubble-ellipses-outline' as const },
+  { id: 'system-feedback', defaultLabel: 'System Feedback', icon: 'construct-outline' as const },
 ];
+
+export interface ChannelMeta {
+  id: string;
+  displayName: string;
+  description: string | null;
+}
+
+export const getChannels = async (): Promise<ChannelMeta[]> => {
+  const res = await axiosInstance.get('/api/chat/channels');
+  return res.data as ChannelMeta[];
+};
+
+export const updateChannel = async (id: string, data: { displayName: string; description: string | null }): Promise<ChannelMeta> => {
+  const res = await axiosInstance.put(`/api/chat/channels/${id}`, data);
+  return res.data as ChannelMeta;
+};
 
 export const getMessages = async (channel: string, before?: number, limit = 50): Promise<ChatMessage[]> => {
   const params: Record<string, string | number> = { limit, channel };
