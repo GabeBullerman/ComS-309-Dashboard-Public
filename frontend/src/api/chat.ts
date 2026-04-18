@@ -19,10 +19,16 @@ export interface ChatMessage {
   edited: boolean;
   createdAt: string;
   updatedAt: string | null;
+  channelName: string;
 }
 
-export const getMessages = async (before?: number, limit = 50): Promise<ChatMessage[]> => {
-  const params: Record<string, string | number> = { limit };
+export const CHANNELS = [
+  { id: 'general',         label: 'General',         icon: 'chatbubbles-outline' as const },
+  { id: 'system-feedback', label: 'System Feedback',  icon: 'construct-outline' as const },
+];
+
+export const getMessages = async (channel: string, before?: number, limit = 50): Promise<ChatMessage[]> => {
+  const params: Record<string, string | number> = { limit, channel };
   if (before !== undefined) params.before = before;
   const res = await axiosInstance.get('/api/chat/messages', { params });
   return res.data as ChatMessage[];
@@ -30,6 +36,7 @@ export const getMessages = async (before?: number, limit = 50): Promise<ChatMess
 
 export const sendMessage = async (data: {
   content: string;
+  channel: string;
   replyToId?: number;
   mentionedNetids: string[];
   mentionedRoles: string[];
@@ -56,6 +63,11 @@ export const getUnreadCount = async (): Promise<number> => {
   return (res.data as { count: number }).count;
 };
 
-export const markRead = async (lastMessageId: number): Promise<void> => {
-  await axiosInstance.post('/api/chat/mark-read', { lastMessageId });
+export const getAllUnreadCounts = async (): Promise<Record<string, number>> => {
+  const res = await axiosInstance.get('/api/chat/unread/all');
+  return res.data as Record<string, number>;
+};
+
+export const markRead = async (lastMessageId: number, channel: string): Promise<void> => {
+  await axiosInstance.post('/api/chat/mark-read', { lastMessageId, channel });
 };

@@ -13,12 +13,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ChatService {
+
+    static final List<String> CHANNELS = List.of("general", "system-feedback");
 
     private final ChatMessageRepository messageRepo;
     private final ChatReadRepository readRepo;
@@ -29,27 +30,46 @@ public class ChatService {
     }
 
     @Transactional(readOnly = true)
-    public List<ChatMessageDto> getMessages(Long before, int limit) {
+    public List<ChatMessageDto> getMessages(Long before, int limit, String channel) {
         List<ChatMessage> messages = before == null
-            ? messageRepo.findLatest(PageRequest.of(0, limit))
-            : messageRepo.findBefore(before, PageRequest.of(0, limit));
+            ? messageRepo.findLatestInChannel(channel, PageRequest.of(0, limit))
+            : messageRepo.findBeforeInChannel(before, channel, PageRequest.of(0, limit));
         Collections.reverse(messages);
         return messages.stream().map(this::toDto).toList();
     }
 
+    /** Total tag-notification count across all channels (for the nav badge). */
     @Transactional(readOnly = true)
     public long getUnreadCount(String netid, String role) {
-        long lastReadId = readRepo.findById(netid)
-            .map(r -> r.getLastReadMessageId() == null ? 0L : r.getLastReadMessageId())
-            .orElse(0L);
-        return messageRepo.countTagsAfter(netid, role, lastReadId);
+        Map<String, Long> readMap = readRepo.findByNetid(netid).stream()
+            .collect(Collectors.toMap(ChatRead::getChannelName,
+                r -> r.getLastReadMessageId() == null ? 0L : r.getLastReadMessageId()));
+        return CHANNELS.stream()
+            .mapToLong(ch -> messageRepo.countTagsAfter(netid, role, readMap.getOrDefault(ch, 0L), ch))
+            .sum();
+    }
+
+    /** Per-channel tag-notification counts (for the in-chat channel list). */
+    @Transactional(readOnly = true)
+    public Map<String, Long> getAllUnreadCounts(String netid, String role) {
+        Map<String, Long> readMap = readRepo.findByNetid(netid).stream()
+            .collect(Collectors.toMap(ChatRead::getChannelName,
+                r -> r.getLastReadMessageId() == null ? 0L : r.getLastReadMessageId()));
+        Map<String, Long> result = new LinkedHashMap<>();
+        for (String ch : CHANNELS) {
+            result.put(ch, messageRepo.countTagsAfter(netid, role, readMap.getOrDefault(ch, 0L), ch));
+        }
+        return result;
     }
 
     @Transactional
-    public void markRead(String netid, Long lastMessageId) {
-        ChatRead read = readRepo.findById(netid).orElseGet(() -> {
+    public void markRead(String netid, Long lastMessageId, String channel) {
+        String id = ChatRead.makeId(netid, channel);
+        ChatRead read = readRepo.findById(id).orElseGet(() -> {
             ChatRead r = new ChatRead();
+            r.setId(id);
             r.setNetid(netid);
+            r.setChannelName(channel);
             return r;
         });
         read.setLastReadMessageId(lastMessageId);
@@ -58,11 +78,13 @@ public class ChatService {
 
     @Transactional
     public ChatMessageDto createMessage(String senderNetid, String senderName, String content,
-                                        Long replyToId, List<String> mentionedNetids, List<String> mentionedRoles) {
+                                        Long replyToId, List<String> mentionedNetids,
+                                        List<String> mentionedRoles, String channel) {
         ChatMessage msg = new ChatMessage();
         msg.setSenderNetid(senderNetid);
         msg.setSenderName(senderName);
         msg.setContent(content);
+        msg.setChannelName(CHANNELS.contains(channel) ? channel : "general");
         if (replyToId != null) {
             messageRepo.findById(replyToId).ifPresent(msg::setReplyTo);
         }
@@ -99,13 +121,12 @@ public class ChatService {
     }
 
     private void buildMentions(ChatMessage msg, List<String> netids, List<String> roles) {
-        List<ChatMention> mentions = new ArrayList<>();
         if (netids != null) {
             for (String netid : netids) {
                 ChatMention m = new ChatMention();
                 m.setMessage(msg);
                 m.setMentionedNetid(netid);
-                mentions.add(m);
+                msg.getMentions().add(m);
             }
         }
         if (roles != null) {
@@ -113,21 +134,18 @@ public class ChatService {
                 ChatMention m = new ChatMention();
                 m.setMessage(msg);
                 m.setMentionedRole(role);
-                mentions.add(m);
+                msg.getMentions().add(m);
             }
         }
-        msg.getMentions().addAll(mentions);
     }
 
     private ChatMessageDto toDto(ChatMessage msg) {
         List<String> netids = msg.getMentions().stream()
             .filter(m -> m.getMentionedNetid() != null)
-            .map(ChatMention::getMentionedNetid)
-            .toList();
+            .map(ChatMention::getMentionedNetid).toList();
         List<String> roles = msg.getMentions().stream()
             .filter(m -> m.getMentionedRole() != null)
-            .map(ChatMention::getMentionedRole)
-            .toList();
+            .map(ChatMention::getMentionedRole).toList();
         ChatMessageDto.ReplyPreview replyPreview = null;
         Long replyToId = null;
         if (msg.getReplyTo() != null) {
@@ -139,7 +157,7 @@ public class ChatService {
         return new ChatMessageDto(
             msg.getId(), msg.getSenderNetid(), msg.getSenderName(), msg.getContent(),
             replyToId, replyPreview, netids, roles,
-            msg.isEdited(), msg.getCreatedAt(), msg.getUpdatedAt()
+            msg.isEdited(), msg.getCreatedAt(), msg.getUpdatedAt(), msg.getChannelName()
         );
     }
 }

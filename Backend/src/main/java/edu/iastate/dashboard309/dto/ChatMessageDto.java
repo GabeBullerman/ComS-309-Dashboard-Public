@@ -14,7 +14,8 @@ public record ChatMessageDto(
     List<String> mentionedRoles,
     boolean edited,
     LocalDateTime createdAt,
-    LocalDateTime updatedAt
+    LocalDateTime updatedAt,
+    String channelName
 ) {
     public record ReplyPreview(Long id, String senderNetid, String senderName, String content) {}
 }

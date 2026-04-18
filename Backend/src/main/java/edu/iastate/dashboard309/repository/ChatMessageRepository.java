@@ -10,22 +10,20 @@ import java.util.List;
 
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
-    @Query("SELECT m FROM ChatMessage m ORDER BY m.id DESC")
-    List<ChatMessage> findLatest(Pageable pageable);
+    @Query("SELECT m FROM ChatMessage m WHERE m.channelName = :channel ORDER BY m.id DESC")
+    List<ChatMessage> findLatestInChannel(@Param("channel") String channel, Pageable pageable);
 
-    @Query("SELECT m FROM ChatMessage m WHERE m.id < :before ORDER BY m.id DESC")
-    List<ChatMessage> findBefore(@Param("before") Long before, Pageable pageable);
+    @Query("SELECT m FROM ChatMessage m WHERE m.id < :before AND m.channelName = :channel ORDER BY m.id DESC")
+    List<ChatMessage> findBeforeInChannel(@Param("before") Long before, @Param("channel") String channel, Pageable pageable);
 
     /**
-     * Count messages that are relevant to this user (tag notifications):
-     *  - @netid mention
-     *  - @role mention matching the user's role
-     *  - a reply to a message the user sent
-     * Excludes messages the user sent themselves and messages already seen (id <= lastReadId).
+     * Count tag-relevant messages in a specific channel since lastReadId.
+     * A message is relevant if it @-mentions the user by netid or role, or is a reply to their message.
      */
     @Query("""
         SELECT COUNT(m) FROM ChatMessage m
         WHERE m.id > :lastReadId
+          AND m.channelName = :channel
           AND m.senderNetid != :netid
           AND (
             EXISTS (SELECT 1 FROM ChatMention cm WHERE cm.message = m AND cm.mentionedNetid = :netid)
@@ -33,5 +31,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             OR EXISTS (SELECT 1 FROM ChatMessage parent WHERE parent = m.replyTo AND parent.senderNetid = :netid)
           )
         """)
-    long countTagsAfter(@Param("netid") String netid, @Param("role") String role, @Param("lastReadId") long lastReadId);
+    long countTagsAfter(@Param("netid") String netid, @Param("role") String role,
+                        @Param("lastReadId") long lastReadId, @Param("channel") String channel);
 }

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/chat")
@@ -29,16 +30,18 @@ public class ChatController {
     public List<ChatMessageDto> getMessages(
             @RequestParam(required = false) Long before,
             @RequestParam(defaultValue = "50") int limit,
+            @RequestParam(defaultValue = "general") String channel,
             Authentication authentication) {
         requireStaff(authentication);
-        return chatService.getMessages(before, Math.min(limit, 100));
+        return chatService.getMessages(before, Math.min(limit, 100), channel);
     }
 
     public record CreateRequest(
         @NotBlank String content,
         Long replyToId,
         List<String> mentionedNetids,
-        List<String> mentionedRoles
+        List<String> mentionedRoles,
+        String channel
     ) {}
 
     @PostMapping("/messages")
@@ -49,7 +52,8 @@ public class ChatController {
         return chatService.createMessage(
             sender.getNetid(), sender.getName(),
             req.content(), req.replyToId(),
-            req.mentionedNetids(), req.mentionedRoles()
+            req.mentionedNetids(), req.mentionedRoles(),
+            req.channel() != null ? req.channel() : "general"
         );
     }
 
@@ -78,19 +82,28 @@ public class ChatController {
 
     public record UnreadResponse(long count) {}
 
+    /** Total tag count across all channels — used by the nav badge. */
     @GetMapping("/unread")
     public UnreadResponse getUnread(Authentication authentication) {
         requireStaff(authentication);
         return new UnreadResponse(chatService.getUnreadCount(authentication.getName(), extractRole(authentication)));
     }
 
-    public record MarkReadRequest(Long lastMessageId) {}
+    /** Per-channel tag counts — used by the in-chat channel sidebar. */
+    @GetMapping("/unread/all")
+    public Map<String, Long> getAllUnread(Authentication authentication) {
+        requireStaff(authentication);
+        return chatService.getAllUnreadCounts(authentication.getName(), extractRole(authentication));
+    }
+
+    public record MarkReadRequest(Long lastMessageId, String channel) {}
 
     @PostMapping("/mark-read")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void markRead(@RequestBody MarkReadRequest req, Authentication authentication) {
         requireStaff(authentication);
-        chatService.markRead(authentication.getName(), req.lastMessageId());
+        String channel = req.channel() != null ? req.channel() : "general";
+        chatService.markRead(authentication.getName(), req.lastMessageId(), channel);
     }
 
     private String extractRole(Authentication authentication) {

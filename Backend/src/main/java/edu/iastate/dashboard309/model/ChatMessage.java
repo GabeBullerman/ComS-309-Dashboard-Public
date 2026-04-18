@@ -35,6 +35,9 @@ public class ChatMessage {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "channel_name", nullable = false)
+    private String channelName = "general";
+
     @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ChatMention> mentions = new ArrayList<>();
 
@@ -54,6 +57,8 @@ public class ChatMessage {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public String getChannelName() { return channelName; }
+    public void setChannelName(String channelName) { this.channelName = channelName; }
     public List<ChatMention> getMentions() { return mentions; }
     public void setMentions(List<ChatMention> mentions) { this.mentions = mentions; }
 }
