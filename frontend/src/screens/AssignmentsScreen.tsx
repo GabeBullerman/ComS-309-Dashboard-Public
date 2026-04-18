@@ -162,7 +162,7 @@ export default function AssignmentsScreen() {
             : '#1f2937';
           return (
             <View style={{
-              backgroundColor: 'white', borderRadius: 10, padding: 16,
+              backgroundColor: overdue ? '#fff5f5' : 'white', borderRadius: 10, padding: 16,
               borderWidth: 2, borderColor,
               shadowColor: overdue ? '#DC2626' : '#000',
               shadowOpacity: overdue ? 0.3 : 0.06,
