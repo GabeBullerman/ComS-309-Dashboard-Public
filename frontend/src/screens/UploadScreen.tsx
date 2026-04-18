@@ -103,7 +103,7 @@ export default function UploadScreen(): React.JSX.Element {
     try {
       const lookupTimeout = new Promise<never>((_, rej) => setTimeout(() => rej(), 3000));
       const lookupResult = Promise.all([
-        getUsersByRole('Student').catch(() => []),
+        getUsersByRole('STUDENT').catch(() => []),
         getUsersByRole('TA').catch(() => []),
         getUsersByRole('HTA').catch(() => []),
       ]).then(arrs => arrs.flat());
