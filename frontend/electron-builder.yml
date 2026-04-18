@@ -1,6 +1,8 @@
 appId: edu.iastate.dashboard.desktop
 productName: Class Dashboard
 
+asar: false
+
 directories:
   output: build
   buildResources: assets
@@ -21,7 +23,7 @@ files:
   - "!**/{.git,.gitignore,.github}"
 
 win:
-  icon: src/Images/Iowa_State_Cyclones_logo.ico
+  icon: src/Images/Iowa_State_Cyclones_logo.png
   target:
     - nsis
     - portable

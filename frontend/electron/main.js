@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, Menu } = require('electron');
+const { app, BrowserWindow, shell, Menu, dialog } = require('electron');
 Menu.setApplicationMenu(null);
 const path = require('path');
 const http = require('http');
@@ -79,13 +79,9 @@ async function createWindow() {
   });
 
   if (isDev) {
-    // Requires `npm run web` (expo start --web) to be running on port 8081
     await win.loadURL('http://localhost:8081');
-    // win.webContents.openDevTools();
   } else {
-    const distPath = path.join(__dirname, '..', 'dist');
-    const port = await startStaticServer(distPath);
-    await win.loadURL(`http://127.0.0.1:${port}`);
+    await win.loadURL('http://coms-4020-006.class.las.iastate.edu:8080');
   }
 
   // Open any links that try to open a new window in the system browser instead
