@@ -323,8 +323,8 @@ export default function StaffChatScreen({ myNetid, myName, onUnreadChange }: Pro
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: '#f9fafb' }}>
 
       {/* ── Channel sidebar ── */}
-      <View style={{ width: 180, backgroundColor: '#1f2937', paddingTop: 16 }}>
-        <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.4)', letterSpacing: 1, paddingHorizontal: 12, marginBottom: 6 }}>
+      <View style={{ width: 180, backgroundColor: '#b91c1c', paddingTop: 16, borderRightWidth: 2, borderRightColor: '#111827' }}>
+        <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, paddingHorizontal: 12, marginBottom: 6 }}>
           CHANNELS
         </Text>
         {CHANNELS.map(ch => {
@@ -338,15 +338,15 @@ export default function StaffChatScreen({ myNetid, myName, onUnreadChange }: Pro
                 flexDirection: 'row', alignItems: 'center', gap: 6,
                 paddingHorizontal: 12, paddingVertical: 8, marginHorizontal: 4,
                 borderRadius: 6, marginBottom: 2,
-                backgroundColor: isActive ? 'rgba(241,190,72,0.15)' : 'transparent',
+                backgroundColor: isActive ? '#F1BE48' : 'transparent',
               }}
             >
-              <Text style={{ fontSize: 14, color: isActive ? '#F1BE48' : unread > 0 ? 'white' : 'rgba(255,255,255,0.5)', fontWeight: isActive || unread > 0 ? '600' : '400', flex: 1 }}>
+              <Text style={{ fontSize: 14, color: isActive ? '#7c2d12' : unread > 0 ? 'white' : 'rgba(255,255,255,0.65)', fontWeight: isActive || unread > 0 ? '600' : '400', flex: 1 }}>
                 # {ch.label}
               </Text>
               {unread > 0 && !isActive && (
-                <View style={{ backgroundColor: '#dc2626', borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
-                  <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>{unread > 99 ? '99+' : unread}</Text>
+                <View style={{ backgroundColor: '#F1BE48', borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+                  <Text style={{ color: '#7c2d12', fontSize: 10, fontWeight: '700' }}>{unread > 99 ? '99+' : unread}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -544,6 +544,13 @@ export default function StaffChatScreen({ myNetid, myName, onUnreadChange }: Pro
             placeholder={`Message #${activeChannelInfo.label}... use @ to mention`}
             placeholderTextColor="#9ca3af"
             multiline
+            // @ts-ignore — web-only prop
+            onKeyPress={(e: any) => {
+              if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
             style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: '#111827', backgroundColor: '#f9fafb', maxHeight: 120, minHeight: 40 }}
           />
           <TouchableOpacity
