@@ -52,7 +52,7 @@ public class JwtFilter extends OncePerRequestFilter{
             List<String> roles = claims.get("roles", List.class);
             List<String> permissions = claims.get("permissions", List.class);
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (username != null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
                 List<GrantedAuthority> authorities = buildAuthorities(roles, permissions);
@@ -61,6 +61,8 @@ public class JwtFilter extends OncePerRequestFilter{
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
+                // JWT always wins — clear any session-based auth (e.g. leftover OAuth2 session)
+                SecurityContextHolder.clearContext();
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
 
