@@ -389,7 +389,7 @@ export default function TaskAssignmentScreen() {
             ?? (g.netids.length === 1 ? g.netids[0] : `${g.netids.length} recipients`);
           const isEditing = editingId === g.rep.id;
           return (
-            <View style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: isEditing ? '#C8102E' : '#e5e7eb' }}>
+            <View style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, borderWidth: isEditing ? 1.5 : 1, borderColor: isEditing ? '#C8102E' : '#1f2937' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Text style={{ fontWeight: '600', color: '#111827', flex: 1, marginRight: 8 }}>{g.rep.title}</Text>
                 <View style={{ flexDirection: 'row', gap: 8 }}>

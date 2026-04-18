@@ -195,7 +195,7 @@ export default function AssignmentsScreen() {
                 const name = assigner?.name ?? item.assignedByNetid;
                 return (
                   <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>
-                    From: {rl ? `${rl} ` : ''}{name}
+                    From: {name}{rl ? ` (${rl})` : ''}
                   </Text>
                 );
               })()}
