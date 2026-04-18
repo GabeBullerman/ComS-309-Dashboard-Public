@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { normalizeRole, UserSummary } from '../utils/auth';
-import { getCurrentUser, getUsersByRole } from '../api/users';
+import { getCurrentUser, getUsersByRole, getUserByNetid } from '../api/users';
 import { getTeams, TeamApiResponse } from '../api/teams';
-import { getTasksAssignedBy, getTasksAssignedTo, createTask, updateTask, deleteTask, updateTaskStatus, TaskApiResponse, TaskStatus } from '../api/tasks';
+import { getTasksAssignedBy, createTask, updateTask, deleteTask, TaskApiResponse, TaskStatus } from '../api/tasks';
 
 type RecipientType = 'specific-ta' | 'all-tas' | 'specific-team' | 'all-my-teams' | 'all-students';
 
@@ -28,12 +28,11 @@ export default function TaskAssignmentScreen() {
   const [teams, setTeams] = useState<TeamApiResponse[]>([]);
   const [myTasks, setMyTasks] = useState<TaskApiResponse[]>([]);
   const [taskLabelMap, setTaskLabelMap] = useState<Record<number, string>>({});
+  const [recipientNameMap, setRecipientNameMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState({ title: '', description: '', dueDate: '' });
-  const [tasksAssignedToMe, setTasksAssignedToMe] = useState<TaskApiResponse[]>([]);
-  const [myTasksFilter, setMyTasksFilter] = useState<'ALL' | TaskStatus>('ALL');
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -72,8 +71,16 @@ export default function TaskAssignmentScreen() {
       setRole(r);
 
       const fetches: Promise<void>[] = [
-        getTasksAssignedBy(user.netid).then(setMyTasks).catch(() => {}),
-        getTasksAssignedTo(user.netid).then(setTasksAssignedToMe).catch(() => {}),
+        getTasksAssignedBy(user.netid).then((tasks) => {
+          setMyTasks(tasks);
+          const uniqueNetids = [...new Set(tasks.map((t) => t.assignedToNetid).filter(Boolean))] as string[];
+          Promise.all(uniqueNetids.map((n) => getUserByNetid(n).then((u) => u ? [n, u.name ?? n] as const : null)))
+            .then((results) => {
+              const map: Record<string, string> = {};
+              for (const r of results) { if (r) map[r[0]] = r[1]; }
+              setRecipientNameMap(map);
+            });
+        }).catch(() => {}),
       ];
 
       if (r === 'HTA' || r === 'Instructor') {
@@ -209,13 +216,6 @@ export default function TaskAssignmentScreen() {
     }
   };
 
-  const handleUpdateStatus = async (taskId: number, status: TaskStatus) => {
-    try {
-      const updated = await updateTaskStatus(taskId, status);
-      setTasksAssignedToMe((prev) => prev.map((t) => t.id === taskId ? { ...t, status: updated.status } : t));
-      setMyTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: updated.status } : t));
-    } catch { /* silent */ }
-  };
 
   const STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; border: string; label: string }> = {
     TODO:     { bg: '#f3f4f6', text: '#374151', border: '#e5e7eb', label: 'To Do' },
@@ -406,24 +406,53 @@ export default function TaskAssignmentScreen() {
                 </View>
               </View>
 
-              {/* Status breakdown for HTA */}
-              {!isEditing && isHtaOrInstructor && g.ids.length > 1 && (() => {
-                const byStatus = g.ids.reduce<Record<string, number>>((acc, id) => {
-                  const t = myTasks.find(t => t.id === id);
-                  const s = t?.status ?? 'TODO';
-                  acc[s] = (acc[s] ?? 0) + 1;
-                  return acc;
-                }, {});
+              {/* Per-recipient status list */}
+              {!isEditing && (() => {
+                const assignees = g.ids.map((id) => myTasks.find((t) => t.id === id)).filter(Boolean) as typeof myTasks;
+                if (assignees.length === 0) return null;
+                const complete = assignees.filter((t) => t.status === 'COMPLETE');
+                const pending = assignees.filter((t) => t.status !== 'COMPLETE');
                 return (
-                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                    {Object.entries(byStatus).map(([s, count]) => {
-                      const style = STATUS_STYLES[s as TaskStatus];
-                      return (
-                        <View key={s} style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: style.bg, borderWidth: 1, borderColor: style.border, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
-                          <Text style={{ fontSize: 11, fontWeight: '600', color: style.text }}>{count} {style.label}</Text>
-                        </View>
-                      );
-                    })}
+                  <View style={{ marginTop: 8, gap: 2 }}>
+                    {pending.length > 0 && (
+                      <>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#6b7280', marginBottom: 2 }}>
+                          Pending ({pending.length})
+                        </Text>
+                        {pending.map((t) => {
+                          const status = (t.status ?? 'TODO') as TaskStatus;
+                          const s = STATUS_STYLES[status];
+                          const name = t.assignedToNetid ? (recipientNameMap[t.assignedToNetid] ?? t.assignedToNetid) : '?';
+                          return (
+                            <View key={t.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <Text style={{ fontSize: 12, color: '#374151' }}>{name}</Text>
+                              <View style={{ backgroundColor: s.bg, borderWidth: 1, borderColor: s.border, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1 }}>
+                                <Text style={{ fontSize: 10, fontWeight: '600', color: s.text }}>{s.label}</Text>
+                              </View>
+                            </View>
+                          );
+                        })}
+                      </>
+                    )}
+                    {complete.length > 0 && (
+                      <>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#6b7280', marginTop: pending.length > 0 ? 6 : 2, marginBottom: 2 }}>
+                          Completed ({complete.length})
+                        </Text>
+                        {complete.map((t) => {
+                          const s = STATUS_STYLES['COMPLETE'];
+                          const name = t.assignedToNetid ? (recipientNameMap[t.assignedToNetid] ?? t.assignedToNetid) : '?';
+                          return (
+                            <View key={t.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <Text style={{ fontSize: 12, color: '#374151' }}>{name}</Text>
+                              <View style={{ backgroundColor: s.bg, borderWidth: 1, borderColor: s.border, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1 }}>
+                                <Text style={{ fontSize: 10, fontWeight: '600', color: s.text }}>{s.label}</Text>
+                              </View>
+                            </View>
+                          );
+                        })}
+                      </>
+                    )}
                   </View>
                 );
               })()}
@@ -468,68 +497,12 @@ export default function TaskAssignmentScreen() {
                   {g.rep.description ? (
                     <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 2 }}>{g.rep.description}</Text>
                   ) : null}
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-                    <Text style={{ fontSize: 12, color: '#94a3b8' }}>→ {recipientLabel}</Text>
-                    {dateOnly && <Text style={{ fontSize: 12, color: '#6b7280' }}>Due: {dateOnly}</Text>}
-                  </View>
+                  {dateOnly && <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Due: {dateOnly}</Text>}
                 </>
               )}
             </View>
           );
   };
-
-  const filteredMyTasks = myTasksFilter === 'ALL'
-    ? tasksAssignedToMe
-    : tasksAssignedToMe.filter((t) => (t.status ?? 'TODO') === myTasksFilter);
-
-  const myTasksPanel = (
-    <View style={{ backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden', marginBottom: isMobile ? 12 : 0, flex: isMobile ? undefined : 1 }}>
-      <View style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-        <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>My Tasks ({tasksAssignedToMe.length})</Text>
-      </View>
-      {/* Filter tabs */}
-      <View style={{ flexDirection: 'row', gap: 6, padding: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
-        {(['ALL', 'TODO', 'WIP', 'COMPLETE'] as const).map((f) => (
-          <TouchableOpacity
-            key={f}
-            onPress={() => setMyTasksFilter(f)}
-            style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: myTasksFilter === f ? '#C8102E' : '#f3f4f6' }}
-          >
-            <Text style={{ fontSize: 11, fontWeight: '600', color: myTasksFilter === f ? 'white' : '#374151' }}>
-              {f === 'ALL' ? 'All' : f === 'TODO' ? 'To Do' : f === 'WIP' ? 'In Progress' : 'Complete'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <ScrollView contentContainerStyle={{ padding: 12, gap: 8 }}>
-        {filteredMyTasks.length === 0 ? (
-          <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 24, fontSize: 14 }}>No tasks here.</Text>
-        ) : (
-          filteredMyTasks.map((t) => {
-            const status = (t.status ?? 'TODO') as TaskStatus;
-            const s = STATUS_STYLES[status];
-            const nextStatus = STATUS_CYCLE[(STATUS_CYCLE.indexOf(status) + 1) % STATUS_CYCLE.length];
-            const dateOnly = t.dueDate ? t.dueDate.split('T')[0] : null;
-            return (
-              <View key={t.id} style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 8 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <Text style={{ fontWeight: '600', color: '#111827', flex: 1, marginRight: 8 }}>{t.title}</Text>
-                  <TouchableOpacity
-                    onPress={() => handleUpdateStatus(t.id, nextStatus)}
-                    style={{ backgroundColor: s.bg, borderWidth: 1, borderColor: s.border, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 }}
-                  >
-                    <Text style={{ fontSize: 11, fontWeight: '600', color: s.text }}>{s.label}</Text>
-                  </TouchableOpacity>
-                </View>
-                {t.description ? <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 4 }}>{t.description}</Text> : null}
-                {dateOnly ? <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Due: {dateOnly}</Text> : null}
-              </View>
-            );
-          })
-        )}
-      </ScrollView>
-    </View>
-  );
 
   const taskListPanel = (
     <View style={{ flex: isMobile ? undefined : 1, backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden' }}>
@@ -582,7 +555,6 @@ export default function TaskAssignmentScreen() {
     return (
       <ScrollView style={{ flex: 1, backgroundColor: '#f9fafb' }} contentContainerStyle={{ padding: pad, paddingBottom: 24 }}>
         {header}
-        {!isHtaOrInstructor && myTasksPanel}
         {formPanel}
         {taskListPanel}
       </ScrollView>
@@ -594,7 +566,6 @@ export default function TaskAssignmentScreen() {
       {header}
       <View style={{ flexDirection: 'row', gap: 16, flex: 1 }}>
         {formPanel}
-        {!isHtaOrInstructor && myTasksPanel}
         {taskListPanel}
       </View>
     </View>

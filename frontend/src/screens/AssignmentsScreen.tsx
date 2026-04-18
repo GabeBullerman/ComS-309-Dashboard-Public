@@ -9,7 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { normalizeRole, UserSummary } from '../utils/auth';
 import { getCurrentUser, getUserByNetid } from '../api/users';
-import { getTasksAssignedTo, TaskApiResponse } from '../api/tasks';
+import { getTasksAssignedTo, updateTaskStatus, TaskApiResponse, TaskStatus } from '../api/tasks';
 
 const roleLabel = (role?: string): string => {
   switch (normalizeRole(role)) {
@@ -46,12 +46,15 @@ export default function AssignmentsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>('All');
   const [assignerMap, setAssignerMap] = useState<Record<string, UserSummary>>({});
+  const [userRole, setUserRole] = useState<string>('Student');
 
   useEffect(() => {
     getCurrentUser().then((user) => {
       if (!user?.netid) { setError('Could not load user.'); setLoading(false); return; }
       setNetid(user.netid);
-      setRole(normalizeRole(String(user.role)));
+      const r = normalizeRole(String(user.role));
+      setRole(r);
+      setUserRole(r);
       getTasksAssignedTo(user.netid).then((tasks) => {
         setMyTasks(tasks);
         const uniqueNetids = [...new Set(tasks.map((t) => t.assignedByNetid).filter(Boolean))] as string[];
@@ -82,6 +85,22 @@ export default function AssignmentsScreen() {
       return a.dueDate.localeCompare(b.dueDate);
     });
   }, [myTasks, filter]);
+
+  const canUpdateStatus = userRole === 'TA' || userRole === 'HTA';
+
+  const STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; border: string; label: string }> = {
+    TODO:     { bg: '#f3f4f6', text: '#374151', border: '#e5e7eb', label: 'To Do' },
+    WIP:      { bg: '#fef9c3', text: '#92400e', border: '#fde047', label: 'In Progress' },
+    COMPLETE: { bg: '#dcfce7', text: '#166534', border: '#86efac', label: 'Complete' },
+  };
+  const STATUS_CYCLE: TaskStatus[] = ['TODO', 'WIP', 'COMPLETE'];
+
+  const handleUpdateStatus = async (taskId: number, status: TaskStatus) => {
+    try {
+      const updated = await updateTaskStatus(taskId, status);
+      setMyTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: updated.status } : t));
+    } catch { /* silent */ }
+  };
 
   if (loading) return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -131,15 +150,28 @@ export default function AssignmentsScreen() {
         }
         renderItem={({ item }) => {
           const { label, color } = getDateLabel(item.dueDate);
+          const status = (item.status ?? 'TODO') as TaskStatus;
+          const s = STATUS_STYLES[status];
+          const nextStatus = STATUS_CYCLE[(STATUS_CYCLE.indexOf(status) + 1) % STATUS_CYCLE.length];
           return (
             <View style={{
               backgroundColor: 'white', borderRadius: 10, padding: 16,
               borderLeftWidth: 4, borderLeftColor: '#C8102E',
               shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
             }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a' }}>
-                {item.title}
-              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a', flex: 1, marginRight: 8 }}>
+                  {item.title}
+                </Text>
+                {canUpdateStatus && (
+                  <TouchableOpacity
+                    onPress={() => handleUpdateStatus(item.id, nextStatus)}
+                    style={{ backgroundColor: s.bg, borderWidth: 1, borderColor: s.border, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: s.text }}>{s.label}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               {item.description ? (
                 <Text style={{ color: '#475569', fontSize: 13, marginTop: 4 }}>{item.description}</Text>
               ) : null}
