@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, TextInput, ScrollView, useWindowDimensions } from "react-native";
+import { View, Text, TouchableOpacity, TextInput, ScrollView, useWindowDimensions, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
     getMemberComments,
     getTeamComments,
     createMemberComment,
     createTeamComment,
+    updateComment,
+    deleteComment,
     Comment,
     CommentStatus,
 } from "@/api/comments";
@@ -35,6 +37,11 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid, is
     const [comments, setComments] = useState<Comment[]>([]);
     const [senderInfo, setSenderInfo] = useState<Record<string, { name: string; role: string }>>({});
     const [loading, setLoading] = useState(false);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [editText, setEditText] = useState("");
+    const [editStatus, setEditStatus] = useState<CommentStatus>('Good');
+    const [editStatusOpen, setEditStatusOpen] = useState(false);
+    const [editIsPrivate, setEditIsPrivate] = useState(false);
 
     const loadSenderInfo = async (loaded: Comment[]) => {
         const netids = [...new Set(loaded.map((c) => c.senderNetid))];
@@ -86,6 +93,35 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid, is
         }
     };
 
+    const startEdit = (c: Comment) => {
+        setEditingId(c.id);
+        setEditText(c.commentBody);
+        setEditStatus(c.status);
+        setEditIsPrivate(c.isPrivate);
+        setEditStatusOpen(false);
+    };
+
+    const cancelEdit = () => setEditingId(null);
+
+    const handleSaveEdit = async (c: Comment) => {
+        try {
+            const updated = await updateComment(c.id, { commentBody: editText, status: editStatus, isPrivate: editIsPrivate });
+            setComments((prev) => prev.map((x) => x.id === c.id ? updated : x));
+            setEditingId(null);
+        } catch { /* silent */ }
+    };
+
+    const handleDelete = async (id: number) => {
+        const ok = typeof window !== 'undefined'
+            ? window.confirm('Delete this comment?')
+            : true;
+        if (!ok) return;
+        try {
+            await deleteComment(id);
+            setComments((prev) => prev.filter((c) => c.id !== id));
+        } catch { /* silent */ }
+    };
+
     const title = recipientNetid ? "Member Comments" : "Team Comments";
 
     const visibleComments = isStudent ? comments.filter((c) => !c.isPrivate) : comments;
@@ -98,28 +134,95 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid, is
                     <Text style={{ color: '#9CA3AF', fontSize: 13 }}>No comments yet</Text>
                 </View>
             ) : (
-                <ScrollView style={{ maxHeight: isMobile ? 220 : 260 }} showsVerticalScrollIndicator={false}>
-                    {visibleComments.map((c) => (
-                        <View key={c.id} style={{ marginBottom: 10, padding: 10, backgroundColor: c.isPrivate ? '#faf5ff' : '#F9FAFB', borderRadius: 8, borderWidth: 1, borderColor: c.isPrivate ? '#e9d5ff' : '#F3F4F6' }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
-                                    {c.isPrivate && <Ionicons name="lock-closed" size={11} color="#7c3aed" style={{ marginRight: 4 }} />}
-                                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#4B5563', flex: 1 }} numberOfLines={1}>
-                                        {senderInfo[c.senderNetid]
-                                            ? `${senderInfo[c.senderNetid].name} (${senderInfo[c.senderNetid].role})`
-                                            : c.senderNetid}
-                                    </Text>
+                <ScrollView
+                    style={{ maxHeight: isMobile ? 300 : 420, ...(Platform.OS === 'web' ? { overflow: 'auto' } as object : {}) }}
+                    showsVerticalScrollIndicator
+                >
+                    {visibleComments.map((c) => {
+                        const isOwn = c.senderNetid === authorNetid;
+                        const canEdit = !isStudent && isOwn;
+                        const canDelete = !isStudent && isOwn;
+                        const isEditing = editingId === c.id;
+                        return (
+                            <View key={c.id} style={{ marginBottom: 10, padding: 10, backgroundColor: c.isPrivate ? '#faf5ff' : '#F9FAFB', borderRadius: 8, borderWidth: 1, borderColor: c.isPrivate ? '#e9d5ff' : '#F3F4F6' }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                                        {c.isPrivate && <Ionicons name="lock-closed" size={11} color="#7c3aed" style={{ marginRight: 4 }} />}
+                                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#4B5563', flex: 1 }} numberOfLines={1}>
+                                            {senderInfo[c.senderNetid]
+                                                ? `${senderInfo[c.senderNetid].name} (${senderInfo[c.senderNetid].role})`
+                                                : c.senderNetid}
+                                        </Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                        <Text style={{ fontSize: 11, fontWeight: '700', color: STATUS_COLOR[c.status] }}>{c.status}</Text>
+                                        {canEdit && !isEditing && (
+                                            <TouchableOpacity onPress={() => startEdit(c)}>
+                                                <Ionicons name="pencil-outline" size={14} color="#6B7280" />
+                                            </TouchableOpacity>
+                                        )}
+                                        {canDelete && !isEditing && (
+                                            <TouchableOpacity onPress={() => handleDelete(c.id)}>
+                                                <Ionicons name="trash-outline" size={14} color="#ef4444" />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
                                 </View>
-                                <Text style={{ fontSize: 11, fontWeight: '700', color: STATUS_COLOR[c.status] }}>
-                                    {c.status}
-                                </Text>
+                                {isEditing ? (
+                                    <View>
+                                        <View style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 6, marginBottom: 6 }}>
+                                            <TextInput
+                                                style={{ padding: 8, fontSize: 13, color: '#111827', height: 80, textAlignVertical: 'top' }}
+                                                value={editText}
+                                                onChangeText={setEditText}
+                                                multiline
+                                                maxLength={1400}
+                                            />
+                                        </View>
+                                        <View style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 6, marginBottom: 6, overflow: 'hidden' }}>
+                                            <TouchableOpacity
+                                                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 10, paddingVertical: 8 }}
+                                                onPress={() => setEditStatusOpen((v) => !v)}
+                                            >
+                                                <Text style={{ fontSize: 12, fontWeight: '600', color: STATUS_COLOR[editStatus] }}>{editStatus}</Text>
+                                                <Ionicons name="chevron-down" size={14} color="#6b7280" />
+                                            </TouchableOpacity>
+                                            {editStatusOpen && (
+                                                <View style={{ borderTopWidth: 1, borderTopColor: '#E5E7EB' }}>
+                                                    {(["Good", "Moderate", "Poor"] as CommentStatus[]).map((s) => (
+                                                        <TouchableOpacity key={s} style={{ paddingHorizontal: 10, paddingVertical: 8 }} onPress={() => { setEditStatus(s); setEditStatusOpen(false); }}>
+                                                            <Text style={{ fontSize: 12, fontWeight: '600', color: STATUS_COLOR[s] }}>{s}</Text>
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                </View>
+                                            )}
+                                        </View>
+                                        <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }} onPress={() => setEditIsPrivate((v) => !v)}>
+                                            <View style={{ width: 16, height: 16, borderRadius: 3, borderWidth: 1.5, borderColor: editIsPrivate ? '#7c3aed' : '#D1D5DB', backgroundColor: editIsPrivate ? '#7c3aed' : 'white', alignItems: 'center', justifyContent: 'center', marginRight: 6 }}>
+                                                {editIsPrivate && <Ionicons name="checkmark" size={10} color="white" />}
+                                            </View>
+                                            <Text style={{ fontSize: 11, color: editIsPrivate ? '#7c3aed' : '#6B7280' }}>Private</Text>
+                                        </TouchableOpacity>
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            <TouchableOpacity style={{ flex: 1, backgroundColor: '#1f2937', borderRadius: 6, paddingVertical: 8, alignItems: 'center' }} onPress={() => handleSaveEdit(c)}>
+                                                <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Save</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity style={{ flex: 1, backgroundColor: '#F3F4F6', borderRadius: 6, paddingVertical: 8, alignItems: 'center' }} onPress={cancelEdit}>
+                                                <Text style={{ color: '#374151', fontSize: 12, fontWeight: '600' }}>Cancel</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <>
+                                        <Text style={{ fontSize: 13, color: '#111827' }}>{c.commentBody}</Text>
+                                        <Text style={{ fontSize: 10, color: '#9CA3AF', marginTop: 4 }}>
+                                            {new Date(c.createdAt).toLocaleDateString()}
+                                        </Text>
+                                    </>
+                                )}
                             </View>
-                            <Text style={{ fontSize: 13, color: '#111827' }}>{c.commentBody}</Text>
-                            <Text style={{ fontSize: 10, color: '#9CA3AF', marginTop: 4 }}>
-                                {new Date(c.createdAt).toLocaleDateString()}
-                            </Text>
-                        </View>
-                    ))}
+                        );
+                    })}
                 </ScrollView>
             )}
         </View>

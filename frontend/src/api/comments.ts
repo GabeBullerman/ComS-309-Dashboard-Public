@@ -56,6 +56,25 @@ export const createMemberComment = async (data: {
   return mapComment(res.data as Record<string, unknown>);
 };
 
+// PUT /api/comments/{id}
+export const updateComment = async (id: number, data: {
+  commentBody: string;
+  status: CommentStatus;
+  isPrivate: boolean;
+}): Promise<Comment> => {
+  const res = await axiosInstance.put(`/api/comments/${id}`, {
+    commentBody: data.commentBody,
+    status: STATUS_TO_INT[data.status],
+    isPrivate: data.isPrivate,
+  });
+  return mapComment(res.data as Record<string, unknown>);
+};
+
+// DELETE /api/comments/{id}
+export const deleteComment = async (id: number): Promise<void> => {
+  await axiosInstance.delete(`/api/comments/${id}`);
+};
+
 // POST /api/comments/team/{teamId}/general  (sender must be the team's assigned TA)
 export const createTeamComment = async (teamId: number, data: {
   commentBody: string;
