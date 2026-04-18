@@ -406,6 +406,10 @@ export default function TaskAssignmentScreen() {
                 </View>
               </View>
 
+              {!isEditing && g.rep.description ? (
+                <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 4 }}>{g.rep.description}</Text>
+              ) : null}
+
               {/* Per-recipient status list */}
               {!isEditing && (() => {
                 const assignees = g.ids.map((id) => myTasks.find((t) => t.id === id)).filter(Boolean) as typeof myTasks;
@@ -487,9 +491,6 @@ export default function TaskAssignmentScreen() {
                 </View>
               ) : (
                 <>
-                  {g.rep.description ? (
-                    <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 2 }}>{g.rep.description}</Text>
-                  ) : null}
                   {dateOnly && <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Due: {dateOnly}</Text>}
                 </>
               )}
