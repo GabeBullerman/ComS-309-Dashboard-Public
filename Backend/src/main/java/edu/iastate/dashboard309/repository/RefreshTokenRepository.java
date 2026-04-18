@@ -9,4 +9,5 @@ import edu.iastate.dashboard309.model.RefreshToken;
 
 public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID> {
     Optional<RefreshToken> findById(UUID id);
+    void deleteByUserId(Long userId);
 }

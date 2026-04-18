@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface TeamRepository extends JpaRepository<Team, Long> {
     List<Team> findByTaNetid(String taNetid);
+    List<Team> findByTaId(Long taId);
 
     @Query("""
         SELECT t FROM Team t

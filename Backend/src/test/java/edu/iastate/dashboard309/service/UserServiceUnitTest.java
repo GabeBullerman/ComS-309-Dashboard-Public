@@ -6,9 +6,16 @@ import static org.mockito.Mockito.when;
 
 import edu.iastate.dashboard309.dto.UserRequest;
 import edu.iastate.dashboard309.model.User;
+import edu.iastate.dashboard309.repository.AtRiskOverrideRepository;
+import edu.iastate.dashboard309.repository.AttendanceRepository;
+import edu.iastate.dashboard309.repository.CommentRepository;
+import edu.iastate.dashboard309.repository.DemoPerformanceRepository;
 import edu.iastate.dashboard309.repository.RefreshTokenRepository;
 import edu.iastate.dashboard309.repository.RoleRepository;
+import edu.iastate.dashboard309.repository.TaskRepository;
+import edu.iastate.dashboard309.repository.TeamRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
+import edu.iastate.dashboard309.repository.WeeklyPerformanceRepository;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -29,6 +36,27 @@ class UserServiceUnitTest {
 
     @Mock
     private RefreshTokenRepository refreshTokenRepository;
+
+    @Mock
+    private AttendanceRepository attendanceRepository;
+
+    @Mock
+    private DemoPerformanceRepository demoPerformanceRepository;
+
+    @Mock
+    private WeeklyPerformanceRepository weeklyPerformanceRepository;
+
+    @Mock
+    private AtRiskOverrideRepository atRiskOverrideRepository;
+
+    @Mock
+    private CommentRepository commentRepository;
+
+    @Mock
+    private TaskRepository taskRepository;
+
+    @Mock
+    private TeamRepository teamRepository;
 
     @InjectMocks
     private UserService userService;

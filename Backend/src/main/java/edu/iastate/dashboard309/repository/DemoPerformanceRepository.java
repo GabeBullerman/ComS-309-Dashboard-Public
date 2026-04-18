@@ -12,4 +12,5 @@ public interface DemoPerformanceRepository extends JpaRepository<DemoPerformance
     Optional<DemoPerformance> findByStudentNetidAndDemoNumber(String studentNetid, Integer demoNumber);
     @org.springframework.transaction.annotation.Transactional
     void deleteByStudentNetidAndDemoNumber(String studentNetid, Integer demoNumber);
+    void deleteByStudentId(Long studentId);
 }
