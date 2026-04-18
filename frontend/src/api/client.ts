@@ -51,6 +51,13 @@ axiosInstance.interceptors.request.use(async (config) => {
   return config;
 });
 
+// ── Force-logout callback (set by App.tsx so interceptor can trigger nav) ─────
+
+let onForceLogout: (() => void) | null = null;
+export const setForceLogoutHandler = (handler: () => void) => {
+  onForceLogout = handler;
+};
+
 // ── Response interceptor — transparent token refresh on 401 ──────────────────
 
 let isRefreshing = false;
@@ -67,9 +74,9 @@ axiosInstance.interceptors.response.use(
     const original = error.config;
     const skipRefresh = ['/api/auth/login', '/api/auth/refresh'];
     const status = error.response?.status;
-    // 401 = expired token (JwtFilter), 403 = missing token (Spring Security auth check)
+    // Only refresh on 401 (token expired); 403 means forbidden/wrong role — don't loop
     if (
-      (status === 401 || status === 403) &&
+      status === 401 &&
       !original._retry &&
       !skipRefresh.some((u) => original.url?.startsWith(u))
     ) {
@@ -96,6 +103,7 @@ axiosInstance.interceptors.response.use(
       } catch (refreshErr) {
         drainQueue(refreshErr);
         await clearToken();
+        onForceLogout?.();
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;

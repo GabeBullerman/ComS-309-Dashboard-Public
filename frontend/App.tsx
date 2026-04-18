@@ -12,6 +12,7 @@ import UploadScreen from "./src/screens/UploadScreen";
 import DashboardScreen from "./src/screens/DashboardScreen";
 import TeamDetailScreen from "./src/screens/TeamDetail";
 import { logout as apiLogout, getToken } from './src/utils/auth';
+import { setForceLogoutHandler } from './src/api/client';
 import type { UserRole } from './src/utils/auth';
 import { Team, TeamMember } from "@/data/teams";
 import TeamMemberDetail from "@/screens/TeamMemberDetail";
@@ -56,6 +57,15 @@ export default function App() {
     };
 
     loadUser();
+  }, []);
+
+  useEffect(() => {
+    setForceLogoutHandler(() => {
+      setIsLoggedIn(false);
+      setUserRole('Student');
+      AsyncStorage.multiRemove(['user_role']).catch(() => {});
+      if (typeof localStorage !== 'undefined') localStorage.removeItem('dashboard_active_screen');
+    });
   }, []);
 
   const handleLogin = async (_email: string, role?: UserRole) => {
