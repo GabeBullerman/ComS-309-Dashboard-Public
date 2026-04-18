@@ -6,6 +6,9 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -95,21 +98,15 @@ public class AuthenticationController {
     }
     
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@RequestBody TokenRequest request) {
-        /* 
-        Cookie[] cookies = request.getCookies();
-        if (cookies == null) return ResponseEntity.ok("Logged out");
-        String t = Arrays.stream(request.getRefreshToken())
-            .filter(c -> c.getName().equals("refreshToken"))
-            .findFirst()
-            .map(Cookie::getValue)
-            .orElseThrow();
-        */
-
+    public ResponseEntity<?> logout(@RequestBody TokenRequest request, HttpServletRequest httpRequest) {
         String t = request.refreshToken();
-        //Remove refresh token
-        if(t != null) jwtService.deleteRefreshToken(t);
-        
+        if (t != null) jwtService.deleteRefreshToken(t);
+
+        // Invalidate the HTTP session so any OAuth2 session auth is destroyed
+        HttpSession session = httpRequest.getSession(false);
+        if (session != null) session.invalidate();
+        SecurityContextHolder.clearContext();
+
         return ResponseEntity.ok("Logged out");
     }
 
