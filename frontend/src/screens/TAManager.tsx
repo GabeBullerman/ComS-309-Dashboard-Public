@@ -36,7 +36,7 @@ export default function StaffManagerScreen({ userRole }: Props) {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showCsvInfo, setShowCsvInfo] = useState(false);
-  const [importResult, setImportResult] = useState<{ success: number; failed: string[] } | null>(null);
+  const [importResult, setImportResult] = useState<{ success: number; failed: string[]; blocked?: string[] } | null>(null);
   const [expandedId, setExpandedId] = useState<number | string | null>(null);
   const [inviteForm, setInviteForm] = useState({
     netid: '',
@@ -119,11 +119,31 @@ export default function StaffManagerScreen({ userRole }: Props) {
         return { netid, name, password, role, line };
       });
 
-      const adminRows = parsed.filter((r) => isAdminRole(r.role));
-      if (adminRows.length > 0) {
-        const names = adminRows.map((r) => `${r.netid} (${r.role})`).join(', ');
+      if (isHTA) {
+        const blocked = parsed.filter((r) => r.role === 'HTA' || r.role === 'Instructor');
+        const allowed = parsed.filter((r) => r.role === 'TA');
+        const results = await Promise.allSettled(
+          allowed.map(async ({ netid, name, password }) => {
+            if (!netid || !name) throw new Error(`Bad row`);
+            await createUser({ netid, name, password: password || 'changeme', role: ['TA'] });
+            return netid;
+          })
+        );
+        const success = results.filter((r) => r.status === 'fulfilled').length;
+        const failed = results
+          .map((r, i) => r.status === 'rejected' ? allowed[i].line : null)
+          .filter(Boolean) as string[];
+        setImportResult({ success, failed, blocked: blocked.map((r) => `${r.netid} (${ROLE_LABEL[r.role]})`) });
+        await loadStaff();
+        return;
+      }
+
+      // Instructor: only confirm for Instructor-level rows
+      const instructorRows = parsed.filter((r) => r.role === 'Instructor');
+      if (instructorRows.length > 0) {
+        const names = instructorRows.map((r) => `${r.netid}`).join(', ');
         const ok = await confirm(
-          `This CSV contains ${adminRows.length} admin-level account${adminRows.length > 1 ? 's' : ''}: ${names}.\n\nAdmin accounts have elevated permissions. Are you sure you want to add them?`
+          `This CSV contains ${instructorRows.length} Instructor account${instructorRows.length > 1 ? 's' : ''}: ${names}.\n\nInstructor accounts have full admin permissions. Are you sure you want to add them?`
         );
         if (!ok) return;
       }
@@ -150,10 +170,9 @@ export default function StaffManagerScreen({ userRole }: Props) {
       Alert.alert('Error', 'NetID, name, and password are required.');
       return;
     }
-    if (isAdminRole(inviteForm.role)) {
-      const label = ROLE_LABEL[inviteForm.role];
+    if (inviteForm.role === 'Instructor') {
       const ok = await confirm(
-        `Are you sure you want to add ${inviteForm.name.trim()} as ${label}? This grants them elevated admin permissions.`
+        `Are you sure you want to add ${inviteForm.name.trim()} as Instructor? This grants them full admin permissions.`
       );
       if (!ok) return;
     }
@@ -182,9 +201,9 @@ export default function StaffManagerScreen({ userRole }: Props) {
     if (!member.id) return;
     const currentRole = normalizeRole(String(member.role)) as StaffRole;
     if (currentRole === newRole) { setExpandedId(null); return; }
-    if (isAdminRole(newRole)) {
+    if (newRole === 'Instructor') {
       const ok = await confirm(
-        `Promote ${member.name ?? member.netid} to ${ROLE_LABEL[newRole]}? This grants them elevated admin permissions.`
+        `Promote ${member.name ?? member.netid} to Instructor? This grants them full admin permissions.`
       );
       if (!ok) return;
     } else {
@@ -297,7 +316,7 @@ export default function StaffManagerScreen({ userRole }: Props) {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <Text style={{ fontSize: isMobile ? 22 : 26, fontWeight: 'bold', color: '#111827' }}>Staff Management</Text>
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-          {isInstructor && (
+          {(isInstructor || isHTA) && (
             <>
               <TouchableOpacity onPress={() => setShowCsvInfo(!showCsvInfo)} style={{ padding: 6 }}>
                 <Ionicons name="information-circle-outline" size={22} color="#6b7280" />
@@ -323,17 +342,22 @@ export default function StaffManagerScreen({ userRole }: Props) {
         </View>
       </View>
 
-      {/* CSV format info — Instructor only */}
-      {showCsvInfo && isInstructor && (
+      {/* CSV format info */}
+      {showCsvInfo && (isInstructor || isHTA) && (
         <View style={{ backgroundColor: '#f0f9ff', borderWidth: 1, borderColor: '#bae6fd', borderRadius: 10, padding: 14, marginBottom: 14 }}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#0369a1', marginBottom: 6 }}>CSV Import Format</Text>
           <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 4 }}>netid,name,password,role</Text>
           <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 4 }}>jsmith,Jane Smith,temp123,TA</Text>
-          <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 4 }}>bjones,Bob Jones,temp123,HTA</Text>
-          <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 8 }}>cprof,Chris Prof,temp123,Instructor</Text>
+          {isInstructor && (
+            <>
+              <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 4 }}>bjones,Bob Jones,temp123,HTA</Text>
+              <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 8 }}>cprof,Chris Prof,temp123,Instructor</Text>
+            </>
+          )}
           <Text style={{ fontSize: 11, color: '#0369a1' }}>• Header row is optional (auto-detected)</Text>
-          <Text style={{ fontSize: 11, color: '#0369a1' }}>• Role: TA, HTA, or Instructor (defaults to TA)</Text>
-          <Text style={{ fontSize: 11, color: '#0369a1' }}>• HTA/Instructor rows require confirmation</Text>
+          <Text style={{ fontSize: 11, color: '#0369a1' }}>• Role: TA{isInstructor ? ', HTA, or Instructor' : ' (only TA rows will be created as HTA)'} (defaults to TA)</Text>
+          {isHTA && <Text style={{ fontSize: 11, color: '#c2410c' }}>• HTA and Instructor rows will be skipped — contact an Instructor to add admin accounts</Text>}
+          {isInstructor && <Text style={{ fontSize: 11, color: '#0369a1' }}>• Instructor rows require confirmation before adding</Text>}
           <Text style={{ fontSize: 11, color: '#0369a1' }}>• Password defaults to "changeme" if blank</Text>
           <Text style={{ fontSize: 11, color: '#0369a1' }}>• Existing NetIDs are skipped (no overwrite)</Text>
         </View>
@@ -341,14 +365,29 @@ export default function StaffManagerScreen({ userRole }: Props) {
 
       {/* Import result */}
       {importResult && (
-        <View style={{ backgroundColor: importResult.failed.length === 0 ? '#f0fdf4' : '#fef9c3', borderWidth: 1, borderColor: importResult.failed.length === 0 ? '#86efac' : '#fde047', borderRadius: 10, padding: 12, marginBottom: 12 }}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: importResult.failed.length === 0 ? '#166534' : '#92400e' }}>
-            {importResult.success} imported successfully{importResult.failed.length > 0 ? `, ${importResult.failed.length} failed` : ''}
-          </Text>
-          {importResult.failed.map((row, i) => (
-            <Text key={i} style={{ fontSize: 11, color: '#92400e', marginTop: 2 }}>✗ {row}</Text>
-          ))}
-        </View>
+        <>
+          <View style={{ backgroundColor: importResult.failed.length === 0 ? '#f0fdf4' : '#fef9c3', borderWidth: 1, borderColor: importResult.failed.length === 0 ? '#86efac' : '#fde047', borderRadius: 10, padding: 12, marginBottom: importResult.blocked?.length ? 6 : 12 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: importResult.failed.length === 0 ? '#166534' : '#92400e' }}>
+              {importResult.success} imported successfully{importResult.failed.length > 0 ? `, ${importResult.failed.length} failed` : ''}
+            </Text>
+            {importResult.failed.map((row, i) => (
+              <Text key={`fail-${i}`} style={{ fontSize: 11, color: '#92400e', marginTop: 2 }}>✗ {row}</Text>
+            ))}
+          </View>
+          {!!importResult.blocked?.length && (
+            <View style={{ backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#c2410c', marginBottom: 4 }}>
+                {importResult.blocked.length} row{importResult.blocked.length > 1 ? 's' : ''} blocked — insufficient permissions
+              </Text>
+              {importResult.blocked.map((entry, i) => (
+                <Text key={`blocked-${i}`} style={{ fontSize: 11, color: '#9a3412', marginTop: 1 }}>✗ {entry}</Text>
+              ))}
+              <Text style={{ fontSize: 11, color: '#c2410c', marginTop: 6 }}>
+                HTA and Instructor accounts can only be created by an Instructor. Please consult one to add these accounts.
+              </Text>
+            </View>
+          )}
+        </>
       )}
 
       {/* Invite Form */}
@@ -398,11 +437,11 @@ export default function StaffManagerScreen({ userRole }: Props) {
             ))}
           </View>
 
-          {isAdminRole(inviteForm.role) && (
+          {inviteForm.role === 'Instructor' && (
             <View style={{ backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa', borderRadius: 8, padding: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="warning-outline" size={16} color="#c2410c" />
               <Text style={{ fontSize: 12, color: '#c2410c', flex: 1 }}>
-                {ROLE_LABEL[inviteForm.role]} has elevated admin permissions. You'll be asked to confirm before adding.
+                Instructor has full admin permissions. You'll be asked to confirm before adding.
               </Text>
             </View>
           )}
