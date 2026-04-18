@@ -11,7 +11,7 @@ import {
   deleteAttendance,
 } from "@/api/attendance";
 
-type LocalStatus = "present" | "late" | "absent" | null;
+type LocalStatus = "present" | "late" | "absent" | "excused" | null;
 type CalendarView = "all" | "class" | "ta_meeting";
 
 const VIEW_LABELS: Record<CalendarView, string> = {
@@ -28,15 +28,17 @@ const TYPE_MAP: Record<"class" | "ta_meeting", AttendanceType> = {
 const DAYS_OF_WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 const STATUS_CONFIG = {
-  present: { color: "#16a34a", label: "Present", icon: "checkmark-circle", apiStatus: "PRESENT" as AttendanceStatus },
-  late:    { color: "#d97706", label: "Late",    icon: "time",             apiStatus: "LATE"    as AttendanceStatus },
-  absent:  { color: "#dc2626", label: "Absent",  icon: "close-circle",     apiStatus: "ABSENT"  as AttendanceStatus },
+  present: { color: "#16a34a", label: "Present", icon: "checkmark-circle",      apiStatus: "PRESENT" as AttendanceStatus },
+  late:    { color: "#d97706", label: "Late",    icon: "time",                   apiStatus: "LATE"    as AttendanceStatus },
+  absent:  { color: "#dc2626", label: "Absent",  icon: "close-circle",           apiStatus: "ABSENT"  as AttendanceStatus },
+  excused: { color: "#2563eb", label: "Excused", icon: "shield-checkmark",       apiStatus: "EXCUSED" as AttendanceStatus },
 };
 
 const API_TO_LOCAL: Record<AttendanceStatus, LocalStatus> = {
   PRESENT: "present",
   LATE: "late",
   ABSENT: "absent",
+  EXCUSED: "excused",
 };
 
 function getDaysInMonth(year: number, month: number) {
@@ -169,14 +171,14 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
           if (local) acc[local] = (acc[local] || 0) + 1;
           return acc;
         },
-        { present: 0, late: 0, absent: 0 } as Record<string, number>
+        { present: 0, late: 0, absent: 0, excused: 0 } as Record<string, number>
       );
 
   const lectureCounts = makeCounts("LECTURE");
   const meetingCounts = makeCounts("MEETING");
   const counts = calendarView === "class" ? lectureCounts
     : calendarView === "ta_meeting" ? meetingCounts
-    : { present: lectureCounts.present + meetingCounts.present, late: lectureCounts.late + meetingCounts.late, absent: lectureCounts.absent + meetingCounts.absent };
+    : { present: lectureCounts.present + meetingCounts.present, late: lectureCounts.late + meetingCounts.late, absent: lectureCounts.absent + meetingCounts.absent, excused: lectureCounts.excused + meetingCounts.excused };
 
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
