@@ -13,7 +13,7 @@ import { getUsersByRole } from '../api/users';
 import { UserSummary } from '../utils/auth';
 
 const POLL_MS = 5000;
-const ROLES = ['TA', 'HTA', 'Instructor'];
+const ROLES = ['everyone', 'TA', 'HTA', 'Instructor'];
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -323,7 +323,7 @@ export default function StaffChatScreen({ myNetid, myName, onUnreadChange }: Pro
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: '#f9fafb' }}>
 
       {/* ── Channel sidebar ── */}
-      <View style={{ width: 180, backgroundColor: '#b91c1c', paddingTop: 16, borderRightWidth: 2, borderRightColor: '#111827' }}>
+      <View style={{ width: 180, backgroundColor: '#b91c1c', paddingTop: 16, borderLeftWidth: 2, borderLeftColor: '#111827' }}>
         <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, paddingHorizontal: 12, marginBottom: 6 }}>
           CHANNELS
         </Text>

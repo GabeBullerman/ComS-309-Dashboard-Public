@@ -27,7 +27,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
           AND m.senderNetid != :netid
           AND (
             EXISTS (SELECT 1 FROM ChatMention cm WHERE cm.message = m AND cm.mentionedNetid = :netid)
-            OR EXISTS (SELECT 1 FROM ChatMention cm WHERE cm.message = m AND LOWER(cm.mentionedRole) = LOWER(:role))
+            OR EXISTS (SELECT 1 FROM ChatMention cm WHERE cm.message = m AND (LOWER(cm.mentionedRole) = LOWER(:role) OR LOWER(cm.mentionedRole) = 'everyone'))
             OR EXISTS (SELECT 1 FROM ChatMessage parent WHERE parent = m.replyTo AND parent.senderNetid = :netid)
           )
         """)
