@@ -382,7 +382,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
             <TouchableOpacity
               key={memberKey}
               onPress={() => navigation.navigate('TeamMemberDetail', { member: m, gitlabUrl: gitlab || undefined, teamId: team.id, teamName: teamName })}
-              style={{ alignItems: 'center', width: isMobile ? 80 : 152, marginHorizontal: INNER / 4 }}
+              style={{ alignItems: 'center', width: isMobile ? 80 : 152, marginHorizontal: isMobile ? 0 : INNER / 4 }}
             >
               {/* Role badge — above photo, always same position */}
               {canEditRepo ? (

@@ -270,9 +270,9 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
           ) : (
             <View style={{ gap: 2 }}>
               {calendarRows.map((row, ri) => (
-                <View key={ri} style={{ flexDirection: "row" }}>
+                <View key={`row-${ri}`} style={{ flexDirection: "row" }}>
                   {row.map((day, ci) => {
-                    if (!day) return <View key={ci} style={{ flex: 1, height: CELL_H }} />;
+                    if (!day) return <View key={`empty-${ri}-${ci}`} style={{ flex: 1, height: CELL_H }} />;
 
                     const isSelected = selectedDay === day;
                     const isToday = day === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
