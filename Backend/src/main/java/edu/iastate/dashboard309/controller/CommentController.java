@@ -90,6 +90,7 @@ public class CommentController {
         Comment comment = new Comment();
         comment.setCommentBody(request.commentBody());
         comment.setStatus(request.status());
+        comment.setPrivate(request.isPrivate());
         comment.setSender(sender);
         comment.setReceiver(receiver);
         comment.setReceiverTeam(null);
@@ -111,6 +112,7 @@ public class CommentController {
         Comment comment = new Comment();
         comment.setCommentBody(request.commentBody());
         comment.setStatus(request.status());
+        comment.setPrivate(request.isPrivate());
         comment.setSender(sender);
         comment.setReceiver(null);
         comment.setReceiverTeam(team);

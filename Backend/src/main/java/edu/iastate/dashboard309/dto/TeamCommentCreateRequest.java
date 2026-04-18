@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record TeamCommentCreateRequest(
         @NotBlank String commentBody,
-        @NotNull @Min(0) @Max(2) Integer status
+        @NotNull @Min(0) @Max(2) Integer status,
+        boolean isPrivate
 ) {
 }

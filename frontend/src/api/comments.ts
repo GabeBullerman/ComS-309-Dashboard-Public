@@ -11,14 +11,19 @@ export interface Comment {
   commentBody: string;
   status: CommentStatus;
   senderNetid: string;
-  receiverNetid: string | null;   // null for general team comments
-  receiverTeamId: number | null;  // set for general team comments
+  receiverNetid: string | null;
+  receiverTeamId: number | null;
   teamId: number;
   createdAt: string;
+  isPrivate: boolean;
 }
 
 function mapComment(raw: Record<string, unknown>): Comment {
-  return { ...(raw as Omit<Comment, 'status'>), status: INT_TO_STATUS[raw.status as number] ?? 'Good' };
+  return {
+    ...(raw as Omit<Comment, 'status' | 'isPrivate'>),
+    status: INT_TO_STATUS[raw.status as number] ?? 'Good',
+    isPrivate: (raw.isPrivate as boolean) ?? false,
+  };
 }
 
 // GET /api/comments/team/{teamId}/user/{receiverNetid}
@@ -39,12 +44,14 @@ export const createMemberComment = async (data: {
   status: CommentStatus;
   receiverNetid: string;
   teamId: number;
+  isPrivate?: boolean;
 }): Promise<Comment> => {
   const res = await axiosInstance.post('/api/comments', {
     commentBody: data.commentBody,
     status: STATUS_TO_INT[data.status],
     receiverNetid: data.receiverNetid,
     teamId: data.teamId,
+    isPrivate: data.isPrivate ?? false,
   });
   return mapComment(res.data as Record<string, unknown>);
 };
@@ -53,10 +60,12 @@ export const createMemberComment = async (data: {
 export const createTeamComment = async (teamId: number, data: {
   commentBody: string;
   status: CommentStatus;
+  isPrivate?: boolean;
 }): Promise<Comment> => {
   const res = await axiosInstance.post(`/api/comments/team/${teamId}/general`, {
     commentBody: data.commentBody,
     status: STATUS_TO_INT[data.status],
+    isPrivate: data.isPrivate ?? false,
   });
   return mapComment(res.data as Record<string, unknown>);
 };

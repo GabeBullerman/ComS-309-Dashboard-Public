@@ -97,7 +97,8 @@ public class CommentService {
             receiverTeamId,
             comment.getTeam().getId(),
             comment.getSender().getNetid(),
-            comment.getCreatedAt()
+            comment.getCreatedAt(),
+            comment.isPrivate()
         );
     }
 }

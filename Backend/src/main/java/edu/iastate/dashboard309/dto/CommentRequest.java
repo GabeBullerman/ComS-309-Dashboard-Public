@@ -15,6 +15,7 @@ public record CommentRequest(
         Long receiverTeamId,
         @NotNull Long teamId,
         String senderNetid,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        boolean isPrivate
 ) {
 }

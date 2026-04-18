@@ -31,6 +31,7 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid, is
     const [commentText, setCommentText] = useState("");
     const [selectedStatus, setSelectedStatus] = useState<CommentStatus | null>(null);
     const [statusOpen, setStatusOpen] = useState(false);
+    const [isPrivate, setIsPrivate] = useState(false);
     const [comments, setComments] = useState<Comment[]>([]);
     const [senderInfo, setSenderInfo] = useState<Record<string, { name: string; role: string }>>({});
     const [loading, setLoading] = useState(false);
@@ -65,16 +66,19 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid, is
                     status: selectedStatus,
                     receiverNetid: recipientNetid,
                     teamId,
+                    isPrivate,
                 });
             } else {
                 created = await createTeamComment(teamId, {
                     commentBody: commentText.trim(),
                     status: selectedStatus,
+                    isPrivate,
                 });
             }
             setComments((prev) => [created, ...prev]);
             setCommentText("");
             setSelectedStatus(null);
+            setIsPrivate(false);
         } catch {
             // silent
         } finally {
@@ -84,23 +88,28 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid, is
 
     const title = recipientNetid ? "Member Comments" : "Team Comments";
 
+    const visibleComments = isStudent ? comments.filter((c) => !c.isPrivate) : comments;
+
     const historyPanel = (
         <View style={{ flex: isMobile ? undefined : 1, borderRightWidth: (!isStudent && !isMobile) ? 1 : 0, borderRightColor: '#E5E7EB', padding: 14 }}>
             <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 10 }}>Comment History</Text>
-            {comments.length === 0 ? (
+            {visibleComments.length === 0 ? (
                 <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 24 }}>
                     <Text style={{ color: '#9CA3AF', fontSize: 13 }}>No comments yet</Text>
                 </View>
             ) : (
                 <ScrollView style={{ maxHeight: isMobile ? 220 : 260 }} showsVerticalScrollIndicator={false}>
-                    {comments.map((c) => (
-                        <View key={c.id} style={{ marginBottom: 10, padding: 10, backgroundColor: '#F9FAFB', borderRadius: 8, borderWidth: 1, borderColor: '#F3F4F6' }}>
+                    {visibleComments.map((c) => (
+                        <View key={c.id} style={{ marginBottom: 10, padding: 10, backgroundColor: c.isPrivate ? '#faf5ff' : '#F9FAFB', borderRadius: 8, borderWidth: 1, borderColor: c.isPrivate ? '#e9d5ff' : '#F3F4F6' }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                                <Text style={{ fontSize: 11, fontWeight: '600', color: '#4B5563', flex: 1, marginRight: 8 }} numberOfLines={1}>
-                                    {senderInfo[c.senderNetid]
-                                        ? `${senderInfo[c.senderNetid].name} (${senderInfo[c.senderNetid].role})`
-                                        : c.senderNetid}
-                                </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                                    {c.isPrivate && <Ionicons name="lock-closed" size={11} color="#7c3aed" style={{ marginRight: 4 }} />}
+                                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#4B5563', flex: 1 }} numberOfLines={1}>
+                                        {senderInfo[c.senderNetid]
+                                            ? `${senderInfo[c.senderNetid].name} (${senderInfo[c.senderNetid].role})`
+                                            : c.senderNetid}
+                                    </Text>
+                                </View>
                                 <Text style={{ fontSize: 11, fontWeight: '700', color: STATUS_COLOR[c.status] }}>
                                     {c.status}
                                 </Text>
@@ -161,6 +170,20 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid, is
                     </View>
                 )}
             </View>
+
+            <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}
+                onPress={() => setIsPrivate((v) => !v)}
+                activeOpacity={0.7}
+            >
+                <View style={{ width: 18, height: 18, borderRadius: 4, borderWidth: 1.5, borderColor: isPrivate ? '#7c3aed' : '#D1D5DB', backgroundColor: isPrivate ? '#7c3aed' : 'white', alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
+                    {isPrivate && <Ionicons name="checkmark" size={12} color="white" />}
+                </View>
+                <Ionicons name="lock-closed" size={13} color={isPrivate ? '#7c3aed' : '#9CA3AF'} style={{ marginRight: 4 }} />
+                <Text style={{ fontSize: 12, color: isPrivate ? '#7c3aed' : '#6B7280', fontWeight: isPrivate ? '600' : '400' }}>
+                    Private (hidden from students)
+                </Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
                 style={{ backgroundColor: '#b91c1c', borderRadius: 8, paddingVertical: 12, alignItems: 'center', opacity: loading ? 0.7 : 1 }}
