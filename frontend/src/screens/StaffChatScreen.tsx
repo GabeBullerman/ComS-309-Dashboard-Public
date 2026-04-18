@@ -369,8 +369,8 @@ export default function StaffChatScreen({ myNetid, myName, onUnreadChange }: Pro
 
                   {/* Reply preview */}
                   {msg.replyTo && (
-                    <View style={{ borderLeftWidth: 3, borderLeftColor: '#a5b4fc', backgroundColor: '#f5f3ff', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 4 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#6d28d9', marginBottom: 1 }}>
+                    <View style={{ borderLeftWidth: 3, borderLeftColor: '#F1BE48', backgroundColor: '#fffbeb', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#92400e', marginBottom: 1 }}>
                         {msg.replyTo.senderName || msg.replyTo.senderNetid}
                       </Text>
                       <Text style={{ fontSize: 12, color: '#6b7280' }} numberOfLines={2}>{msg.replyTo.content}</Text>
@@ -447,15 +447,15 @@ export default function StaffChatScreen({ myNetid, myName, onUnreadChange }: Pro
 
       {/* Reply / edit context bar */}
       {(replyingTo || editingMsg) && (
-        <View style={{ backgroundColor: '#f5f3ff', borderTopWidth: 1, borderTopColor: '#c7d2fe', paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Ionicons name={editingMsg ? 'pencil' : 'return-down-back'} size={14} color="#7c3aed" />
-          <Text style={{ flex: 1, fontSize: 12, color: '#6d28d9' }} numberOfLines={1}>
+        <View style={{ backgroundColor: '#fffbeb', borderTopWidth: 1, borderTopColor: '#F1BE48', paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Ionicons name={editingMsg ? 'pencil' : 'return-down-back'} size={14} color="#92400e" />
+          <Text style={{ flex: 1, fontSize: 12, color: '#92400e' }} numberOfLines={1}>
             {editingMsg
               ? `Editing: ${editingMsg.content}`
               : `Replying to ${replyingTo!.senderName || replyingTo!.senderNetid}: ${replyingTo!.content}`}
           </Text>
           <TouchableOpacity onPress={() => { setReplyingTo(null); setEditingMsg(null); setInputText(''); }}>
-            <Ionicons name="close" size={18} color="#7c3aed" />
+            <Ionicons name="close" size={18} color="#92400e" />
           </TouchableOpacity>
         </View>
       )}

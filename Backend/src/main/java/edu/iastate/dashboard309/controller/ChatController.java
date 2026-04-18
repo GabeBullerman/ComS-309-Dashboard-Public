@@ -81,7 +81,7 @@ public class ChatController {
     @GetMapping("/unread")
     public UnreadResponse getUnread(Authentication authentication) {
         requireStaff(authentication);
-        return new UnreadResponse(chatService.getUnreadCount(authentication.getName()));
+        return new UnreadResponse(chatService.getUnreadCount(authentication.getName(), extractRole(authentication)));
     }
 
     public record MarkReadRequest(Long lastMessageId) {}
@@ -91,6 +91,14 @@ public class ChatController {
     public void markRead(@RequestBody MarkReadRequest req, Authentication authentication) {
         requireStaff(authentication);
         chatService.markRead(authentication.getName(), req.lastMessageId());
+    }
+
+    private String extractRole(Authentication authentication) {
+        return authentication.getAuthorities().stream()
+            .map(a -> a.getAuthority())
+            .filter(a -> a.equalsIgnoreCase("TA") || a.equalsIgnoreCase("HTA") || a.equalsIgnoreCase("INSTRUCTOR"))
+            .findFirst()
+            .orElse("TA");
     }
 
     private void requireStaff(Authentication authentication) {

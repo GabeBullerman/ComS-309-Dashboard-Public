@@ -38,12 +38,11 @@ public class ChatService {
     }
 
     @Transactional(readOnly = true)
-    public long getUnreadCount(String netid) {
-        return readRepo.findById(netid)
-            .map(r -> r.getLastReadMessageId() == null
-                ? messageRepo.count()
-                : messageRepo.countByIdGreaterThan(r.getLastReadMessageId()))
-            .orElseGet(messageRepo::count);
+    public long getUnreadCount(String netid, String role) {
+        long lastReadId = readRepo.findById(netid)
+            .map(r -> r.getLastReadMessageId() == null ? 0L : r.getLastReadMessageId())
+            .orElse(0L);
+        return messageRepo.countTagsAfter(netid, role, lastReadId);
     }
 
     @Transactional
