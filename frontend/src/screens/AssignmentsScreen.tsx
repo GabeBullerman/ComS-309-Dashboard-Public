@@ -153,11 +153,19 @@ export default function AssignmentsScreen() {
           const status = (item.status ?? 'TODO') as TaskStatus;
           const s = STATUS_STYLES[status];
           const nextStatus = STATUS_CYCLE[(STATUS_CYCLE.indexOf(status) + 1) % STATUS_CYCLE.length];
+          const todayStr = new Date().toISOString().split('T')[0];
+          const dueStr = item.dueDate ? item.dueDate.split('T')[0] : null;
+          const overdue = status !== 'COMPLETE' && !!dueStr && dueStr < todayStr;
           return (
             <View style={{
               backgroundColor: 'white', borderRadius: 10, padding: 16,
               borderLeftWidth: 4, borderLeftColor: '#C8102E',
-              shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+              borderWidth: overdue ? 2.5 : undefined,
+              borderColor: overdue ? '#DC2626' : undefined,
+              shadowColor: overdue ? '#DC2626' : '#000',
+              shadowOpacity: overdue ? 0.35 : 0.06,
+              shadowRadius: overdue ? 8 : 4,
+              elevation: overdue ? 6 : 2,
             }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a', flex: 1, marginRight: 8 }}>
