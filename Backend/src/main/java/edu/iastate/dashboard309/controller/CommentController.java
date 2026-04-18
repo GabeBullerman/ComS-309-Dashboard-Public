@@ -132,7 +132,7 @@ public class CommentController {
     public record CommentUpdateRequest(
         @jakarta.validation.constraints.NotBlank String commentBody,
         @jakarta.validation.constraints.NotNull @jakarta.validation.constraints.Min(0) @jakarta.validation.constraints.Max(2) Integer status,
-        boolean isPrivate
+        @com.fasterxml.jackson.annotation.JsonProperty("isPrivate") boolean isPrivate
     ) {}
 
     @PutMapping("/{id}")

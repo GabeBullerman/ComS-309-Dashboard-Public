@@ -41,7 +41,7 @@ public class Comment {
     @JoinColumn(name = "team_id", nullable = false)
     private Team team;
 
-    @Column(name = "is_private", nullable = false)
+    @Column(name = "is_private", nullable = false, columnDefinition = "boolean default false")
     private boolean isPrivate = false;
 
     @Column(name = "created_at", nullable = false)
