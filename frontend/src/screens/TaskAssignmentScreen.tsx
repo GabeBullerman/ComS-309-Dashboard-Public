@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { normalizeRole, UserSummary } from '../utils/auth';
 import { getCurrentUser, getUsersByRole } from '../api/users';
 import { getTeams, TeamApiResponse } from '../api/teams';
-import { getTasksAssignedBy, createTask, updateTask, deleteTask, TaskApiResponse } from '../api/tasks';
+import { getTasksAssignedBy, getTasksAssignedTo, createTask, updateTask, deleteTask, updateTaskStatus, TaskApiResponse, TaskStatus } from '../api/tasks';
 
 type RecipientType = 'specific-ta' | 'all-tas' | 'specific-team' | 'all-my-teams' | 'all-students';
 
@@ -32,6 +32,8 @@ export default function TaskAssignmentScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState({ title: '', description: '', dueDate: '' });
+  const [tasksAssignedToMe, setTasksAssignedToMe] = useState<TaskApiResponse[]>([]);
+  const [myTasksFilter, setMyTasksFilter] = useState<'ALL' | TaskStatus>('ALL');
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -71,6 +73,7 @@ export default function TaskAssignmentScreen() {
 
       const fetches: Promise<void>[] = [
         getTasksAssignedBy(user.netid).then(setMyTasks).catch(() => {}),
+        getTasksAssignedTo(user.netid).then(setTasksAssignedToMe).catch(() => {}),
       ];
 
       if (r === 'HTA' || r === 'Instructor') {
@@ -193,10 +196,33 @@ export default function TaskAssignmentScreen() {
     return [...map.values()].sort((a, b) => (a.rep.dueDate ?? '').localeCompare(b.rep.dueDate ?? ''));
   })();
 
-  const handleDeleteGroup = async (ids: number[]) => {
-    await Promise.allSettled(ids.map((id) => deleteTask(id)));
-    setMyTasks((prev) => prev.filter((t) => !ids.includes(t.id)));
+  const handleDeleteGroup = (ids: number[]) => {
+    const msg = 'Delete this task? This cannot be undone.';
+    const doDelete = async () => {
+      await Promise.allSettled(ids.map((id) => deleteTask(id)));
+      setMyTasks((prev) => prev.filter((t) => !ids.includes(t.id)));
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(msg)) doDelete();
+    } else {
+      Alert.alert('Delete Task', msg, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: doDelete }]);
+    }
   };
+
+  const handleUpdateStatus = async (taskId: number, status: TaskStatus) => {
+    try {
+      const updated = await updateTaskStatus(taskId, status);
+      setTasksAssignedToMe((prev) => prev.map((t) => t.id === taskId ? { ...t, status: updated.status } : t));
+      setMyTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: updated.status } : t));
+    } catch { /* silent */ }
+  };
+
+  const STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; border: string; label: string }> = {
+    TODO:     { bg: '#f3f4f6', text: '#374151', border: '#e5e7eb', label: 'To Do' },
+    WIP:      { bg: '#fef9c3', text: '#92400e', border: '#fde047', label: 'In Progress' },
+    COMPLETE: { bg: '#dcfce7', text: '#166534', border: '#86efac', label: 'Complete' },
+  };
+  const STATUS_CYCLE: TaskStatus[] = ['TODO', 'WIP', 'COMPLETE'];
 
   const pad = isMobile ? 12 : 24;
 
@@ -380,6 +406,28 @@ export default function TaskAssignmentScreen() {
                 </View>
               </View>
 
+              {/* Status breakdown for HTA */}
+              {!isEditing && isHtaOrInstructor && g.ids.length > 1 && (() => {
+                const byStatus = g.ids.reduce<Record<string, number>>((acc, id) => {
+                  const t = myTasks.find(t => t.id === id);
+                  const s = t?.status ?? 'TODO';
+                  acc[s] = (acc[s] ?? 0) + 1;
+                  return acc;
+                }, {});
+                return (
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                    {Object.entries(byStatus).map(([s, count]) => {
+                      const style = STATUS_STYLES[s as TaskStatus];
+                      return (
+                        <View key={s} style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: style.bg, borderWidth: 1, borderColor: style.border, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: style.text }}>{count} {style.label}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                );
+              })()}
+
               {isEditing ? (
                 <View style={{ marginTop: 8, gap: 6 }}>
                   <TextInput
@@ -429,6 +477,59 @@ export default function TaskAssignmentScreen() {
             </View>
           );
   };
+
+  const filteredMyTasks = myTasksFilter === 'ALL'
+    ? tasksAssignedToMe
+    : tasksAssignedToMe.filter((t) => (t.status ?? 'TODO') === myTasksFilter);
+
+  const myTasksPanel = (
+    <View style={{ backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden', marginBottom: isMobile ? 12 : 0, flex: isMobile ? undefined : 1 }}>
+      <View style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
+        <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>My Tasks ({tasksAssignedToMe.length})</Text>
+      </View>
+      {/* Filter tabs */}
+      <View style={{ flexDirection: 'row', gap: 6, padding: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
+        {(['ALL', 'TODO', 'WIP', 'COMPLETE'] as const).map((f) => (
+          <TouchableOpacity
+            key={f}
+            onPress={() => setMyTasksFilter(f)}
+            style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: myTasksFilter === f ? '#C8102E' : '#f3f4f6' }}
+          >
+            <Text style={{ fontSize: 11, fontWeight: '600', color: myTasksFilter === f ? 'white' : '#374151' }}>
+              {f === 'ALL' ? 'All' : f === 'TODO' ? 'To Do' : f === 'WIP' ? 'In Progress' : 'Complete'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <ScrollView contentContainerStyle={{ padding: 12, gap: 8 }}>
+        {filteredMyTasks.length === 0 ? (
+          <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 24, fontSize: 14 }}>No tasks here.</Text>
+        ) : (
+          filteredMyTasks.map((t) => {
+            const status = (t.status ?? 'TODO') as TaskStatus;
+            const s = STATUS_STYLES[status];
+            const nextStatus = STATUS_CYCLE[(STATUS_CYCLE.indexOf(status) + 1) % STATUS_CYCLE.length];
+            const dateOnly = t.dueDate ? t.dueDate.split('T')[0] : null;
+            return (
+              <View key={t.id} style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 8 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <Text style={{ fontWeight: '600', color: '#111827', flex: 1, marginRight: 8 }}>{t.title}</Text>
+                  <TouchableOpacity
+                    onPress={() => handleUpdateStatus(t.id, nextStatus)}
+                    style={{ backgroundColor: s.bg, borderWidth: 1, borderColor: s.border, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: s.text }}>{s.label}</Text>
+                  </TouchableOpacity>
+                </View>
+                {t.description ? <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 4 }}>{t.description}</Text> : null}
+                {dateOnly ? <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Due: {dateOnly}</Text> : null}
+              </View>
+            );
+          })
+        )}
+      </ScrollView>
+    </View>
+  );
 
   const taskListPanel = (
     <View style={{ flex: isMobile ? undefined : 1, backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden' }}>
@@ -481,6 +582,7 @@ export default function TaskAssignmentScreen() {
     return (
       <ScrollView style={{ flex: 1, backgroundColor: '#f9fafb' }} contentContainerStyle={{ padding: pad, paddingBottom: 24 }}>
         {header}
+        {!isHtaOrInstructor && myTasksPanel}
         {formPanel}
         {taskListPanel}
       </ScrollView>
@@ -492,6 +594,7 @@ export default function TaskAssignmentScreen() {
       {header}
       <View style={{ flexDirection: 'row', gap: 16, flex: 1 }}>
         {formPanel}
+        {!isHtaOrInstructor && myTasksPanel}
         {taskListPanel}
       </View>
     </View>

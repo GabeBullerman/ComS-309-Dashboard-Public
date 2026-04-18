@@ -94,8 +94,9 @@ export async function fetchRecentCommits(
   const path = extractProjectPath(gitlabUrl);
   if (!path) throw new Error('Invalid GitLab URL');
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  // all=true fetches all branches; GitLab deduplicates by commit ID so merged commits count once
   return gitlabFetch<GitLabCommit[]>(
-    `${GITLAB_BASE}/projects/${path}/repository/commits?per_page=100&since=${since}`,
+    `${GITLAB_BASE}/projects/${path}/repository/commits?per_page=100&since=${since}&all=true`,
     token
   );
 }

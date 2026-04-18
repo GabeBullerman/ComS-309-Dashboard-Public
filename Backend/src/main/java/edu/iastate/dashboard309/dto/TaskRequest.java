@@ -10,6 +10,7 @@ public record TaskRequest(
         String description,
         LocalDateTime dueDate,
         String assignedToNetid,
-        String assignedByNetid
+        String assignedByNetid,
+        String status
 ) {
 }

@@ -26,6 +26,8 @@ export default function TAManagerScreen() {
   const [loading, setLoading] = useState(true);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showCsvInfo, setShowCsvInfo] = useState(false);
+  const [importResult, setImportResult] = useState<{ success: number; failed: string[] } | null>(null);
   const [inviteForm, setInviteForm] = useState({
     netid: '',
     name: '',
@@ -71,6 +73,36 @@ export default function TAManagerScreen() {
     }
     return result;
   }, [staff, search, sortBy]);
+
+  const handleImportCSV = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e: any) => {
+      const file: File = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      const lines = text.trim().split('\n').filter((l) => l.trim());
+      const dataLines = lines[0]?.toLowerCase().includes('netid') ? lines.slice(1) : lines;
+      const results = await Promise.allSettled(
+        dataLines.map(async (line) => {
+          const cols = line.split(',').map((s) => s.trim().replace(/^"|"$/g, ''));
+          const [netid, name, password, roleCol] = cols;
+          if (!netid || !name) throw new Error(`Bad row: ${line}`);
+          const role: StaffRole = roleCol?.toUpperCase() === 'HTA' ? 'HTA' : 'TA';
+          await createUser({ netid, name, password: password || 'changeme', role: [role] });
+          return netid;
+        })
+      );
+      const success = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results
+        .map((r, i) => r.status === 'rejected' ? dataLines[i] : null)
+        .filter(Boolean) as string[];
+      setImportResult({ success, failed });
+      await loadStaff();
+    };
+    input.click();
+  };
 
   const handleCreate = async () => {
     if (!inviteForm.netid.trim() || !inviteForm.name.trim() || !inviteForm.password.trim()) {
@@ -197,18 +229,59 @@ export default function TAManagerScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#f9fafb' }} contentContainerStyle={{ padding: pad }}>
       {/* Header */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <Text style={{ fontSize: isMobile ? 22 : 26, fontWeight: 'bold', color: '#111827' }}>TA Management</Text>
-        <TouchableOpacity
-          onPress={() => setShowInviteForm(!showInviteForm)}
-          style={{ backgroundColor: '#b91c1c', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
-        >
-          <Ionicons name="person-add" size={15} color="white" />
-          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
-            {showInviteForm ? 'Cancel' : 'Add TA'}
-          </Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={() => setShowCsvInfo(!showCsvInfo)}
+            style={{ padding: 6 }}
+          >
+            <Ionicons name="information-circle-outline" size={22} color="#6b7280" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleImportCSV}
+            style={{ backgroundColor: '#374151', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+          >
+            <Ionicons name="cloud-upload-outline" size={15} color="white" />
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Import CSV</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowInviteForm(!showInviteForm)}
+            style={{ backgroundColor: '#b91c1c', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+          >
+            <Ionicons name="person-add" size={15} color="white" />
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
+              {showInviteForm ? 'Cancel' : 'Add TA'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* CSV format info */}
+      {showCsvInfo && (
+        <View style={{ backgroundColor: '#f0f9ff', borderWidth: 1, borderColor: '#bae6fd', borderRadius: 10, padding: 14, marginBottom: 14 }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#0369a1', marginBottom: 6 }}>CSV Import Format</Text>
+          <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 4 }}>netid,name,password,role</Text>
+          <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 4 }}>jsmith,Jane Smith,temp123,TA</Text>
+          <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 8 }}>bjones,Bob Jones,temp123,HTA</Text>
+          <Text style={{ fontSize: 11, color: '#0369a1' }}>• Header row is optional (auto-detected)</Text>
+          <Text style={{ fontSize: 11, color: '#0369a1' }}>• Role: TA or HTA (defaults to TA if omitted)</Text>
+          <Text style={{ fontSize: 11, color: '#0369a1' }}>• Password defaults to "changeme" if blank</Text>
+          <Text style={{ fontSize: 11, color: '#0369a1' }}>• Existing NetIDs are skipped (no overwrite)</Text>
+        </View>
+      )}
+
+      {/* Import result */}
+      {importResult && (
+        <View style={{ backgroundColor: importResult.failed.length === 0 ? '#f0fdf4' : '#fef9c3', borderWidth: 1, borderColor: importResult.failed.length === 0 ? '#86efac' : '#fde047', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: importResult.failed.length === 0 ? '#166534' : '#92400e' }}>
+            {importResult.success} imported successfully{importResult.failed.length > 0 ? `, ${importResult.failed.length} failed` : ''}
+          </Text>
+          {importResult.failed.map((row, i) => (
+            <Text key={i} style={{ fontSize: 11, color: '#92400e', marginTop: 2 }}>✗ {row}</Text>
+          ))}
+        </View>
+      )}
 
       {/* Invite Form */}
       {showInviteForm && (

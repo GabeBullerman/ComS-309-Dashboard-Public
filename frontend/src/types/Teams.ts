@@ -28,4 +28,5 @@ export interface Team {
   members: TeamMember[];
   gitlab?: string;
   discord?: string;
+  demoScores?: Array<{ code: number | null; teamwork: number | null }>; // index 0-3 = demos 1-4
 }

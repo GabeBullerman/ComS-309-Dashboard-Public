@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { View, Text, TouchableOpacity, Modal, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, Modal, Pressable, ActivityIndicator, Alert, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { TeamMember } from "@/types/Teams";
 import {
@@ -141,6 +141,7 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
   const [selectedWeek, setSelectedWeek] = useState(weeks[0].key);
   // netid -> weekKey -> { code, teamwork }
   const [scores, setScores] = useState<Record<string, Record<string, MemberScore>>>({});
+  const originalScoresRef = useRef<Record<string, Record<string, MemberScore>>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [unsaved, setUnsaved] = useState(false);
@@ -169,6 +170,7 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
           };
         }
       }
+      originalScoresRef.current = newScores;
       setScores(newScores);
     }).finally(() => setLoading(false));
   }, [members]);
@@ -187,7 +189,7 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
     setUnsaved(true);
   };
 
-  const handleSave = async () => {
+  const doSave = async () => {
     setSaving(true);
     setSaveStatus(null);
 
@@ -225,6 +227,27 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
     setSaveStatus({ ok, failed });
     if (failed === 0) setUnsaved(false);
     setSaving(false);
+  };
+
+  const handleSave = () => {
+    // Only confirm when the user is changing a record that was already graded at load time
+    const hasExisting = members.some(m => {
+      if (!m.netid) return false;
+      const orig = originalScoresRef.current[m.netid]?.[selectedWeek];
+      if (!orig?.id || orig.code === 'ungraded' || orig.teamwork === 'ungraded') return false;
+      const curr = getScore(m.netid);
+      return curr.code !== orig.code || curr.teamwork !== orig.teamwork;
+    });
+    if (!hasExisting) { doSave(); return; }
+    const msg = 'Some members already have grades for this week. Save will overwrite them.';
+    if (Platform.OS === 'web') {
+      if (window.confirm(msg)) doSave();
+    } else {
+      Alert.alert('Overwrite Grades?', msg, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Save', onPress: doSave },
+      ]);
+    }
   };
 
   return (

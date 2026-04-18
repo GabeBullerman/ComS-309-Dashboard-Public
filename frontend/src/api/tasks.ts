@@ -1,5 +1,7 @@
 import axiosInstance from './client';
 
+export type TaskStatus = 'TODO' | 'WIP' | 'COMPLETE';
+
 export interface TaskApiResponse {
   id: number;
   title: string;
@@ -8,6 +10,7 @@ export interface TaskApiResponse {
   dueDate?: string;
   assignedToNetid?: string;
   assignedByNetid?: string;
+  status?: TaskStatus;
 }
 
 export interface TaskCreateRequest {
@@ -49,4 +52,9 @@ export const updateTask = async (id: number, data: Partial<Pick<TaskCreateReques
 
 export const deleteTask = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/api/tasks/${id}`);
+};
+
+export const updateTaskStatus = async (id: number, status: TaskStatus): Promise<TaskApiResponse> => {
+  const res = await axiosInstance.patch(`/api/tasks/${id}/status`, { status });
+  return res.data;
 };

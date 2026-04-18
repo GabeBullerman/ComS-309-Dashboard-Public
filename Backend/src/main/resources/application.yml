@@ -30,7 +30,7 @@ spring:
             scope: openid, email, profile
 
 app:
-  frontend-url: ${FRONTEND_URL:http://localhost:8081}
+  frontend-url: ${FRONTEND_URL:http://coms-4020-006.class.las.iastate.edu:8080}
 
 server:
   port: ${SERVER_PORT:8080}
