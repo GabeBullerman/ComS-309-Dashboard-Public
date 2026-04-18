@@ -156,16 +156,18 @@ export default function AssignmentsScreen() {
           const todayStr = new Date().toISOString().split('T')[0];
           const dueStr = item.dueDate ? item.dueDate.split('T')[0] : null;
           const overdue = status !== 'COMPLETE' && !!dueStr && dueStr < todayStr;
+          const borderColor = overdue ? '#DC2626'
+            : status === 'COMPLETE' ? '#16a34a'
+            : status === 'WIP'      ? '#ca8a04'
+            : '#1f2937';
           return (
             <View style={{
               backgroundColor: 'white', borderRadius: 10, padding: 16,
-              borderLeftWidth: 4, borderLeftColor: '#C8102E',
-              borderWidth: overdue ? 2.5 : undefined,
-              borderColor: overdue ? '#DC2626' : undefined,
+              borderWidth: 2, borderColor,
               shadowColor: overdue ? '#DC2626' : '#000',
-              shadowOpacity: overdue ? 0.35 : 0.06,
-              shadowRadius: overdue ? 8 : 4,
-              elevation: overdue ? 6 : 2,
+              shadowOpacity: overdue ? 0.3 : 0.06,
+              shadowRadius: overdue ? 6 : 4,
+              elevation: overdue ? 5 : 2,
             }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a', flex: 1, marginRight: 8 }}>
