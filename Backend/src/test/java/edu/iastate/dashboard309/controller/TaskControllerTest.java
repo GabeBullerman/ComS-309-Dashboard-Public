@@ -50,7 +50,7 @@ class TaskControllerTest {
 
     @Test
     void list_returnsTasks() throws Exception {
-        TaskRequest task = new TaskRequest(1L, "Task", "Desc", null, "ta1", "ta2");
+        TaskRequest task = new TaskRequest(1L, "Task", "Desc", null, "ta1", "ta2", null);
         when(taskService.getAllTasks()).thenReturn(List.of(task));
 
         mockMvc.perform(get("/api/tasks"))
@@ -60,7 +60,7 @@ class TaskControllerTest {
 
     @Test
     void create_returnsNotFoundWhenTaMissing() throws Exception {
-        TaskRequest request = new TaskRequest(null, "Task", "Desc", null, "ta1", "ta2");
+        TaskRequest request = new TaskRequest(null, "Task", "Desc", null, "ta1", "ta2", null);
         when(userRepository.existsByNetid("ta1")).thenReturn(false);
 
         mockMvc.perform(post("/api/tasks")
@@ -71,7 +71,7 @@ class TaskControllerTest {
 
     @Test
     void create_returnsCreatedTask() throws Exception {
-        TaskRequest request = new TaskRequest(null, "Task", "Desc", LocalDateTime.parse("2026-02-21T10:00:00"), "ta1", "ta2");
+        TaskRequest request = new TaskRequest(null, "Task", "Desc", LocalDateTime.parse("2026-02-21T10:00:00"), "ta1", "ta2", null);
 
         User assignedTo = new User();
         assignedTo.setId(1L);
@@ -95,7 +95,7 @@ class TaskControllerTest {
             return saved;
         });
         when(taskService.getTaskById(1L))
-            .thenReturn(new TaskRequest(1L, "Task", "Desc", request.dueDate(), "ta1", "ta2"));
+            .thenReturn(new TaskRequest(1L, "Task", "Desc", request.dueDate(), "ta1", "ta2", null));
 
         mockMvc.perform(post("/api/tasks")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -106,7 +106,7 @@ class TaskControllerTest {
 
     @Test
     void create_returnsBadRequestWhenTitleMissing() throws Exception {
-        TaskRequest request = new TaskRequest(null, "", "Desc", null, "ta1", "ta2");
+        TaskRequest request = new TaskRequest(null, "", "Desc", null, "ta1", "ta2", null);
 
         mockMvc.perform(post("/api/tasks")
                 .contentType(MediaType.APPLICATION_JSON)
