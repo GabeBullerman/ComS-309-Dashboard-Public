@@ -5,10 +5,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -36,8 +38,15 @@ public class JwtFilter extends OncePerRequestFilter{
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException{
         String authHeader = request.getHeader("Authorization");
 
-        // If the header is invalid, return
+        // If no Bearer token: clear any leftover OAuth2 session auth on API routes
+        // so a stale Google session never silently impersonates a user on the API
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            if (request.getRequestURI().startsWith("/api/")) {
+                Authentication existing = SecurityContextHolder.getContext().getAuthentication();
+                if (existing instanceof OAuth2AuthenticationToken) {
+                    SecurityContextHolder.clearContext();
+                }
+            }
             filterChain.doFilter(request, response);
             return;
         }
@@ -52,7 +61,7 @@ public class JwtFilter extends OncePerRequestFilter{
             List<String> roles = claims.get("roles", List.class);
             List<String> permissions = claims.get("permissions", List.class);
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (username != null) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
                 List<GrantedAuthority> authorities = buildAuthorities(roles, permissions);
@@ -61,6 +70,8 @@ public class JwtFilter extends OncePerRequestFilter{
 
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
+                // JWT always wins — clear any session-based auth (e.g. leftover OAuth2 session)
+                SecurityContextHolder.clearContext();
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
 

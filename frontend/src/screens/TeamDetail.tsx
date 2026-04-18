@@ -89,6 +89,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   const [complianceResults, setComplianceResults] = useState<MemberComplianceResult[]>([]);
   const [complianceLoading, setComplianceLoading] = useState(false);
   const [complianceError, setComplianceError] = useState<string | null>(null);
+  const [showComplianceInfo, setShowComplianceInfo] = useState(false);
 
   useEffect(() => {
     if (activeTab !== 'compliance' || !gitlab || !glToken) return;
@@ -121,14 +122,18 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   const [bulkType, setBulkType] = useState<AttendanceType>('LECTURE');
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkDone, setBulkDone] = useState('');
+  const [bulkStatus, setBulkStatus] = useState<Record<string, AttendanceStatus>>(() =>
+    Object.fromEntries(team.members.filter(m => m.netid).map(m => [m.netid!, 'PRESENT' as AttendanceStatus]))
+  );
 
-  const handleBulkAttendance = async (status: AttendanceStatus) => {
+  const handleBulkAttendance = async (statusMap?: Record<string, AttendanceStatus>) => {
     if (!bulkDate.match(/^\d{4}-\d{2}-\d{2}$/)) return;
     const members = team.members.filter(m => m.netid);
     if (members.length === 0) return;
     setBulkSaving(true);
     setBulkDone('');
     const results = await Promise.allSettled(members.map(async (m) => {
+      const status: AttendanceStatus = statusMap ? statusMap[m.netid!] : (bulkStatus[m.netid!] ?? 'PRESENT');
       const existing = await getAttendanceForStudent(m.netid!).catch((): AttendanceRecord[] => []);
       const record = existing.find(r => r.attendanceDate === bulkDate && r.type === bulkType);
       if (record) {
@@ -141,7 +146,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     const failed = results.filter(r => r.status === 'rejected').length;
     const succeeded = results.length - failed;
     if (failed === 0) {
-      setBulkDone(`Marked ${succeeded} member${succeeded !== 1 ? 's' : ''} as ${status.charAt(0) + status.slice(1).toLowerCase()}`);
+      setBulkDone(`Saved attendance for ${succeeded} member${succeeded !== 1 ? 's' : ''}`);
     } else if (succeeded === 0) {
       setBulkDone(`Failed to save attendance — please try again.`);
     } else {
@@ -478,19 +483,36 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
             return (
               <View>
                 {/* Week navigator */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <TouchableOpacity onPress={() => setComplianceWeekOffset(o => o - 1)} style={{ padding: 6 }}>
                     <Ionicons name="chevron-back" size={16} color="#6b7280" />
                   </TouchableOpacity>
                   <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>{label}</Text>
-                  <TouchableOpacity
-                    onPress={() => setComplianceWeekOffset(o => Math.min(0, o + 1))}
-                    disabled={complianceWeekOffset === 0}
-                    style={{ padding: 6, opacity: complianceWeekOffset === 0 ? 0.3 : 1 }}
-                  >
-                    <Ionicons name="chevron-forward" size={16} color="#6b7280" />
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <TouchableOpacity onPress={() => setShowComplianceInfo(v => !v)} style={{ padding: 4 }}>
+                      <Ionicons name="information-circle-outline" size={18} color="#6b7280" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setComplianceWeekOffset(o => Math.min(0, o + 1))}
+                      disabled={complianceWeekOffset === 0}
+                      style={{ padding: 6, opacity: complianceWeekOffset === 0 ? 0.3 : 1 }}
+                    >
+                      <Ionicons name="chevron-forward" size={16} color="#6b7280" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
+
+                {/* Criteria info panel */}
+                {showComplianceInfo && (
+                  <View style={{ backgroundColor: '#f0f9ff', borderWidth: 1, borderColor: '#bae6fd', borderRadius: 8, padding: 12, marginBottom: 10 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#0369a1', marginBottom: 6 }}>Compliance Criteria</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#0c4a6e', marginBottom: 2 }}>🔧 Backend</Text>
+                    <Text style={{ fontSize: 11, color: '#0c4a6e', marginBottom: 6 }}>Each commit must contain 2+ annotation tags in the message body (e.g. @author, @reviewer, @tested-by). Commits without sufficient annotations do not count toward compliance.</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#0c4a6e', marginBottom: 2 }}>🖥 Frontend</Text>
+                    <Text style={{ fontSize: 11, color: '#0c4a6e', marginBottom: 6 }}>Each commit must add 40+ qualifying lines (non-blank, non-comment lines in UI/style files). Whitespace-only or comment-only changes do not count.</Text>
+                    <Text style={{ fontSize: 11, color: '#6b7280' }}>Analysis covers all branches. Merged commits are counted once (deduplicated by commit ID).</Text>
+                  </View>
+                )}
 
                 {complianceLoading && (
                   <View style={{ alignItems: 'center', paddingVertical: 24 }}>
@@ -633,25 +655,74 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
             </View>
           </View>
 
-          {/* Status buttons */}
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {([
-              { status: 'PRESENT' as AttendanceStatus, bg: '#dcfce7', text: '#166534', border: '#86efac' },
-              { status: 'LATE'    as AttendanceStatus, bg: '#fef9c3', text: '#854d0e', border: '#fde047' },
-              { status: 'ABSENT'  as AttendanceStatus, bg: '#fee2e2', text: '#991b1b', border: '#fca5a5' },
-            ]).map(({ status, bg, text, border }) => (
-              <TouchableOpacity
-                key={status}
-                onPress={() => handleBulkAttendance(status)}
-                disabled={bulkSaving}
-                style={{ flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 8, backgroundColor: bg, borderWidth: 1, borderColor: border, opacity: bulkSaving ? 0.6 : 1 }}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '700', color: text }}>
-                  All {status.charAt(0) + status.slice(1).toLowerCase()}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          {/* Per-student status selector */}
+          <View style={{ marginBottom: 12 }}>
+            {/* Set-all row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 6, flexWrap: 'wrap' }}>
+              <Text style={{ fontSize: 12, color: '#6b7280', marginRight: 2 }}>Set all:</Text>
+              {([
+                { s: 'PRESENT' as AttendanceStatus, label: 'Present', color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
+                { s: 'LATE'    as AttendanceStatus, label: 'Late',    color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+                { s: 'ABSENT'  as AttendanceStatus, label: 'Absent',  color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
+                { s: 'EXCUSED' as AttendanceStatus, label: 'Excused', color: '#2563eb', bg: '#eff6ff', border: '#93c5fd' },
+              ]).map(({ s, label, color, bg, border }) => (
+                <TouchableOpacity
+                  key={s}
+                  onPress={() => setBulkStatus(Object.fromEntries(team.members.filter(m => m.netid).map(m => [m.netid!, s])))}
+                  style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: bg, borderWidth: 1, borderColor: border }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '600', color }}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Per-member rows */}
+            <View style={{ gap: 6 }}>
+              {team.members.filter(m => m.netid).map(m => {
+                const current = bulkStatus[m.netid!] ?? 'PRESENT';
+                return (
+                  <View key={m.netid} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={{ fontSize: 12, color: '#111827', width: 120 }} numberOfLines={1}>{m.name}</Text>
+                    <View style={{ flexDirection: 'row', gap: 4, flex: 1 }}>
+                      {([
+                        { s: 'PRESENT' as AttendanceStatus, label: 'Present', color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
+                        { s: 'LATE'    as AttendanceStatus, label: 'Late',    color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+                        { s: 'ABSENT'  as AttendanceStatus, label: 'Absent',  color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
+                        { s: 'EXCUSED' as AttendanceStatus, label: 'Excused', color: '#2563eb', bg: '#eff6ff', border: '#93c5fd' },
+                      ]).map(({ s, label, color, bg, border }) => {
+                        const active = current === s;
+                        return (
+                          <TouchableOpacity
+                            key={s}
+                            onPress={() => setBulkStatus(prev => ({ ...prev, [m.netid!]: s }))}
+                            style={{
+                              flex: 1, alignItems: 'center', paddingVertical: 5, borderRadius: 6,
+                              backgroundColor: active ? bg : '#f9fafb',
+                              borderWidth: 1,
+                              borderColor: active ? border : '#e5e7eb',
+                            }}
+                          >
+                            <Text style={{ fontSize: 11, fontWeight: active ? '700' : '400', color: active ? color : '#9ca3af' }}>
+                              {label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
           </View>
+
+          {/* Save button */}
+          <TouchableOpacity
+            onPress={() => handleBulkAttendance()}
+            disabled={bulkSaving}
+            style={{ alignItems: 'center', paddingVertical: 10, borderRadius: 8, backgroundColor: '#b91c1c', opacity: bulkSaving ? 0.6 : 1 }}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '700', color: 'white' }}>Save Attendance</Text>
+          </TouchableOpacity>
 
           {bulkSaving && <ActivityIndicator size="small" color="#6b7280" style={{ marginTop: 10, alignSelf: 'center' }} />}
           {!!bulkDone && (

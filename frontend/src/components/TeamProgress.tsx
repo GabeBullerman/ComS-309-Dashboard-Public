@@ -1,6 +1,6 @@
-import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Platform } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   DemoPerformanceRecord,
   getDemoPerformanceForStudent,
@@ -85,6 +85,7 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
   const [demos, setDemos] = useState<DemoRow[]>(
     DEMO_LABELS.map((_, i) => ({ demoNumber: i + 1, code: 'ungraded', teamwork: 'ungraded' }))
   );
+  const originalDemosRef = useRef<DemoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [unsaved, setUnsaved] = useState(false);
@@ -95,7 +96,7 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
     setLoading(true);
     getDemoPerformanceForStudent(netid)
       .then((records: DemoPerformanceRecord[]) => {
-        setDemos(DEMO_LABELS.map((_, i) => {
+        const loaded = DEMO_LABELS.map((_, i) => {
           const demoNumber = i + 1;
           const r = records.find(rec => rec.demoNumber === demoNumber);
           return {
@@ -104,7 +105,9 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
             teamwork: r ? (SCORE_TO_LEVEL[r.teamworkScore] ?? 'ungraded') : 'ungraded',
             recordId: r?.id,
           };
-        }));
+        });
+        originalDemosRef.current = loaded;
+        setDemos(loaded);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -115,7 +118,7 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
     setUnsaved(true);
   };
 
-  const handleSave = async () => {
+  const doSave = async () => {
     if (!netid) return;
     setSaving(true);
     setSaveError(null);
@@ -143,7 +146,7 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
     // Reload from backend to guarantee UI matches actual state
     getDemoPerformanceForStudent(netid)
       .then((records: DemoPerformanceRecord[]) => {
-        setDemos(DEMO_LABELS.map((_, i) => {
+        const reloaded = DEMO_LABELS.map((_, i) => {
           const demoNumber = i + 1;
           const r = records.find(rec => rec.demoNumber === demoNumber);
           return {
@@ -152,10 +155,31 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
             teamwork: r ? (SCORE_TO_LEVEL[r.teamworkScore] ?? 'ungraded') : 'ungraded',
             recordId: r?.id,
           };
-        }));
+        });
+        originalDemosRef.current = reloaded;
+        setDemos(reloaded);
       })
       .catch(() => {})
       .finally(() => setSaving(false));
+  };
+
+  const handleSave = () => {
+    // Only confirm when the user is changing a demo that was already graded at load time
+    const hasExisting = demos.some((d, i) => {
+      const orig = originalDemosRef.current[i];
+      if (!orig?.recordId || orig.code === 'ungraded' || orig.teamwork === 'ungraded') return false;
+      return d.code !== orig.code || d.teamwork !== orig.teamwork;
+    });
+    if (!hasExisting) { doSave(); return; }
+    const msg = 'Some demos already have grades recorded. Saving will overwrite them.';
+    if (Platform.OS === 'web') {
+      if (window.confirm(msg)) doSave();
+    } else {
+      Alert.alert('Overwrite Demo Grades?', msg, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Save', onPress: doSave },
+      ]);
+    }
   };
 
   return (

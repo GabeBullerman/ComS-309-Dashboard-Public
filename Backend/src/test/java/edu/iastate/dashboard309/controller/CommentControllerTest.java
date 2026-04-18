@@ -73,7 +73,8 @@ class CommentControllerTest {
             10L,
             10L,
             "ta1",
-            LocalDateTime.parse("2026-03-23T12:00:00")
+            LocalDateTime.parse("2026-03-23T12:00:00"),
+            false
         );
 
         when(commentService.getAllComments()).thenReturn(List.of(response));
@@ -94,7 +95,8 @@ class CommentControllerTest {
             null,
             10L,
             "ta1",
-            LocalDateTime.parse("2026-03-23T10:00:00")
+            LocalDateTime.parse("2026-03-23T10:00:00"),
+            false
         );
 
         when(commentService.getCommentsByTeamId(10L)).thenReturn(List.of(response));
@@ -114,7 +116,8 @@ class CommentControllerTest {
             10L,
             10L,
             "ta1",
-            LocalDateTime.parse("2026-03-23T11:00:00")
+            LocalDateTime.parse("2026-03-23T11:00:00"),
+            false
         );
 
         when(commentService.getGeneralCommentsByTeamId(10L)).thenReturn(List.of(response));
@@ -152,7 +155,8 @@ class CommentControllerTest {
             null,
             10L,
             null,
-            null
+            null,
+            false
         );
 
         User sender = new User();
@@ -203,7 +207,8 @@ class CommentControllerTest {
             null,
             10L,
             null,
-            null
+            null,
+            false
         );
 
         User sender = new User();
@@ -241,7 +246,8 @@ class CommentControllerTest {
             null,
             10L,
             "ta1",
-            LocalDateTime.parse("2026-03-23T13:00:00")
+            LocalDateTime.parse("2026-03-23T13:00:00"),
+            false
         ));
 
         Authentication auth = new UsernamePasswordAuthenticationToken("ta1", "pw");
@@ -265,7 +271,8 @@ class CommentControllerTest {
             null,
             10L,
             null,
-            null
+            null,
+            false
         );
 
         Authentication auth = new UsernamePasswordAuthenticationToken("ta1", "pw");
@@ -287,7 +294,8 @@ class CommentControllerTest {
             null,
             10L,
             null,
-            null
+            null,
+            false
         );
 
         User sender = new User();
@@ -318,7 +326,8 @@ class CommentControllerTest {
             null,
             999L,
             null,
-            null
+            null,
+            false
         );
 
         User sender = new User();
@@ -356,7 +365,8 @@ class CommentControllerTest {
             null,
             10L,
             null,
-            null
+            null,
+            false
         );
 
         User sender = new User();
@@ -396,7 +406,8 @@ class CommentControllerTest {
     void createGeneralComment_returnsCreatedAndUpdatesTaNotes() throws Exception {
         TeamCommentCreateRequest request = new TeamCommentCreateRequest(
             "Team is progressing steadily",
-            2
+            2,
+            false
         );
 
         User sender = new User();
@@ -425,7 +436,8 @@ class CommentControllerTest {
             10L,
             10L,
             "ta1",
-            LocalDateTime.parse("2026-03-23T14:00:00")
+            LocalDateTime.parse("2026-03-23T14:00:00"),
+            false
         ));
 
         Authentication auth = new UsernamePasswordAuthenticationToken("ta1", "pw");
@@ -446,7 +458,8 @@ class CommentControllerTest {
     void createGeneralComment_returnsForbiddenWhenSenderIsNotTeamTa() throws Exception {
         TeamCommentCreateRequest request = new TeamCommentCreateRequest(
             "General note",
-            1
+            1,
+            false
         );
 
         User sender = new User();

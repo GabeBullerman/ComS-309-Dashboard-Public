@@ -67,6 +67,31 @@ public class CommentService {
     }
 
     @Transactional
+    public CommentRequest updateComment(Long id, String callerNetid, boolean isElevated,
+                                        String newBody, Integer newStatus, boolean newIsPrivate) {
+        Comment comment = commentRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
+        if (!comment.getSender().getNetid().equals(callerNetid) && !isElevated) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the author can edit this comment");
+        }
+        comment.setCommentBody(newBody);
+        comment.setStatus(newStatus);
+        comment.setPrivate(newIsPrivate);
+        commentRepository.save(comment);
+        return toRequest(comment);
+    }
+
+    @Transactional
+    public void deleteComment(Long id, String callerNetid, boolean isElevated) {
+        Comment comment = commentRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
+        if (!comment.getSender().getNetid().equals(callerNetid) && !isElevated) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the author can delete this comment");
+        }
+        commentRepository.delete(comment);
+    }
+
+    @Transactional
     public List<CommentRequest> getGeneralCommentsByTeamId(Long teamId) {
         if (!teamRepository.existsById(teamId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team not found");
@@ -97,7 +122,8 @@ public class CommentService {
             receiverTeamId,
             comment.getTeam().getId(),
             comment.getSender().getNetid(),
-            comment.getCreatedAt()
+            comment.getCreatedAt(),
+            comment.isPrivate()
         );
     }
 }

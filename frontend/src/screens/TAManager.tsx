@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   Alert,
+  Platform,
   ScrollView,
   ActivityIndicator,
   useWindowDimensions,
@@ -26,6 +27,9 @@ export default function TAManagerScreen() {
   const [loading, setLoading] = useState(true);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [showCsvInfo, setShowCsvInfo] = useState(false);
+  const [importResult, setImportResult] = useState<{ success: number; failed: string[] } | null>(null);
+  const [expandedId, setExpandedId] = useState<number | string | null>(null);
   const [inviteForm, setInviteForm] = useState({
     netid: '',
     name: '',
@@ -72,6 +76,36 @@ export default function TAManagerScreen() {
     return result;
   }, [staff, search, sortBy]);
 
+  const handleImportCSV = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.csv';
+    input.onchange = async (e: any) => {
+      const file: File = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      const lines = text.trim().split('\n').filter((l) => l.trim());
+      const dataLines = lines[0]?.toLowerCase().includes('netid') ? lines.slice(1) : lines;
+      const results = await Promise.allSettled(
+        dataLines.map(async (line) => {
+          const cols = line.split(',').map((s) => s.trim().replace(/^"|"$/g, ''));
+          const [netid, name, password, roleCol] = cols;
+          if (!netid || !name) throw new Error(`Bad row: ${line}`);
+          const role: StaffRole = roleCol?.toUpperCase() === 'HTA' ? 'HTA' : 'TA';
+          await createUser({ netid, name, password: password || 'changeme', role: [role] });
+          return netid;
+        })
+      );
+      const success = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results
+        .map((r, i) => r.status === 'rejected' ? dataLines[i] : null)
+        .filter(Boolean) as string[];
+      setImportResult({ success, failed });
+      await loadStaff();
+    };
+    input.click();
+  };
+
   const handleCreate = async () => {
     if (!inviteForm.netid.trim() || !inviteForm.name.trim() || !inviteForm.password.trim()) {
       Alert.alert('Error', 'NetID, name, and password are required.');
@@ -98,97 +132,119 @@ export default function TAManagerScreen() {
     }
   };
 
-  const handleToggleRole = (member: UserSummary) => {
-    if (!member.id) return;
-    const newRole: StaffRole = normalizeRole(String(member.role)) === 'TA' ? 'HTA' : 'TA';
-    const label = normalizeRole(String(member.role)) === 'TA' ? 'Head TA' : 'TA';
-    Alert.alert(
-      'Change Role',
-      `Promote ${member.name ?? member.netid} to ${label}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Confirm',
-          onPress: async () => {
-            try {
-              await updateUser(member.id!, { role: [newRole] });
-              setStaff((prev) =>
-                prev.map((m) => m.id === member.id ? { ...m, role: newRole } : m)
-              );
-            } catch {
-              Alert.alert('Error', 'Failed to update role.');
-            }
-          },
-        },
-      ]
+  const confirm = (message: string): Promise<boolean> => {
+    if (Platform.OS === 'web') return Promise.resolve(window.confirm(message));
+    return new Promise((resolve) =>
+      Alert.alert('Confirm', message, [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Confirm', onPress: () => resolve(true) },
+      ])
     );
   };
 
-  const handleRemove = (member: UserSummary) => {
+  const handleChangeRole = async (member: UserSummary, newRole: StaffRole) => {
     if (!member.id) return;
-    Alert.alert(
-      'Remove Staff',
-      `Remove ${member.name ?? member.netid} from the system?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteUser(member.id!);
-              setStaff((prev) => prev.filter((m) => m.id !== member.id));
-            } catch {
-              Alert.alert('Error', 'Failed to remove user.');
-            }
-          },
-        },
-      ]
-    );
+    const currentRole = normalizeRole(String(member.role)) as StaffRole;
+    if (currentRole === newRole) { setExpandedId(null); return; }
+    const label = newRole === 'HTA' ? 'Head TA' : 'TA';
+    const ok = await confirm(`Change ${member.name ?? member.netid} to ${label}?`);
+    if (!ok) return;
+    try {
+      await updateUser(member.id!, { role: [newRole] });
+      setStaff((prev) => prev.map((m) => m.id === member.id ? { ...m, role: newRole } : m));
+      setExpandedId(null);
+    } catch {
+      Alert.alert('Error', 'Failed to update role.');
+    }
+  };
+
+  const handleRemove = async (member: UserSummary) => {
+    if (!member.id) return;
+    const ok = await confirm(`Remove ${member.name ?? member.netid} from the system? This cannot be undone.`);
+    if (!ok) return;
+    try {
+      await deleteUser(member.id!);
+      setStaff((prev) => prev.filter((m) => m.id !== member.id));
+      setExpandedId(null);
+    } catch {
+      Alert.alert('Error', 'Failed to remove user.');
+    }
   };
 
   const renderItem = ({ item }: { item: UserSummary }) => {
-    const role = normalizeRole(String(item.role));
+    const role = normalizeRole(String(item.role)) as StaffRole;
     const isHTA = role === 'HTA';
+    const cardKey = item.id ?? item.netid!;
+    const isExpanded = expandedId === cardKey;
     return (
-      <View style={{
-        backgroundColor: '#fff',
-        padding: 14,
-        borderRadius: 10,
-        marginBottom: 8,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-      }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() => setExpandedId(isExpanded ? null : cardKey)}
+        style={{
+          backgroundColor: '#fff',
+          borderRadius: 10,
+          marginBottom: 8,
+          borderWidth: 1,
+          borderColor: '#1f2937',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.05,
+          shadowRadius: 2,
+          elevation: 1,
+          overflow: 'hidden',
+        }}
+      >
+        {/* Card header */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>{item.name ?? '—'}</Text>
             <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 1 }}>{item.netid}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity
-              onPress={() => handleToggleRole(item)}
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 4,
-                borderRadius: 20,
-                backgroundColor: isHTA ? '#fef9c3' : '#dbeafe',
-              }}
-            >
+            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: isHTA ? '#fef9c3' : '#dbeafe' }}>
               <Text style={{ fontSize: 12, fontWeight: '600', color: isHTA ? '#92400e' : '#1e40af' }}>
                 {isHTA ? 'Head TA' : 'TA'}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleRemove(item)} style={{ padding: 4 }}>
-              <Ionicons name="trash-outline" size={18} color="#ef4444" />
-            </TouchableOpacity>
+            </View>
+            <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#6b7280" />
           </View>
         </View>
-      </View>
+
+        {/* Expanded dropdown */}
+        {isExpanded && (
+          <View style={{ borderTopWidth: 1, borderTopColor: '#e5e7eb', backgroundColor: '#f9fafb', paddingHorizontal: 14, paddingVertical: 10, gap: 8 }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: '#6b7280', marginBottom: 2 }}>Change role</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {(['TA', 'HTA'] as StaffRole[]).map((r) => {
+                const active = role === r;
+                return (
+                  <TouchableOpacity
+                    key={r}
+                    onPress={() => handleChangeRole(item, r)}
+                    style={{
+                      flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 8,
+                      backgroundColor: active ? (r === 'HTA' ? '#fef9c3' : '#dbeafe') : '#e5e7eb',
+                      borderWidth: 1,
+                      borderColor: active ? (r === 'HTA' ? '#fde68a' : '#93c5fd') : '#d1d5db',
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: active ? (r === 'HTA' ? '#92400e' : '#1e40af') : '#374151' }}>
+                      {r === 'HTA' ? 'Head TA' : 'TA'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <TouchableOpacity
+              onPress={() => handleRemove(item)}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, borderRadius: 8, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fca5a5', marginTop: 2 }}
+            >
+              <Ionicons name="trash-outline" size={15} color="#dc2626" />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#dc2626' }}>Remove from system</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
@@ -197,18 +253,59 @@ export default function TAManagerScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: '#f9fafb' }} contentContainerStyle={{ padding: pad }}>
       {/* Header */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
         <Text style={{ fontSize: isMobile ? 22 : 26, fontWeight: 'bold', color: '#111827' }}>TA Management</Text>
-        <TouchableOpacity
-          onPress={() => setShowInviteForm(!showInviteForm)}
-          style={{ backgroundColor: '#b91c1c', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
-        >
-          <Ionicons name="person-add" size={15} color="white" />
-          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
-            {showInviteForm ? 'Cancel' : 'Add TA'}
-          </Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={() => setShowCsvInfo(!showCsvInfo)}
+            style={{ padding: 6 }}
+          >
+            <Ionicons name="information-circle-outline" size={22} color="#6b7280" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleImportCSV}
+            style={{ backgroundColor: '#374151', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+          >
+            <Ionicons name="cloud-upload-outline" size={15} color="white" />
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Import CSV</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowInviteForm(!showInviteForm)}
+            style={{ backgroundColor: '#b91c1c', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+          >
+            <Ionicons name="person-add" size={15} color="white" />
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
+              {showInviteForm ? 'Cancel' : 'Add TA'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* CSV format info */}
+      {showCsvInfo && (
+        <View style={{ backgroundColor: '#f0f9ff', borderWidth: 1, borderColor: '#bae6fd', borderRadius: 10, padding: 14, marginBottom: 14 }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#0369a1', marginBottom: 6 }}>CSV Import Format</Text>
+          <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 4 }}>netid,name,password,role</Text>
+          <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 4 }}>jsmith,Jane Smith,temp123,TA</Text>
+          <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 8 }}>bjones,Bob Jones,temp123,HTA</Text>
+          <Text style={{ fontSize: 11, color: '#0369a1' }}>• Header row is optional (auto-detected)</Text>
+          <Text style={{ fontSize: 11, color: '#0369a1' }}>• Role: TA or HTA (defaults to TA if omitted)</Text>
+          <Text style={{ fontSize: 11, color: '#0369a1' }}>• Password defaults to "changeme" if blank</Text>
+          <Text style={{ fontSize: 11, color: '#0369a1' }}>• Existing NetIDs are skipped (no overwrite)</Text>
+        </View>
+      )}
+
+      {/* Import result */}
+      {importResult && (
+        <View style={{ backgroundColor: importResult.failed.length === 0 ? '#f0fdf4' : '#fef9c3', borderWidth: 1, borderColor: importResult.failed.length === 0 ? '#86efac' : '#fde047', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: importResult.failed.length === 0 ? '#166534' : '#92400e' }}>
+            {importResult.success} imported successfully{importResult.failed.length > 0 ? `, ${importResult.failed.length} failed` : ''}
+          </Text>
+          {importResult.failed.map((row, i) => (
+            <Text key={i} style={{ fontSize: 11, color: '#92400e', marginTop: 2 }}>✗ {row}</Text>
+          ))}
+        </View>
+      )}
 
       {/* Invite Form */}
       {showInviteForm && (

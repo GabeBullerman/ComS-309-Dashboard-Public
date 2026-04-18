@@ -17,6 +17,8 @@ import StudentListScreen from "./StudentListScreen";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DashboardScreen'>;
 
+const ACTIVE_SCREEN_KEY = 'dashboard_active_screen';
+
 export default function DashboardScreen({route}: Props) {
   const [activeScreen, setActiveScreen] = useState("Teams");
   const [displayName, setDisplayName] = useState("User");
@@ -66,6 +68,20 @@ export default function DashboardScreen({route}: Props) {
       ? [{ label: "At-Risk Students",   mobileLabel: "At-Risk",    icon: "alert-circle-outline" }] : []),
     { label: "Profile",      mobileLabel: "Profile",icon: "person-circle-outline" },
   ] as { label: string; mobileLabel: string; icon: string }[];
+
+  // Restore last active screen on mount; persist on every change
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    try {
+      const saved = localStorage.getItem(ACTIVE_SCREEN_KEY);
+      if (saved && navItems.some((i) => i.label === saved)) setActiveScreen(saved);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    try { localStorage.setItem(ACTIVE_SCREEN_KEY, activeScreen); } catch { /* ignore */ }
+  }, [activeScreen]);
 
   const renderScreen = () => {
     switch (activeScreen) {

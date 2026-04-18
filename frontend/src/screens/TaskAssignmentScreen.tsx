@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { normalizeRole, UserSummary } from '../utils/auth';
-import { getCurrentUser, getUsersByRole } from '../api/users';
+import { getCurrentUser, getUsersByRole, getUserByNetid } from '../api/users';
 import { getTeams, TeamApiResponse } from '../api/teams';
-import { getTasksAssignedBy, createTask, updateTask, deleteTask, TaskApiResponse } from '../api/tasks';
+import { getTasksAssignedBy, createTask, updateTask, deleteTask, TaskApiResponse, TaskStatus } from '../api/tasks';
 
 type RecipientType = 'specific-ta' | 'all-tas' | 'specific-team' | 'all-my-teams' | 'all-students';
 
@@ -28,6 +28,7 @@ export default function TaskAssignmentScreen() {
   const [teams, setTeams] = useState<TeamApiResponse[]>([]);
   const [myTasks, setMyTasks] = useState<TaskApiResponse[]>([]);
   const [taskLabelMap, setTaskLabelMap] = useState<Record<number, string>>({});
+  const [recipientNameMap, setRecipientNameMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -70,7 +71,16 @@ export default function TaskAssignmentScreen() {
       setRole(r);
 
       const fetches: Promise<void>[] = [
-        getTasksAssignedBy(user.netid).then(setMyTasks).catch(() => {}),
+        getTasksAssignedBy(user.netid).then((tasks) => {
+          setMyTasks(tasks);
+          const uniqueNetids = [...new Set(tasks.map((t) => t.assignedToNetid).filter(Boolean))] as string[];
+          Promise.all(uniqueNetids.map((n) => getUserByNetid(n).then((u) => u ? [n, u.name ?? n] as const : null)))
+            .then((results) => {
+              const map: Record<string, string> = {};
+              for (const r of results) { if (r) map[r[0]] = r[1]; }
+              setRecipientNameMap(map);
+            });
+        }).catch(() => {}),
       ];
 
       if (r === 'HTA' || r === 'Instructor') {
@@ -193,10 +203,26 @@ export default function TaskAssignmentScreen() {
     return [...map.values()].sort((a, b) => (a.rep.dueDate ?? '').localeCompare(b.rep.dueDate ?? ''));
   })();
 
-  const handleDeleteGroup = async (ids: number[]) => {
-    await Promise.allSettled(ids.map((id) => deleteTask(id)));
-    setMyTasks((prev) => prev.filter((t) => !ids.includes(t.id)));
+  const handleDeleteGroup = (ids: number[]) => {
+    const msg = 'Delete this task? This cannot be undone.';
+    const doDelete = async () => {
+      await Promise.allSettled(ids.map((id) => deleteTask(id)));
+      setMyTasks((prev) => prev.filter((t) => !ids.includes(t.id)));
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(msg)) doDelete();
+    } else {
+      Alert.alert('Delete Task', msg, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: doDelete }]);
+    }
   };
+
+
+  const STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; border: string; label: string }> = {
+    TODO:     { bg: '#f3f4f6', text: '#374151', border: '#e5e7eb', label: 'To Do' },
+    WIP:      { bg: '#fef9c3', text: '#92400e', border: '#fde047', label: 'In Progress' },
+    COMPLETE: { bg: '#dcfce7', text: '#166534', border: '#86efac', label: 'Complete' },
+  };
+  const STATUS_CYCLE: TaskStatus[] = ['TODO', 'WIP', 'COMPLETE'];
 
   const pad = isMobile ? 12 : 24;
 
@@ -363,7 +389,7 @@ export default function TaskAssignmentScreen() {
             ?? (g.netids.length === 1 ? g.netids[0] : `${g.netids.length} recipients`);
           const isEditing = editingId === g.rep.id;
           return (
-            <View style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: isEditing ? '#C8102E' : '#e5e7eb' }}>
+            <View style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, borderWidth: isEditing ? 1.5 : 1, borderColor: isEditing ? '#C8102E' : '#1f2937' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <Text style={{ fontWeight: '600', color: '#111827', flex: 1, marginRight: 8 }}>{g.rep.title}</Text>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -379,6 +405,54 @@ export default function TaskAssignmentScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
+
+              {!isEditing && g.rep.description ? (
+                <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 4 }}>{g.rep.description}</Text>
+              ) : null}
+
+              {/* Per-recipient status list */}
+              {!isEditing && (() => {
+                const assignees = g.ids.map((id) => myTasks.find((t) => t.id === id)).filter(Boolean) as typeof myTasks;
+                if (assignees.length === 0) return null;
+                const complete = assignees.filter((t) => t.status === 'COMPLETE');
+                const pending = assignees.filter((t) => t.status !== 'COMPLETE');
+
+                const todayStr = new Date().toISOString().split('T')[0];
+                const renderRow = (list: typeof assignees, label: string, topMargin?: number) => (
+                  <View style={{ marginTop: topMargin ?? 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#6b7280', marginBottom: 4 }}>
+                      {label} ({list.length})
+                    </Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+                      {list.map((t, i) => {
+                        const status = (t.status ?? 'TODO') as TaskStatus;
+                        const dueStr = t.dueDate ? t.dueDate.split('T')[0] : null;
+                        const overdue = status !== 'COMPLETE' && !!dueStr && dueStr < todayStr;
+                        const s = overdue
+                          ? { bg: '#fee2e2', border: '#fca5a5', text: '#991b1b' }
+                          : STATUS_STYLES[status];
+                        const name = t.assignedToNetid ? (recipientNameMap[t.assignedToNetid] ?? t.assignedToNetid) : '?';
+                        const isLast = i === list.length - 1;
+                        return (
+                          <View key={t.id} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={{ backgroundColor: s.bg, borderWidth: 1, borderColor: s.border, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                              <Text style={{ fontSize: 11, color: s.text, fontWeight: '500' }}>{name}</Text>
+                            </View>
+                            {!isLast && <Text style={{ fontSize: 11, color: '#9ca3af', marginLeft: 2 }}>,</Text>}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                );
+
+                return (
+                  <View style={{ marginTop: 6 }}>
+                    {pending.length > 0 && renderRow(pending, 'Pending')}
+                    {complete.length > 0 && renderRow(complete, 'Completed', pending.length > 0 ? 8 : 6)}
+                  </View>
+                );
+              })()}
 
               {isEditing ? (
                 <View style={{ marginTop: 8, gap: 6 }}>
@@ -417,13 +491,7 @@ export default function TaskAssignmentScreen() {
                 </View>
               ) : (
                 <>
-                  {g.rep.description ? (
-                    <Text style={{ color: '#6b7280', fontSize: 13, marginTop: 2 }}>{g.rep.description}</Text>
-                  ) : null}
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 }}>
-                    <Text style={{ fontSize: 12, color: '#94a3b8' }}>→ {recipientLabel}</Text>
-                    {dateOnly && <Text style={{ fontSize: 12, color: '#6b7280' }}>Due: {dateOnly}</Text>}
-                  </View>
+                  {dateOnly && <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Due: {dateOnly}</Text>}
                 </>
               )}
             </View>

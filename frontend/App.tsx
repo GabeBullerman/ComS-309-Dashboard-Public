@@ -79,6 +79,7 @@ export default function App() {
     setUserRole('Student');
     try {
       await AsyncStorage.removeItem('user_role');
+      if (typeof localStorage !== 'undefined') localStorage.removeItem('dashboard_active_screen');
     } catch (e) {
       console.warn('Failed to remove stored user data', e);
     }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -16,9 +16,11 @@ import { getUserPermissions, normalizeRole, UserRole } from '../utils/auth';
 import { getCurrentUser, getUsersByRole } from '../api/users';
 import { getTeams, TeamApiResponse } from '../api/teams';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
 import { Picker } from '@react-native-picker/picker';
+import { getWeeklyPerformanceForStudent } from '../api/weeklyPerformance';
+import { getDemoPerformanceForStudent } from '../api/demoPerformance';
 
 type StatusFilter = 'All' | 'Good' | 'Moderate' | 'Poor';
 type SemesterFilter = 'All' | 'Spring 2026' | 'Fall 2025';
@@ -79,25 +81,22 @@ export default function ClassTeamsScreen({ userRole }: Props) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
-  useEffect(() => {
-    const toInitials = (name?: string) => {
-      if (!name) return 'NA';
-      return name
-        .trim()
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((part) => part[0]?.toUpperCase() ?? '')
-        .join('') || 'NA';
-    };
+  const toInitials = (name?: string) => {
+    if (!name) return 'NA';
+    return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || 'NA';
+  };
 
-    const mapStatus = (status?: number | null): Team['status'] => {
-      if (status == null) return 'Moderate';
-      if (status <= 0) return 'Poor';
-      if (status === 1) return 'Moderate';
-      return 'Good';
-    };
+  const mapStatus = (status?: number | null): Team['status'] => {
+    if (status == null) return 'Moderate';
+    if (status <= 0) return 'Poor';
+    if (status === 1) return 'Moderate';
+    return 'Good';
+  };
 
-    let taNames = new Map<string, string>();
+  const loadTeams = useCallback(async () => {
+    setIsLoading(true);
+    setErrorMessage('');
+    const taNames = new Map<string, string>();
 
     const mapTeam = (team: TeamApiResponse): Team => {
       const members: TeamMember[] = (team.students ?? [])
@@ -112,7 +111,6 @@ export default function ClassTeamsScreen({ userRole }: Props) {
           photo: require('../Images/PersonIcon.png'),
           demoResults: [],
         }));
-
       return {
         id: team.id,
         name: team.name || 'Unnamed Team',
@@ -128,55 +126,61 @@ export default function ClassTeamsScreen({ userRole }: Props) {
       };
     };
 
-    const loadTeams = async () => {
-      setIsLoading(true);
-      setErrorMessage('');
+    try {
+      const currentUser = await getCurrentUser();
+      const netid = currentUser?.netid;
+      if (!netid) { setErrorMessage('Could not identify current user.'); setIsLoading(false); return; }
 
-      try {
-        const currentUser = await getCurrentUser();
-        const netid = currentUser?.netid;
-
-        if (!netid) {
-          setErrorMessage('Could not identify current user.');
-          setIsLoading(false);
-          return;
-        }
-
-        const normalizedRole = normalizeRole(String(effectiveRole));
-
-        let rawTeams: TeamApiResponse[] = [];
-
-        if (normalizedRole === 'TA') {
-          rawTeams = await getTeams(netid);
-        } else {
-          rawTeams = await getTeams();
-        }
-
-        if (normalizedRole === 'Student') {
-          rawTeams = rawTeams.filter((team) =>
-            (team.students ?? []).some((student) => student.netid === netid)
-          );
-        }
-
-        // Build netid → full name map for TAs/HTAs
-        const [tas, htas] = await Promise.all([
-          getUsersByRole('TA').catch(() => []),
-          getUsersByRole('HTA').catch(() => []),
-        ]);
-        for (const u of [...tas, ...htas]) {
-          if (u.netid && u.name) taNames.set(u.netid, u.name);
-        }
-
-        setTeams(rawTeams.map(mapTeam));
-      } catch (error) {
-        setErrorMessage('Failed to load teams from backend.');
-      } finally {
-        setIsLoading(false);
+      const normalizedRole = normalizeRole(String(effectiveRole));
+      let rawTeams: TeamApiResponse[] = normalizedRole === 'TA' ? await getTeams(netid) : await getTeams();
+      if (normalizedRole === 'Student') {
+        rawTeams = rawTeams.filter((team) => (team.students ?? []).some((s) => s.netid === netid));
       }
-    };
 
-    loadTeams();
+      const [tas, htas] = await Promise.all([getUsersByRole('TA').catch(() => []), getUsersByRole('HTA').catch(() => [])]);
+      for (const u of [...tas, ...htas]) { if (u.netid && u.name) taNames.set(u.netid, u.name); }
+
+      const mappedTeams = rawTeams.map(mapTeam);
+      setTeams(mappedTeams);
+
+      const enrichedTeams = await Promise.all(mappedTeams.map(async (team) => {
+        const netids = team.members.map(m => m.netid).filter(Boolean) as string[];
+        if (netids.length === 0) return team;
+
+        const [weeklyArrays, demoArrays] = await Promise.all([
+          Promise.all(netids.map(n => getWeeklyPerformanceForStudent(n).catch(() => []))),
+          Promise.all(netids.map(n => getDemoPerformanceForStudent(n).catch(() => []))),
+        ]);
+        const weekly = weeklyArrays.flat();
+        const demos = demoArrays.flat();
+
+        const demoScores: Team['demoScores'] = [1, 2, 3, 4].map(demoNum => {
+          const recs = demos.filter(d => d.demoNumber === demoNum);
+          if (recs.length === 0) return { code: null, teamwork: null };
+          return { code: Math.round(recs.reduce((s, r) => s + r.codeScore, 0) / recs.length), teamwork: Math.round(recs.reduce((s, r) => s + r.teamworkScore, 0) / recs.length) };
+        });
+
+        let status: Team['status'] = team.status;
+        if (weekly.length > 0) {
+          const latestWeek = weekly.reduce((max, r) => r.weekStartDate > max ? r.weekStartDate : max, weekly[0].weekStartDate);
+          const current = weekly.filter(r => r.weekStartDate === latestWeek);
+          const avg = current.reduce((s, r) => s + (r.codeScore + r.teamworkScore) / 2, 0) / current.length;
+          status = avg >= 1.5 ? 'Good' : avg >= 0.5 ? 'Moderate' : 'Poor';
+        } else if (demos.length > 0) {
+          const avg = demos.reduce((s, r) => s + (r.codeScore + r.teamworkScore) / 2, 0) / demos.length;
+          status = avg >= 1.5 ? 'Good' : avg >= 0.5 ? 'Moderate' : 'Poor';
+        }
+        return { ...team, status, demoScores };
+      }));
+      setTeams(enrichedTeams);
+    } catch {
+      setErrorMessage('Failed to load teams from backend.');
+    } finally {
+      setIsLoading(false);
+    }
   }, [effectiveRole]);
+
+  useFocusEffect(useCallback(() => { loadTeams(); }, [loadTeams]));
 
   const teamStats = useMemo(() => ({
     total: teams.length,

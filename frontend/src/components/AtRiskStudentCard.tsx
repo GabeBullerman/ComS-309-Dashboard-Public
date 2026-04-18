@@ -8,6 +8,7 @@ export type RiskSeverity = 'warning' | 'critical';
 export interface AtRiskFlag {
   reason: string;
   severity: RiskSeverity;
+  category: 'attendance' | 'performance';
 }
 
 export interface AtRiskStudentProps {

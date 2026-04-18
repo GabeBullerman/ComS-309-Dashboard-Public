@@ -39,6 +39,9 @@ public class Task {
     @JoinColumn(name = "assigned_to")
     private User assignedTo;
 
+    @Column(name = "status", nullable = false)
+    private String status = "TODO";
+
     public Long getId() {
         return id;
     }
@@ -86,4 +89,7 @@ public class Task {
     public void setAssignedTo(User reciever){
         assignedTo = reciever;
     }
+
+    public String getStatus() { return status != null ? status : "TODO"; }
+    public void setStatus(String status) { this.status = status; }
 }

@@ -41,6 +41,9 @@ public class Comment {
     @JoinColumn(name = "team_id", nullable = false)
     private Team team;
 
+    @Column(name = "is_private", nullable = false, columnDefinition = "boolean default false")
+    private boolean isPrivate = false;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -98,6 +101,14 @@ public class Comment {
 
     public void setReceiverTeam(Team receiverTeam) {
         this.receiverTeam = receiverTeam;
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
+    }
+
+    public void setPrivate(boolean isPrivate) {
+        this.isPrivate = isPrivate;
     }
 
     public LocalDateTime getCreatedAt() {

@@ -1,6 +1,6 @@
 import axiosInstance from './client';
 
-export type AttendanceStatus = 'PRESENT' | 'LATE' | 'ABSENT';
+export type AttendanceStatus = 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED';
 export type AttendanceType = 'LECTURE' | 'MEETING';
 
 export interface AttendanceRecord {

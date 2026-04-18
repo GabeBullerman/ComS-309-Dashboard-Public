@@ -2,6 +2,7 @@ package edu.iastate.dashboard309.dto;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -15,6 +16,7 @@ public record CommentRequest(
         Long receiverTeamId,
         @NotNull Long teamId,
         String senderNetid,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        @JsonProperty("isPrivate") boolean isPrivate
 ) {
 }

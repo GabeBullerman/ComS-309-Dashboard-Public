@@ -5,9 +5,11 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -90,6 +92,7 @@ public class CommentController {
         Comment comment = new Comment();
         comment.setCommentBody(request.commentBody());
         comment.setStatus(request.status());
+        comment.setPrivate(request.isPrivate());
         comment.setSender(sender);
         comment.setReceiver(receiver);
         comment.setReceiverTeam(null);
@@ -111,6 +114,7 @@ public class CommentController {
         Comment comment = new Comment();
         comment.setCommentBody(request.commentBody());
         comment.setStatus(request.status());
+        comment.setPrivate(request.isPrivate());
         comment.setSender(sender);
         comment.setReceiver(null);
         comment.setReceiverTeam(team);
@@ -123,6 +127,32 @@ public class CommentController {
         teamRepository.save(team);
 
         return commentService.getCommentById(comment.getId());
+    }
+
+    public record CommentUpdateRequest(
+        @jakarta.validation.constraints.NotBlank String commentBody,
+        @jakarta.validation.constraints.NotNull @jakarta.validation.constraints.Min(0) @jakarta.validation.constraints.Max(2) Integer status,
+        @com.fasterxml.jackson.annotation.JsonProperty("isPrivate") boolean isPrivate
+    ) {}
+
+    @PutMapping("/{id}")
+    public CommentRequest update(@PathVariable Long id,
+                                 @Valid @RequestBody CommentUpdateRequest request,
+                                 Authentication authentication) {
+        User caller = getSender(authentication);
+        boolean isElevated = authentication.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equalsIgnoreCase("INSTRUCTOR") || a.getAuthority().equalsIgnoreCase("HTA"));
+        return commentService.updateComment(id, caller.getNetid(), isElevated,
+            request.commentBody(), request.status(), request.isPrivate());
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long id, Authentication authentication) {
+        User caller = getSender(authentication);
+        boolean isElevated = authentication.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equalsIgnoreCase("INSTRUCTOR") || a.getAuthority().equalsIgnoreCase("HTA"));
+        commentService.deleteComment(id, caller.getNetid(), isElevated);
     }
 
     private User getSender(Authentication authentication) {

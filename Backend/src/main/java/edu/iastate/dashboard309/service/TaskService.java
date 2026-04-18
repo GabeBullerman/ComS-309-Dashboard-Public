@@ -28,7 +28,7 @@ public class TaskService {
     public TaskRequest getTaskById(Long id){
         Task task = taskRepository.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found"));
-        return new TaskRequest(task.getId(), task.getTitle(), task.getDescription(), task.getDueDate(), task.getAssignedTo().getNetid(), task.getAssignedBy().getNetid());
+        return new TaskRequest(task.getId(), task.getTitle(), task.getDescription(), task.getDueDate(), task.getAssignedTo().getNetid(), task.getAssignedBy().getNetid(), task.getStatus());
     }
 
     @Transactional
