@@ -12,14 +12,22 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { UserSummary, normalizeRole } from '../utils/auth';
+import { UserSummary, normalizeRole, UserRole } from '../utils/auth';
 import { getUsersByRole, createUser, updateUser, deleteUser } from '../api/users';
 
-type StaffRole = 'TA' | 'HTA';
+type StaffRole = 'TA' | 'HTA' | 'Instructor';
 
-export default function TAManagerScreen() {
+const ROLE_LABEL: Record<StaffRole, string> = { TA: 'TA', HTA: 'Head TA', Instructor: 'Instructor' };
+const ROLE_BADGE_BG: Record<StaffRole, string> = { TA: '#dbeafe', HTA: '#fef9c3', Instructor: '#f3e8ff' };
+const ROLE_BADGE_TEXT: Record<StaffRole, string> = { TA: '#1e40af', HTA: '#92400e', Instructor: '#6b21a8' };
+
+interface Props { userRole: UserRole; }
+
+export default function StaffManagerScreen({ userRole }: Props) {
   const { width } = useWindowDimensions();
   const isMobile = width < 640;
+  const isInstructor = userRole === 'Instructor';
+  const isHTA = userRole === 'HTA';
 
   const [staff, setStaff] = useState<UserSummary[]>([]);
   const [search, setSearch] = useState('');
@@ -37,17 +45,18 @@ export default function TAManagerScreen() {
     role: 'TA' as StaffRole,
   });
 
+  const availableRoles: StaffRole[] = isInstructor ? ['TA', 'HTA', 'Instructor'] : ['TA'];
+
   const loadStaff = async () => {
     setLoading(true);
     try {
-      const [tas, htas] = await Promise.all([
+      const fetches: Promise<UserSummary[]>[] = [
         getUsersByRole('TA'),
         getUsersByRole('HTA'),
-      ]);
-      const combined = [...htas, ...tas].map((u) => ({
-        ...u,
-        role: normalizeRole(String(u.role)),
-      }));
+      ];
+      if (isInstructor) fetches.push(getUsersByRole('Instructor').catch(() => []));
+      const results = await Promise.all(fetches);
+      const combined = results.flat().map((u) => ({ ...u, role: normalizeRole(String(u.role)) }));
       setStaff(combined);
     } catch {
       Alert.alert('Error', 'Failed to load staff.');
@@ -66,15 +75,28 @@ export default function TAManagerScreen() {
     if (sortBy === 'name') {
       result.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
     } else {
+      const ORDER: Record<string, number> = { Instructor: 0, HTA: 1, TA: 2 };
       result.sort((a, b) => {
-        const aHTA = normalizeRole(String(a.role)) === 'HTA';
-        const bHTA = normalizeRole(String(b.role)) === 'HTA';
-        if (aHTA !== bHTA) return aHTA ? -1 : 1;
-        return (a.name ?? '').localeCompare(b.name ?? '');
+        const ra = normalizeRole(String(a.role));
+        const rb = normalizeRole(String(b.role));
+        const diff = (ORDER[ra] ?? 3) - (ORDER[rb] ?? 3);
+        return diff !== 0 ? diff : (a.name ?? '').localeCompare(b.name ?? '');
       });
     }
     return result;
   }, [staff, search, sortBy]);
+
+  const confirm = (message: string): Promise<boolean> => {
+    if (Platform.OS === 'web') return Promise.resolve(window.confirm(message));
+    return new Promise((resolve) =>
+      Alert.alert('Confirm', message, [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Confirm', onPress: () => resolve(true) },
+      ])
+    );
+  };
+
+  const isAdminRole = (role: string) => role === 'HTA' || role === 'Instructor';
 
   const handleImportCSV = () => {
     const input = document.createElement('input');
@@ -86,19 +108,36 @@ export default function TAManagerScreen() {
       const text = await file.text();
       const lines = text.trim().split('\n').filter((l) => l.trim());
       const dataLines = lines[0]?.toLowerCase().includes('netid') ? lines.slice(1) : lines;
+
+      const parsed = dataLines.map((line) => {
+        const cols = line.split(',').map((s) => s.trim().replace(/^"|"$/g, ''));
+        const [netid, name, password, roleCol] = cols;
+        const role: StaffRole =
+          roleCol?.toUpperCase() === 'INSTRUCTOR' ? 'Instructor'
+          : roleCol?.toUpperCase() === 'HTA' ? 'HTA'
+          : 'TA';
+        return { netid, name, password, role, line };
+      });
+
+      const adminRows = parsed.filter((r) => isAdminRole(r.role));
+      if (adminRows.length > 0) {
+        const names = adminRows.map((r) => `${r.netid} (${r.role})`).join(', ');
+        const ok = await confirm(
+          `This CSV contains ${adminRows.length} admin-level account${adminRows.length > 1 ? 's' : ''}: ${names}.\n\nAdmin accounts have elevated permissions. Are you sure you want to add them?`
+        );
+        if (!ok) return;
+      }
+
       const results = await Promise.allSettled(
-        dataLines.map(async (line) => {
-          const cols = line.split(',').map((s) => s.trim().replace(/^"|"$/g, ''));
-          const [netid, name, password, roleCol] = cols;
-          if (!netid || !name) throw new Error(`Bad row: ${line}`);
-          const role: StaffRole = roleCol?.toUpperCase() === 'HTA' ? 'HTA' : 'TA';
+        parsed.map(async ({ netid, name, password, role }) => {
+          if (!netid || !name) throw new Error(`Bad row`);
           await createUser({ netid, name, password: password || 'changeme', role: [role] });
           return netid;
         })
       );
       const success = results.filter((r) => r.status === 'fulfilled').length;
       const failed = results
-        .map((r, i) => r.status === 'rejected' ? dataLines[i] : null)
+        .map((r, i) => r.status === 'rejected' ? parsed[i].line : null)
         .filter(Boolean) as string[];
       setImportResult({ success, failed });
       await loadStaff();
@@ -110,6 +149,13 @@ export default function TAManagerScreen() {
     if (!inviteForm.netid.trim() || !inviteForm.name.trim() || !inviteForm.password.trim()) {
       Alert.alert('Error', 'NetID, name, and password are required.');
       return;
+    }
+    if (isAdminRole(inviteForm.role)) {
+      const label = ROLE_LABEL[inviteForm.role];
+      const ok = await confirm(
+        `Are you sure you want to add ${inviteForm.name.trim()} as ${label}? This grants them elevated admin permissions.`
+      );
+      if (!ok) return;
     }
     setSubmitting(true);
     try {
@@ -132,23 +178,19 @@ export default function TAManagerScreen() {
     }
   };
 
-  const confirm = (message: string): Promise<boolean> => {
-    if (Platform.OS === 'web') return Promise.resolve(window.confirm(message));
-    return new Promise((resolve) =>
-      Alert.alert('Confirm', message, [
-        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-        { text: 'Confirm', onPress: () => resolve(true) },
-      ])
-    );
-  };
-
   const handleChangeRole = async (member: UserSummary, newRole: StaffRole) => {
     if (!member.id) return;
     const currentRole = normalizeRole(String(member.role)) as StaffRole;
     if (currentRole === newRole) { setExpandedId(null); return; }
-    const label = newRole === 'HTA' ? 'Head TA' : 'TA';
-    const ok = await confirm(`Change ${member.name ?? member.netid} to ${label}?`);
-    if (!ok) return;
+    if (isAdminRole(newRole)) {
+      const ok = await confirm(
+        `Promote ${member.name ?? member.netid} to ${ROLE_LABEL[newRole]}? This grants them elevated admin permissions.`
+      );
+      if (!ok) return;
+    } else {
+      const ok = await confirm(`Change ${member.name ?? member.netid} to ${ROLE_LABEL[newRole]}?`);
+      if (!ok) return;
+    }
     try {
       await updateUser(member.id!, { role: [newRole] });
       setStaff((prev) => prev.map((m) => m.id === member.id ? { ...m, role: newRole } : m));
@@ -173,13 +215,14 @@ export default function TAManagerScreen() {
 
   const renderItem = ({ item }: { item: UserSummary }) => {
     const role = normalizeRole(String(item.role)) as StaffRole;
-    const isHTA = role === 'HTA';
     const cardKey = item.id ?? item.netid!;
     const isExpanded = expandedId === cardKey;
+    const canExpand = isInstructor;
+
     return (
       <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={() => setExpandedId(isExpanded ? null : cardKey)}
+        activeOpacity={canExpand ? 0.85 : 1}
+        onPress={() => canExpand && setExpandedId(isExpanded ? null : cardKey)}
         style={{
           backgroundColor: '#fff',
           borderRadius: 10,
@@ -194,28 +237,26 @@ export default function TAManagerScreen() {
           overflow: 'hidden',
         }}
       >
-        {/* Card header */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>{item.name ?? '—'}</Text>
             <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 1 }}>{item.netid}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: isHTA ? '#fef9c3' : '#dbeafe' }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: isHTA ? '#92400e' : '#1e40af' }}>
-                {isHTA ? 'Head TA' : 'TA'}
+            <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: ROLE_BADGE_BG[role] ?? '#e5e7eb' }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: ROLE_BADGE_TEXT[role] ?? '#374151' }}>
+                {ROLE_LABEL[role] ?? role}
               </Text>
             </View>
-            <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#6b7280" />
+            {canExpand && <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#6b7280" />}
           </View>
         </View>
 
-        {/* Expanded dropdown */}
-        {isExpanded && (
+        {isExpanded && isInstructor && (
           <View style={{ borderTopWidth: 1, borderTopColor: '#e5e7eb', backgroundColor: '#f9fafb', paddingHorizontal: 14, paddingVertical: 10, gap: 8 }}>
             <Text style={{ fontSize: 11, fontWeight: '600', color: '#6b7280', marginBottom: 2 }}>Change role</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              {(['TA', 'HTA'] as StaffRole[]).map((r) => {
+              {(['TA', 'HTA', 'Instructor'] as StaffRole[]).map((r) => {
                 const active = role === r;
                 return (
                   <TouchableOpacity
@@ -223,13 +264,13 @@ export default function TAManagerScreen() {
                     onPress={() => handleChangeRole(item, r)}
                     style={{
                       flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 8,
-                      backgroundColor: active ? (r === 'HTA' ? '#fef9c3' : '#dbeafe') : '#e5e7eb',
+                      backgroundColor: active ? ROLE_BADGE_BG[r] : '#e5e7eb',
                       borderWidth: 1,
-                      borderColor: active ? (r === 'HTA' ? '#fde68a' : '#93c5fd') : '#d1d5db',
+                      borderColor: active ? ROLE_BADGE_TEXT[r] : '#d1d5db',
                     }}
                   >
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: active ? (r === 'HTA' ? '#92400e' : '#1e40af') : '#374151' }}>
-                      {r === 'HTA' ? 'Head TA' : 'TA'}
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: active ? ROLE_BADGE_TEXT[r] : '#374151' }}>
+                      {ROLE_LABEL[r]}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -254,42 +295,45 @@ export default function TAManagerScreen() {
     <ScrollView style={{ flex: 1, backgroundColor: '#f9fafb' }} contentContainerStyle={{ padding: pad }}>
       {/* Header */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-        <Text style={{ fontSize: isMobile ? 22 : 26, fontWeight: 'bold', color: '#111827' }}>TA Management</Text>
+        <Text style={{ fontSize: isMobile ? 22 : 26, fontWeight: 'bold', color: '#111827' }}>Staff Management</Text>
         <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-          <TouchableOpacity
-            onPress={() => setShowCsvInfo(!showCsvInfo)}
-            style={{ padding: 6 }}
-          >
-            <Ionicons name="information-circle-outline" size={22} color="#6b7280" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleImportCSV}
-            style={{ backgroundColor: '#374151', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
-          >
-            <Ionicons name="cloud-upload-outline" size={15} color="white" />
-            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Import CSV</Text>
-          </TouchableOpacity>
+          {isInstructor && (
+            <>
+              <TouchableOpacity onPress={() => setShowCsvInfo(!showCsvInfo)} style={{ padding: 6 }}>
+                <Ionicons name="information-circle-outline" size={22} color="#6b7280" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleImportCSV}
+                style={{ backgroundColor: '#374151', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+              >
+                <Ionicons name="cloud-upload-outline" size={15} color="white" />
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Import CSV</Text>
+              </TouchableOpacity>
+            </>
+          )}
           <TouchableOpacity
             onPress={() => setShowInviteForm(!showInviteForm)}
             style={{ backgroundColor: '#b91c1c', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
           >
             <Ionicons name="person-add" size={15} color="white" />
             <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
-              {showInviteForm ? 'Cancel' : 'Add TA'}
+              {showInviteForm ? 'Cancel' : 'Add Staff'}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* CSV format info */}
-      {showCsvInfo && (
+      {/* CSV format info — Instructor only */}
+      {showCsvInfo && isInstructor && (
         <View style={{ backgroundColor: '#f0f9ff', borderWidth: 1, borderColor: '#bae6fd', borderRadius: 10, padding: 14, marginBottom: 14 }}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#0369a1', marginBottom: 6 }}>CSV Import Format</Text>
           <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 4 }}>netid,name,password,role</Text>
           <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 4 }}>jsmith,Jane Smith,temp123,TA</Text>
-          <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 8 }}>bjones,Bob Jones,temp123,HTA</Text>
+          <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 4 }}>bjones,Bob Jones,temp123,HTA</Text>
+          <Text style={{ fontSize: 12, color: '#0c4a6e', fontFamily: 'monospace', marginBottom: 8 }}>cprof,Chris Prof,temp123,Instructor</Text>
           <Text style={{ fontSize: 11, color: '#0369a1' }}>• Header row is optional (auto-detected)</Text>
-          <Text style={{ fontSize: 11, color: '#0369a1' }}>• Role: TA or HTA (defaults to TA if omitted)</Text>
+          <Text style={{ fontSize: 11, color: '#0369a1' }}>• Role: TA, HTA, or Instructor (defaults to TA)</Text>
+          <Text style={{ fontSize: 11, color: '#0369a1' }}>• HTA/Instructor rows require confirmation</Text>
           <Text style={{ fontSize: 11, color: '#0369a1' }}>• Password defaults to "changeme" if blank</Text>
           <Text style={{ fontSize: 11, color: '#0369a1' }}>• Existing NetIDs are skipped (no overwrite)</Text>
         </View>
@@ -310,7 +354,7 @@ export default function TAManagerScreen() {
       {/* Invite Form */}
       {showInviteForm && (
         <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 10, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB' }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 12 }}>Add New TA</Text>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827', marginBottom: 12 }}>Add New Staff Member</Text>
 
           <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563', marginBottom: 4 }}>NetID *</Text>
           <TextInput
@@ -340,19 +384,28 @@ export default function TAManagerScreen() {
           />
 
           <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563', marginBottom: 6 }}>Role</Text>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-            {(['TA', 'HTA'] as StaffRole[]).map((r) => (
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+            {availableRoles.map((r) => (
               <TouchableOpacity
                 key={r}
                 onPress={() => setInviteForm((prev) => ({ ...prev, role: r }))}
                 style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, backgroundColor: inviteForm.role === r ? '#b91c1c' : '#E5E7EB' }}
               >
                 <Text style={{ fontWeight: '600', fontSize: 14, color: inviteForm.role === r ? '#fff' : '#374151' }}>
-                  {r === 'HTA' ? 'Head TA' : 'TA'}
+                  {ROLE_LABEL[r]}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
+
+          {isAdminRole(inviteForm.role) && (
+            <View style={{ backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa', borderRadius: 8, padding: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="warning-outline" size={16} color="#c2410c" />
+              <Text style={{ fontSize: 12, color: '#c2410c', flex: 1 }}>
+                {ROLE_LABEL[inviteForm.role]} has elevated admin permissions. You'll be asked to confirm before adding.
+              </Text>
+            </View>
+          )}
 
           <TouchableOpacity
             onPress={handleCreate}
@@ -409,13 +462,20 @@ export default function TAManagerScreen() {
             Staff ({filteredStaff.length}{search ? ` of ${staff.length}` : ''})
           </Text>
 
+          {isHTA && (
+            <View style={{ backgroundColor: '#f0f9ff', borderWidth: 1, borderColor: '#bae6fd', borderRadius: 8, padding: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="information-circle-outline" size={15} color="#0369a1" />
+              <Text style={{ fontSize: 12, color: '#0369a1', flex: 1 }}>As HTA, you can add TAs to the system. Contact an Instructor to promote staff or remove accounts.</Text>
+            </View>
+          )}
+
           <FlatList
             data={filteredStaff}
             keyExtractor={(item) => String(item.id ?? item.netid)}
             renderItem={renderItem}
             scrollEnabled={false}
             ListEmptyComponent={
-              <Text style={{ textAlign: 'center', color: '#6B7280', paddingVertical: 32 }}>No TAs found.</Text>
+              <Text style={{ textAlign: 'center', color: '#6B7280', paddingVertical: 32 }}>No staff found.</Text>
             }
           />
         </>

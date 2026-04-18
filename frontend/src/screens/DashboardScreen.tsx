@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, Image, Dimensions, StatusBar, Platform } from "react-native";
 import TeamsScreen from "../screens/TeamsScreen";
-import TAManager from "../screens/TAManager";
+import StaffManagerScreen from "../screens/TAManager";
 import TaskAssignmentScreen from "../screens/TaskAssignmentScreen";
 import AssignmentsScreen from "../screens/AssignmentsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
@@ -58,8 +58,8 @@ export default function DashboardScreen({route}: Props) {
       ? [{ label: "Assign Tasks", mobileLabel: "Assign", icon: "clipboard-outline" }] : []),
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
       ? [{ label: "Student List", mobileLabel: "Students", icon: "people-outline" }] : []),
-    ...(permissions.canManageTAs
-      ? [{ label: "TA Manager",   mobileLabel: "TAs",    icon: "shield-outline" }] : []),
+    ...(role === 'HTA' || role === 'Instructor'
+      ? [{ label: "Staff Manager", mobileLabel: "Staff", icon: "shield-outline" }] : []),
     ...(role == 'Instructor' || role == "HTA"
       ? [{ label: "Upload",   mobileLabel: "Upload",    icon: "cloud-upload-outline" }] : []),
     ...(role !== 'Instructor'
@@ -88,7 +88,7 @@ export default function DashboardScreen({route}: Props) {
       case "Teams":        return <TeamsScreen userRole={route.params.userRole} />;
       case "Student List": return <StudentListScreen userRole={route.params.userRole} />;
       case "Assign Tasks": return <TaskAssignmentScreen />;
-      case "TA Manager":   return <TAManager />;
+      case "Staff Manager": return <StaffManagerScreen userRole={role} />;
       case "Upload":       return <UploadScreen/>;
       case "Tasks":        return <AssignmentsScreen />;
       case "Profile":      return <ProfileScreen userRole={role} onLogout={isMobile ? route.params.onLogout : undefined} />;
