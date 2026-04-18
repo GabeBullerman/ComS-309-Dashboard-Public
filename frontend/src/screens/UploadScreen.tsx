@@ -181,11 +181,30 @@ export default function UploadScreen(): React.JSX.Element {
         </View>
 
         {/* Required Upload Format */}
-        <View className="mb-6 p-4 bg-gray-400/20 rounded-xl">
-            {/* <Image
-                source={require('../Images/Iowa_State_Cyclones_logo.png')}
-                className="w-full h-40 object-contain"
-            /> */}
+        <View style={{ marginBottom: 24, padding: 16, backgroundColor: '#f9fafb', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827', marginBottom: 8 }}>Expected File Format</Text>
+          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>
+            Accepted formats: <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.csv</Text> or <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.xlsx</Text>
+          </Text>
+          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
+            The file must have a header row followed by one student per row with exactly 4 columns in this order:
+          </Text>
+          <View style={{ backgroundColor: '#f3f4f6', borderRadius: 8, padding: 10, gap: 4 }}>
+            {[
+              ['Column 1', 'First name'],
+              ['Column 2', 'Last name'],
+              ['Column 3', 'NetID'],
+              ['Column 4', 'Team name'],
+            ].map(([col, label]) => (
+              <View key={col} style={{ flexDirection: 'row', gap: 8 }}>
+                <Text style={{ fontSize: 11, fontFamily: 'monospace', color: '#6b7280', width: 68 }}>{col}</Text>
+                <Text style={{ fontSize: 11, color: '#374151' }}>{label}</Text>
+              </View>
+            ))}
+          </View>
+          <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 8 }}>
+            Example: <Text style={{ fontFamily: 'monospace' }}>John,Doe,jdoe,Team A1</Text>
+          </Text>
         </View>
 
         {/* Drop Zone */}
