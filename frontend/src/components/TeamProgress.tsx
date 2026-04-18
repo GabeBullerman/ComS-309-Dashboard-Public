@@ -229,7 +229,7 @@ export default function TeamProgress({ netid, readOnly = false }: Props) {
 
       {/* Rows */}
       {demos.map((row, index) => (
-        <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 }}>
+        <View key={`demo-${index}`} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 }}>
           <View style={{ width: 64, backgroundColor: '#F3F4F6', paddingVertical: 8, borderRadius: 6, alignItems: 'center' }}>
             <Text style={{ fontSize: 12, color: '#374151' }}>{DEMO_LABELS[index]}</Text>
           </View>

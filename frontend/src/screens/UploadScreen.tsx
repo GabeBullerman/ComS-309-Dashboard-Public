@@ -13,6 +13,7 @@ import DropZone from "@/components/DropZone";
 import axiosInstance from "@/api/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getUsersByRole } from "@/api/users";
+import * as ImagePicker from "expo-image-picker";
 
 const ACCEPTED_TYPES = new Set([
   "text/csv",
@@ -163,6 +164,43 @@ export default function UploadScreen(): React.JSX.Element {
     setAvatarUploading(false);
   }, []);
 
+  const handleAvatarPickerMobile = useCallback(async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      quality: 0.75,
+      base64: true,
+    });
+    if (result.canceled || !result.assets.length) return;
+
+    setAvatarUploading(true);
+    setAvatarResults([]);
+    const results: { key: string; ok: boolean; unchanged?: boolean; name: string }[] = [];
+
+    for (const asset of result.assets) {
+      const fileName = asset.fileName ?? asset.uri.split('/').pop() ?? 'unknown';
+      const resolvedNetid = fileName.replace(/\.[^.]+$/, '').toLowerCase().replace(/\s+/g, '');
+      try {
+        const dataUrl = `data:image/jpeg;base64,${asset.base64}`;
+        const storageKey = `member_avatar_${resolvedNetid}`;
+        const existing = await AsyncStorage.getItem(storageKey);
+        if (existing === dataUrl) {
+          results.push({ key: resolvedNetid, ok: true, unchanged: true, name: fileName });
+        } else {
+          await AsyncStorage.setItem(storageKey, dataUrl);
+          results.push({ key: resolvedNetid, ok: true, name: fileName });
+        }
+      } catch {
+        results.push({ key: resolvedNetid, ok: false, name: fileName });
+      }
+    }
+    if (results.length === 0) results.push({ key: '', ok: false, name: 'No images selected' });
+    setAvatarResults(results);
+    setAvatarUploading(false);
+  }, []);
+
   return (
     <View className="flex-1 bg-gray-100">
       <ScrollView
@@ -181,11 +219,30 @@ export default function UploadScreen(): React.JSX.Element {
         </View>
 
         {/* Required Upload Format */}
-        <View className="mb-6 p-4 bg-gray-400/20 rounded-xl">
-            {/* <Image
-                source={require('../Images/Iowa_State_Cyclones_logo.png')}
-                className="w-full h-40 object-contain"
-            /> */}
+        <View style={{ marginBottom: 24, padding: 16, backgroundColor: '#f9fafb', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827', marginBottom: 8 }}>Expected File Format</Text>
+          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>
+            Accepted formats: <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.csv</Text> or <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.xlsx</Text>
+          </Text>
+          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
+            The file must have a header row followed by one student per row with exactly 4 columns in this order:
+          </Text>
+          <View style={{ backgroundColor: '#f3f4f6', borderRadius: 8, padding: 10, gap: 4 }}>
+            {[
+              ['Column 1', 'First name'],
+              ['Column 2', 'Last name'],
+              ['Column 3', 'NetID'],
+              ['Column 4', 'Team name'],
+            ].map(([col, label]) => (
+              <View key={col} style={{ flexDirection: 'row', gap: 8 }}>
+                <Text style={{ fontSize: 11, fontFamily: 'monospace', color: '#6b7280', width: 68 }}>{col}</Text>
+                <Text style={{ fontSize: 11, color: '#374151' }}>{label}</Text>
+              </View>
+            ))}
+          </View>
+          <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 8 }}>
+            Example: <Text style={{ fontFamily: 'monospace' }}>John,Doe,jdoe,Team A1</Text>
+          </Text>
         </View>
 
         {/* Drop Zone */}
@@ -292,18 +349,17 @@ export default function UploadScreen(): React.JSX.Element {
           </TouchableOpacity>
         )}
         {/* Avatar Bulk Upload */}
-        {Platform.OS === 'web' && (
-          <View style={{ marginTop: 32, backgroundColor: 'white', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 }}>Upload Avatars</Text>
-            <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
-              Name images after the student's netid (e.g. <Text style={{ fontFamily: 'monospace' }}>jdoe.jpg</Text>). Images are stored locally in your browser.
-            </Text>
-            <Text style={{ fontSize: 11, color: '#9ca3af', marginBottom: 14 }}>
-              Full name files also work — spaces are stripped and lowercased (e.g. <Text style={{ fontFamily: 'monospace' }}>john doe.png</Text> → key <Text style={{ fontFamily: 'monospace' }}>johndoe</Text>).
-            </Text>
+        <View style={{ marginTop: 32, backgroundColor: 'white', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 }}>Upload Avatars</Text>
+          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+            Name images after the student's netid (e.g. <Text style={{ fontFamily: 'monospace' }}>jdoe.jpg</Text>). Images are stored locally on this device.
+          </Text>
+          <Text style={{ fontSize: 11, color: '#9ca3af', marginBottom: 14 }}>
+            Full name files also work — spaces are stripped and lowercased (e.g. <Text style={{ fontFamily: 'monospace' }}>john doe.png</Text> → key <Text style={{ fontFamily: 'monospace' }}>johndoe</Text>).
+          </Text>
 
+          {Platform.OS === 'web' ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
-              {/* Transparent input overlaid on button — direct click, no programmatic .click() needed */}
               <View style={{ flex: 1, position: 'relative' }}>
                 <View style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: '#F1BE48', opacity: avatarUploading ? 0.6 : 1 }}>
                   {avatarUploading
@@ -328,31 +384,40 @@ export default function UploadScreen(): React.JSX.Element {
                 )}
               </View>
             </View>
+          ) : (
+            <TouchableOpacity
+              onPress={handleAvatarPickerMobile}
+              disabled={avatarUploading}
+              style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: '#F1BE48', opacity: avatarUploading ? 0.6 : 1 }}
+            >
+              {avatarUploading
+                ? <ActivityIndicator color="#111827" />
+                : <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>Choose Photos</Text>}
+            </TouchableOpacity>
+          )}
 
-            {avatarResults.length > 0 && (
-              <View style={{ marginTop: 14, gap: 6 }}>
-                {avatarResults.map((r) => {
-                  const warn = r.unchanged || r.noMatch;
-                  const bg = warn ? 'rgba(234,179,8,0.08)' : r.ok ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)';
-                  const nameColor = warn ? '#92400e' : r.ok ? '#059669' : '#DC2626';
-                  const icon = warn ? '⚠️' : r.ok ? '✅' : '❌';
-                  return (
-                    <View key={r.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: bg, borderRadius: 8, padding: 10 }}>
-                      <Text style={{ fontSize: 13 }}>{icon}</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 12, fontWeight: '600', color: nameColor }}>{r.name}</Text>
-                        {r.unchanged && <Text style={{ fontSize: 11, color: '#92400e' }}>No changes — avatar for <Text style={{ fontFamily: 'monospace' }}>{r.key}</Text> is already identical</Text>}
-                        {r.noMatch && <Text style={{ fontSize: 11, color: '#92400e' }}>No matching student — not saved. Rename to the student's netid (e.g. <Text style={{ fontFamily: 'monospace' }}>jdoe.jpg</Text>)</Text>}
-                        {r.ok && !r.unchanged && !r.noMatch && <Text style={{ fontSize: 11, color: '#6b7280' }}>Saved as avatar for <Text style={{ fontFamily: 'monospace' }}>{r.key}</Text></Text>}
-                        {!r.ok && <Text style={{ fontSize: 11, color: '#991b1b' }}>Failed to process image</Text>}
-                      </View>
+          {avatarResults.length > 0 && (
+            <View style={{ marginTop: 14, gap: 6 }}>
+              {avatarResults.map((r) => {
+                const warn = r.unchanged;
+                const bg = warn ? 'rgba(234,179,8,0.08)' : r.ok ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)';
+                const nameColor = warn ? '#92400e' : r.ok ? '#059669' : '#DC2626';
+                const icon = warn ? '⚠️' : r.ok ? '✅' : '❌';
+                return (
+                  <View key={r.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: bg, borderRadius: 8, padding: 10 }}>
+                    <Text style={{ fontSize: 13 }}>{icon}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: nameColor }}>{r.name}</Text>
+                      {r.unchanged && <Text style={{ fontSize: 11, color: '#92400e' }}>No changes — avatar for <Text style={{ fontFamily: 'monospace' }}>{r.key}</Text> is already identical</Text>}
+                      {r.ok && !r.unchanged && <Text style={{ fontSize: 11, color: '#6b7280' }}>Saved as avatar for <Text style={{ fontFamily: 'monospace' }}>{r.key}</Text></Text>}
+                      {!r.ok && <Text style={{ fontSize: 11, color: '#991b1b' }}>Failed to process image</Text>}
                     </View>
-                  );
-                })}
-              </View>
-            )}
-          </View>
-        )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
       </ScrollView>
     </View>
   );

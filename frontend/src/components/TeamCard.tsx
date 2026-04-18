@@ -60,10 +60,10 @@ export const TeamCard: React.FC<TeamCardProps> = ({
             {demoScores && (
               <View style={{ flexDirection: 'row', gap: 4 }}>
                 {demoScores.map((d, i) => (
-                  <View key={i} style={{ flexDirection: 'row', gap: 2, alignItems: 'center' }}>
+                  <View key={`ds-${i}`} style={{ flexDirection: 'row', gap: 2, alignItems: 'center' }}>
                     <Text style={{ fontSize: 8, color: '#111827', marginRight: 1 }}>D{i + 1}</Text>
                     {[d.code, d.teamwork].map((score, j) => (
-                      <View key={j} style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: score != null ? SCORE_COLOR[score] : '#e5e7eb', borderWidth: 1, borderColor: score != null ? SCORE_BORDER[score] : '#d1d5db' }} />
+                      <View key={`ds-${i}-${j}`} style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: score != null ? SCORE_COLOR[score] : '#e5e7eb', borderWidth: 1, borderColor: score != null ? SCORE_BORDER[score] : '#d1d5db' }} />
                     ))}
                   </View>
                 ))}
@@ -95,9 +95,9 @@ export const TeamCard: React.FC<TeamCardProps> = ({
           style={{ flexDirection: 'row', gap: GAP }}
           onLayout={e => setRowWidth(e.nativeEvent.layout.width)}
         >
-          {members.map((member, index) => (
+          {members.map((member) => (
             <MemberAvatar
-              key={index}
+              key={member.netid || member.name}
               memberId={member.netid || member.name}
               initials={member.initials}
               size={avatarSize}
