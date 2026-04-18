@@ -122,8 +122,8 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   const [bulkType, setBulkType] = useState<AttendanceType>('LECTURE');
   const [bulkSaving, setBulkSaving] = useState(false);
   const [bulkDone, setBulkDone] = useState('');
-  const [bulkChecked, setBulkChecked] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(team.members.filter(m => m.netid).map(m => [m.netid!, true]))
+  const [bulkStatus, setBulkStatus] = useState<Record<string, AttendanceStatus>>(() =>
+    Object.fromEntries(team.members.filter(m => m.netid).map(m => [m.netid!, 'PRESENT' as AttendanceStatus]))
   );
 
   const handleBulkAttendance = async (statusMap?: Record<string, AttendanceStatus>) => {
@@ -133,7 +133,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     setBulkSaving(true);
     setBulkDone('');
     const results = await Promise.allSettled(members.map(async (m) => {
-      const status: AttendanceStatus = statusMap ? statusMap[m.netid!] : (bulkChecked[m.netid!] ? 'PRESENT' : 'ABSENT');
+      const status: AttendanceStatus = statusMap ? statusMap[m.netid!] : (bulkStatus[m.netid!] ?? 'PRESENT');
       const existing = await getAttendanceForStudent(m.netid!).catch((): AttendanceRecord[] => []);
       const record = existing.find(r => r.attendanceDate === bulkDate && r.type === bulkType);
       if (record) {
@@ -655,33 +655,61 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
             </View>
           </View>
 
-          {/* Per-student checkboxes */}
+          {/* Per-student status selector */}
           <View style={{ marginBottom: 12 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 12, color: '#6b7280' }}>Tap to toggle</Text>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <TouchableOpacity onPress={() => setBulkChecked(Object.fromEntries(team.members.filter(m => m.netid).map(m => [m.netid!, true])))}>
-                  <Text style={{ fontSize: 12, color: '#2563eb' }}>All Present</Text>
+            {/* Set-all row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 6, flexWrap: 'wrap' }}>
+              <Text style={{ fontSize: 12, color: '#6b7280', marginRight: 2 }}>Set all:</Text>
+              {([
+                { s: 'PRESENT' as AttendanceStatus, label: 'Present', color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
+                { s: 'LATE'    as AttendanceStatus, label: 'Late',    color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+                { s: 'ABSENT'  as AttendanceStatus, label: 'Absent',  color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
+                { s: 'EXCUSED' as AttendanceStatus, label: 'Excused', color: '#2563eb', bg: '#eff6ff', border: '#93c5fd' },
+              ]).map(({ s, label, color, bg, border }) => (
+                <TouchableOpacity
+                  key={s}
+                  onPress={() => setBulkStatus(Object.fromEntries(team.members.filter(m => m.netid).map(m => [m.netid!, s])))}
+                  style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: bg, borderWidth: 1, borderColor: border }}
+                >
+                  <Text style={{ fontSize: 11, fontWeight: '600', color }}>{label}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setBulkChecked(Object.fromEntries(team.members.filter(m => m.netid).map(m => [m.netid!, false])))}>
-                  <Text style={{ fontSize: 12, color: '#2563eb' }}>All Absent</Text>
-                </TouchableOpacity>
-              </View>
+              ))}
             </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+
+            {/* Per-member rows */}
+            <View style={{ gap: 6 }}>
               {team.members.filter(m => m.netid).map(m => {
-                const checked = bulkChecked[m.netid!] ?? true;
+                const current = bulkStatus[m.netid!] ?? 'PRESENT';
                 return (
-                  <TouchableOpacity
-                    key={m.netid}
-                    onPress={() => setBulkChecked(prev => ({ ...prev, [m.netid!]: !prev[m.netid!] }))}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 5, paddingHorizontal: 8, borderRadius: 8, backgroundColor: checked ? '#f0fdf4' : '#fef2f2', borderWidth: 1, borderColor: checked ? '#86efac' : '#fca5a5' }}
-                  >
-                    <View style={{ width: 14, height: 14, borderRadius: 3, borderWidth: 2, borderColor: checked ? '#16a34a' : '#dc2626', backgroundColor: checked ? '#16a34a' : 'white', alignItems: 'center', justifyContent: 'center' }}>
-                      {checked && <Ionicons name="checkmark" size={9} color="white" />}
+                  <View key={m.netid} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={{ fontSize: 12, color: '#111827', width: 120 }} numberOfLines={1}>{m.name}</Text>
+                    <View style={{ flexDirection: 'row', gap: 4, flex: 1 }}>
+                      {([
+                        { s: 'PRESENT' as AttendanceStatus, label: 'Present', color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
+                        { s: 'LATE'    as AttendanceStatus, label: 'Late',    color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+                        { s: 'ABSENT'  as AttendanceStatus, label: 'Absent',  color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
+                        { s: 'EXCUSED' as AttendanceStatus, label: 'Excused', color: '#2563eb', bg: '#eff6ff', border: '#93c5fd' },
+                      ]).map(({ s, label, color, bg, border }) => {
+                        const active = current === s;
+                        return (
+                          <TouchableOpacity
+                            key={s}
+                            onPress={() => setBulkStatus(prev => ({ ...prev, [m.netid!]: s }))}
+                            style={{
+                              flex: 1, alignItems: 'center', paddingVertical: 5, borderRadius: 6,
+                              backgroundColor: active ? bg : '#f9fafb',
+                              borderWidth: 1,
+                              borderColor: active ? border : '#e5e7eb',
+                            }}
+                          >
+                            <Text style={{ fontSize: 11, fontWeight: active ? '700' : '400', color: active ? color : '#9ca3af' }}>
+                              {label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
-                    <Text style={{ fontSize: 12, color: '#111827' }}>{m.name}</Text>
-                  </TouchableOpacity>
+                  </View>
                 );
               })}
             </View>
