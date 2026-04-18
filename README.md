@@ -79,19 +79,28 @@ The site is accessible at **http://coms-4020-006.class.las.iastate.edu:8080** (c
 
 > **Note:** The class server only exposes port 8080 externally. The frontend build must be done locally because the server runs Node.js 16, which is too old for Expo's build tools (Node 18+ required). The built `dist/` files are gitignored — they live only on the server.
 
+> **Database note:** The `attendance` table has a check constraint on `status`. If you add new attendance statuses, update it manually:
+> ```bash
+> sudo -u postgres psql -d class_dashboard -c "ALTER TABLE attendance DROP CONSTRAINT attendance_status_check"
+> sudo -u postgres psql -d class_dashboard -c "ALTER TABLE attendance ADD CONSTRAINT attendance_status_check CHECK (status IN ('PRESENT', 'LATE', 'ABSENT', 'EXCUSED'))"
+> ```
+
 ## Features
 
 - **Role-Based Access Control** — Student, TA, HTA, Instructor with granular permissions
-- **JWT Authentication** — Token-based login + cookie-based refresh; Google OAuth support
-- **Team Management** — View, search, filter teams; edit name, repo URL, TA notes, status
-- **Member Roles** — Assign Frontend / Backend / Full Stack project role per member
-- **Attendance Tracking** — Record per-student lecture and TA meeting attendance (Present/Late/Absent) with calendar UI; per-tab counts
-- **Weekly Performance** — Grade students weekly on code and teamwork (Poor/Moderate/Good) with week-picker; persisted per student per week
-- **Demo Performance** — Grade students across 4 demos on code and teamwork; persisted per student per demo
-- **At-Risk Students** — Automatically flags students based on: lecture absences (warning ≥3, critical ≥5), habitual lateness (≥3), poor demo performance (2+ demos), poor weekly performance (3+ weeks)
-- **Task Assignment** — Create, assign, edit, and delete tasks for teams/students; due dates; edit in-place
-- **File Import** — Upload CSV/Excel to bulk-import class roster and team data
-- **TA Management** — Invite and manage TAs (Instructor only)
+- **JWT Authentication** — Token-based login + cookie-based refresh; Google OAuth (sign in with Google) support with forced account picker
+- **Team Management** — View, search, and filter teams; edit name, repo URL, TA notes, and status; demo performance circles on team cards
+- **Member Profiles** — Assign Frontend / Backend / Full Stack project role; profile avatar upload (individual or bulk directory upload with filename matching)
+- **Attendance Tracking** — Record per-student lecture and TA meeting attendance (Present / Late / Absent / Excused) with calendar UI; hybrid All/Class/TA Meeting dropdown calendar view with dual-dot day cells; per-tab summary counts; bulk 4-status inline selectors per student on team page
+- **Weekly Performance** — Grade students weekly on code and teamwork (Poor/Moderate/Good) with week-picker; persisted per student per week; current week status shown on team cards
+- **Demo Performance** — Grade students across 4 demos on code and teamwork; demo result circles displayed on team cards and team list
+- **At-Risk Students** — Automatically flags students by lecture absences (warning ≥3, critical ≥5), habitual lateness (≥3 lates), poor demo performance (2+ demos), and poor weekly performance (3+ weeks); category filters (Attendance / Performance); pre-populated email templates per flag category with student TA included; copyable BCC list
+- **Task Assignment** — Create, assign, edit, and delete tasks for teams/students; due dates; status tracking (To-Do / In Progress / Complete) with color-coded borders; overdue highlighting with red border and tint; per-recipient status bubbles; status update toggle for TAs/HTAs
+- **Comments** — Per-member and per-team comments with Good/Moderate/Poor status; public or private visibility (private comments hidden from students); editable and deletable by author; scrollable history panel
+- **GitLab Analysis** — Per-team commit/MR stats pulled from GitLab API; contribution matching by netid or name (best-effort for multi-account users); hover tooltip showing grading criteria
+- **File Import** — Upload CSV/Excel to bulk-import class roster and team data; import TA/HTA list from CSV
+- **TA Management** — Invite, promote/demote, and remove TAs and HTAs (Instructor only); expandable cards with role confirmation
+- **Dashboard Persistence** — Active dashboard tab remembered across page refreshes via localStorage
 - **Discord Integration** — Per-team Discord link; clickable button on team view
 - **Cross-Platform** — Web, iOS, Android, and Electron desktop app
 
@@ -104,7 +113,9 @@ The site is accessible at **http://coms-4020-006.class.las.iastate.edu:8080** (c
 | Record attendance | ✗ | ✓ | ✓ | ✓ |
 | Grade weekly/demo performance | ✗ | ✓ | ✓ | ✓ |
 | View at-risk students | ✗ | ✓ | ✓ | ✓ |
-| Assign tasks | ✗ | ✓ | ✓ | ✓ |
+| Assign / update tasks | ✗ | ✓ | ✓ | ✓ |
+| Write comments | ✗ | ✓ | ✓ | ✓ |
+| Mark comments private | ✗ | ✓ | ✓ | ✓ |
 | Upload class roster | ✗ | ✗ | ✓ | ✓ |
 | Manage TAs | ✗ | ✗ | ✗ | ✓ |
 
@@ -127,7 +138,7 @@ Test students (24 accounts across 6 teams, password: Password123!):
 
 ## Tech Stack
 
-**Backend:** Java 17, Spring Boot 3.2.3, Spring Security + JWT (JJWT 0.11.5), PostgreSQL (`ddl-auto: update`), Maven
+**Backend:** Java 17, Spring Boot 3.2.3, Spring Security + JWT (JJWT 0.11.5), Google OAuth2, PostgreSQL (`ddl-auto: update`), Maven
 
 **Frontend:** React Native 0.81.5, Expo 54, TypeScript, NativeWind/TailwindCSS, Axios, React Navigation 7, Electron 28
 
@@ -137,13 +148,15 @@ Test students (24 accounts across 6 teams, password: Password123!):
 - `POST /login` — password login, returns `{ accessToken, refreshToken }`
 - `POST /login/google` — Google OAuth login, returns `{ accessToken, refreshToken }`
 - `POST /refresh` — body: `{ refreshToken }`, returns `{ accessToken, refreshToken }`
-- `POST /logout` — body: `{ refreshToken }`
+- `POST /logout` — body: `{ refreshToken }`; invalidates server session
 
 **Users** (`/api/users`)
 - `GET /self` — current user
 - `GET /` — list users (filterable)
 - `POST /`, `PUT /{id}`, `DELETE /{id}`
 - `PUT /{id}/project-role` — set Frontend/Backend/Full Stack role
+- `POST /import` — bulk import from CSV/Excel
+- `POST /{netid}/avatar` — upload profile picture
 
 **Teams** (`/api/teams`)
 - `GET /` — list teams (filter by taNetid, section, status)
@@ -156,8 +169,17 @@ Test students (24 accounts across 6 teams, password: Password123!):
 
 **Attendance** (`/api/attendance`)
 - `GET /student/{netid}` — all records for a student
-- `POST /` — create (upserts by student + date + type)
+- `POST /` — create record
 - `PUT /{id}`, `DELETE /{id}`
+
+**Comments** (`/api/comments`)
+- `GET /team/{teamId}` — all comments for a team
+- `GET /team/{teamId}/user/{netid}` — member-specific comments
+- `GET /team/{teamId}/general` — team-level comments
+- `POST /` — create member comment (TA/HTA/Instructor only)
+- `POST /team/{teamId}/general` — create team comment
+- `PUT /{id}` — edit comment (author only)
+- `DELETE /{id}` — delete comment (author or elevated role)
 
 **Weekly Performance** (`/api/weekly-performance`)
 - `GET /student/{netid}` — all weekly records for a student
@@ -219,20 +241,23 @@ ug_mk_4/
 │   │   ├── model/          # JPA entities
 │   │   ├── repository/     # Spring Data JPA repos
 │   │   ├── dto/            # Request/response records
-│   │   └── authentication/ # SecurityConfig, JwtFilter, JwtService
+│   │   └── authentication/ # SecurityConfig, JwtFilter, JwtService, OAuth2LoginSuccessHandler
 │   ├── src/main/resources/application.yml
 │   └── pom.xml
 ├── frontend/
 │   ├── src/
-│   │   ├── api/            # client.ts, attendance.ts, demoPerformance.ts,
-│   │   │                   # weeklyPerformance.ts, tasks.ts, teams.ts, users.ts
+│   │   ├── api/            # client.ts, attendance.ts, comments.ts,
+│   │   │                   # demoPerformance.ts, weeklyPerformance.ts,
+│   │   │                   # tasks.ts, teams.ts, users.ts
 │   │   ├── components/     # TeamCard, MemberAttendance, WeeklyPerformance,
-│   │   │                   # TeamProgress, AtRiskStudentCard, ProfileAvatar, ...
+│   │   │                   # TeamProgress, AtRiskStudentCard, ProfileAvatar,
+│   │   │                   # Comments, ...
 │   │   ├── screens/        # DashboardScreen, TeamsScreen, TeamDetail,
 │   │   │                   # TeamMemberDetail, AtRiskStudentsScreen,
-│   │   │                   # TaskAssignmentScreen, UploadScreen, TAManager, ...
+│   │   │                   # TaskAssignmentScreen, AssignmentsScreen,
+│   │   │                   # UploadScreen, TAManager, ...
 │   │   ├── types/          # Teams.ts, shared type definitions
-│   │   └── utils/auth.ts   # Role/permission helpers
+│   │   └── utils/          # auth.ts, gitlab.ts
 │   ├── electron/main.js    # Electron main process
 │   ├── App.tsx             # Root navigation + auth state
 │   └── package.json
@@ -266,6 +291,10 @@ npm run type-check
 - Token expired and refresh failed — log out and log back in
 - Check the backend is running and reachable at port 8080
 
+**EXCUSED attendance status rejected by database**
+- The `attendance_status_check` constraint must be updated manually after adding new statuses (Hibernate does not modify existing check constraints)
+- Run: `sudo -u postgres psql -d class_dashboard -c "ALTER TABLE attendance DROP CONSTRAINT attendance_status_check"` then re-add with the full value list
+
 **Demo/weekly performance not saving**
 - Ensure `demo_number` and `week_start_date` columns exist in the DB (added by Hibernate on startup)
 - If columns are missing, start the backend first, then verify with `\d demo_performance` in psql
@@ -276,6 +305,14 @@ npm run type-check
 
 **Role-based views not showing correctly**
 - Re-login to get a fresh JWT with updated role claims
+
+**Google OAuth logs in as wrong account / no account picker**
+- The authorization URI includes `prompt=select_account` to force the picker
+- If a stale Google session persists after logout, clear browser cookies for accounts.google.com
+
+**500 errors after switching between Google and password login**
+- The server-side session is invalidated on logout (`POST /api/auth/logout`)
+- Ensure the frontend is calling logout before switching accounts
 
 ## CI/CD
 
