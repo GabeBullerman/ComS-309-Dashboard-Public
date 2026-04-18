@@ -412,47 +412,35 @@ export default function TaskAssignmentScreen() {
                 if (assignees.length === 0) return null;
                 const complete = assignees.filter((t) => t.status === 'COMPLETE');
                 const pending = assignees.filter((t) => t.status !== 'COMPLETE');
+
+                const renderRow = (list: typeof assignees, label: string, topMargin?: number) => (
+                  <View style={{ marginTop: topMargin ?? 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: '#6b7280', marginBottom: 4 }}>
+                      {label} ({list.length})
+                    </Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
+                      {list.map((t, i) => {
+                        const status = (t.status ?? 'TODO') as TaskStatus;
+                        const s = STATUS_STYLES[status];
+                        const name = t.assignedToNetid ? (recipientNameMap[t.assignedToNetid] ?? t.assignedToNetid) : '?';
+                        const isLast = i === list.length - 1;
+                        return (
+                          <View key={t.id} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={{ backgroundColor: s.bg, borderWidth: 1, borderColor: s.border, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2 }}>
+                              <Text style={{ fontSize: 11, color: s.text, fontWeight: '500' }}>{name}</Text>
+                            </View>
+                            {!isLast && <Text style={{ fontSize: 11, color: '#9ca3af', marginLeft: 2 }}>,</Text>}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                );
+
                 return (
-                  <View style={{ marginTop: 8, gap: 2 }}>
-                    {pending.length > 0 && (
-                      <>
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#6b7280', marginBottom: 2 }}>
-                          Pending ({pending.length})
-                        </Text>
-                        {pending.map((t) => {
-                          const status = (t.status ?? 'TODO') as TaskStatus;
-                          const s = STATUS_STYLES[status];
-                          const name = t.assignedToNetid ? (recipientNameMap[t.assignedToNetid] ?? t.assignedToNetid) : '?';
-                          return (
-                            <View key={t.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <Text style={{ fontSize: 12, color: '#374151' }}>{name}</Text>
-                              <View style={{ backgroundColor: s.bg, borderWidth: 1, borderColor: s.border, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1 }}>
-                                <Text style={{ fontSize: 10, fontWeight: '600', color: s.text }}>{s.label}</Text>
-                              </View>
-                            </View>
-                          );
-                        })}
-                      </>
-                    )}
-                    {complete.length > 0 && (
-                      <>
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: '#6b7280', marginTop: pending.length > 0 ? 6 : 2, marginBottom: 2 }}>
-                          Completed ({complete.length})
-                        </Text>
-                        {complete.map((t) => {
-                          const s = STATUS_STYLES['COMPLETE'];
-                          const name = t.assignedToNetid ? (recipientNameMap[t.assignedToNetid] ?? t.assignedToNetid) : '?';
-                          return (
-                            <View key={t.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <Text style={{ fontSize: 12, color: '#374151' }}>{name}</Text>
-                              <View style={{ backgroundColor: s.bg, borderWidth: 1, borderColor: s.border, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1 }}>
-                                <Text style={{ fontSize: 10, fontWeight: '600', color: s.text }}>{s.label}</Text>
-                              </View>
-                            </View>
-                          );
-                        })}
-                      </>
-                    )}
+                  <View style={{ marginTop: 6 }}>
+                    {pending.length > 0 && renderRow(pending, 'Pending')}
+                    {complete.length > 0 && renderRow(complete, 'Completed', pending.length > 0 ? 8 : 6)}
                   </View>
                 );
               })()}
