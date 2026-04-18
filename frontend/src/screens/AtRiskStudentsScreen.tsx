@@ -69,6 +69,17 @@ interface Props {
   userRole: UserRole;
 }
 
+const copyViaDom = (text: string) => {
+  const el = document.createElement('textarea');
+  el.value = text;
+  el.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+  document.body.appendChild(el);
+  el.focus();
+  el.select();
+  document.execCommand('copy');
+  document.body.removeChild(el);
+};
+
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function AtRiskStudentsScreen({ userRole }: Props) {
@@ -460,7 +471,13 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
               <TouchableOpacity
                 onPress={() => {
                   const list = [...selectedNetids].map(n => `${n}@iastate.edu`).join('; ');
-                  if (Platform.OS === 'web') navigator.clipboard?.writeText(list);
+                  if (Platform.OS === 'web') {
+                    if (navigator.clipboard) {
+                      navigator.clipboard.writeText(list).catch(() => copyViaDom(list));
+                    } else {
+                      copyViaDom(list);
+                    }
+                  }
                   setBccCopied(true);
                   setTimeout(() => setBccCopied(false), 2000);
                 }}
