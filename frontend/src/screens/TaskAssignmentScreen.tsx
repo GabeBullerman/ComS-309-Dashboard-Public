@@ -413,6 +413,7 @@ export default function TaskAssignmentScreen() {
                 const complete = assignees.filter((t) => t.status === 'COMPLETE');
                 const pending = assignees.filter((t) => t.status !== 'COMPLETE');
 
+                const todayStr = new Date().toISOString().split('T')[0];
                 const renderRow = (list: typeof assignees, label: string, topMargin?: number) => (
                   <View style={{ marginTop: topMargin ?? 6 }}>
                     <Text style={{ fontSize: 11, fontWeight: '600', color: '#6b7280', marginBottom: 4 }}>
@@ -421,7 +422,11 @@ export default function TaskAssignmentScreen() {
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4 }}>
                       {list.map((t, i) => {
                         const status = (t.status ?? 'TODO') as TaskStatus;
-                        const s = STATUS_STYLES[status];
+                        const dueStr = t.dueDate ? t.dueDate.split('T')[0] : null;
+                        const overdue = status !== 'COMPLETE' && !!dueStr && dueStr < todayStr;
+                        const s = overdue
+                          ? { bg: '#fee2e2', border: '#fca5a5', text: '#991b1b' }
+                          : STATUS_STYLES[status];
                         const name = t.assignedToNetid ? (recipientNameMap[t.assignedToNetid] ?? t.assignedToNetid) : '?';
                         const isLast = i === list.length - 1;
                         return (
