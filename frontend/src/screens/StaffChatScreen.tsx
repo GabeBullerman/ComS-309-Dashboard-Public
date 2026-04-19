@@ -18,7 +18,7 @@ const ROLES = ['everyone', 'TA', 'HTA', 'Instructor'];
 const EMOJI_CATEGORIES = [
   {
     label: 'Smileys', icon: '😀',
-    emojis: ['😀','😁','😂','🤣','😅','😊','😉','🥰','😍','🤩','😎','🤔','🥺','😢','😭','😤','🤦','🤷','🙃','😶','😴','🥱','🫡','😋','😬'],
+    emojis: ['😀','😁','😂','🤣','😅','😊','😉','🥰','😍','🤩','😎','🤔','🥺','😢','😭','😤','🤦','🤷','🙃','😶','😴','🥱','😋','😬'],
   },
   {
     label: 'Gestures', icon: '👍',
@@ -30,7 +30,7 @@ const EMOJI_CATEGORIES = [
   },
   {
     label: 'Food', icon: '🍕',
-    emojis: ['🍕','🍔','🌮','🍜','🍣','☕','🧃','🍺','🍦','🍩','🍪','🎂','🍎','🥑','🌶️','🧋','🥐','🍰','🍟','🥗'],
+    emojis: ['🍕','🍔','🌮','🍜','🍣','☕','🧃','🍺','🍦','🍩','🍪','🎂','🍎','🥑','🌶️','🥐','🍰','🍟','🥗'],
   },
 ] as const;
 
@@ -99,7 +99,7 @@ interface Props {
   onUnreadChange: (count: number) => void;
 }
 
-export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadChange }: Props) {
+export default function StaffChatScreen({ myNetid, myName: _myName, userRole, onUnreadChange }: Props) {
   const isInstructor = userRole === 'Instructor';
   const [activeChannel, setActiveChannel] = useState('general');
   const [channelMeta, setChannelMeta] = useState<Record<string, ChannelMeta>>({});
@@ -673,9 +673,9 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', padding: 12, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#e5e7eb', gap: 8 }}>
           <TouchableOpacity
             onPress={() => setShowEmojiPicker(v => !v)}
-            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: showEmojiPicker ? '#fef3c7' : '#f3f4f6', alignItems: 'center', justifyContent: 'center', marginBottom: 2 }}
+            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: showEmojiPicker ? '#e5e7eb' : 'transparent', alignItems: 'center', justifyContent: 'center', marginBottom: 2 }}
           >
-            <Text style={{ fontSize: 18 }}>😊</Text>
+            <Ionicons name="happy-outline" size={22} color={showEmojiPicker ? '#374151' : '#9ca3af'} />
           </TouchableOpacity>
           <TextInput
             ref={inputRef}
