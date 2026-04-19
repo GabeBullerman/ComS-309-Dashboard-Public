@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, Image, Dimensions, StatusBar, Platform } from "react-native";
 import TeamsScreen from "../screens/TeamsScreen";
-import TAManager from "../screens/TAManager";
+import StaffManagerScreen from "../screens/TAManager";
 import TaskAssignmentScreen from "../screens/TaskAssignmentScreen";
 import AssignmentsScreen from "../screens/AssignmentsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
@@ -14,6 +14,8 @@ import ProfileAvatar from "../components/ProfileAvatar";
 import UploadScreen from "./UploadScreen";
 import AtRiskStudentsScreen from "./AtRiskStudentsScreen";
 import StudentListScreen from "./StudentListScreen";
+import StaffChatScreen from "./StaffChatScreen";
+import { getUnreadCount } from "../api/chat";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DashboardScreen'>;
 
@@ -23,10 +25,20 @@ export default function DashboardScreen({route}: Props) {
   const [activeScreen, setActiveScreen] = useState("Teams");
   const [displayName, setDisplayName] = useState("User");
   const [netid, setNetid] = useState("");
+  const [chatUnread, setChatUnread] = useState(0);
   const permissions = getUserPermissions(route.params.userRole);
   const screenWidth = Dimensions.get("window").width;
   const isMobile = screenWidth < 768;
   const role = route.params.userRole;
+
+  // Poll unread chat count for staff (web only)
+  useEffect(() => {
+    if (role === 'Student' || Platform.OS !== 'web') return;
+    const fetch = () => getUnreadCount().then(setChatUnread).catch(() => {});
+    fetch();
+    const id = setInterval(fetch, 30_000);
+    return () => clearInterval(id);
+  }, [role]);
 
   useEffect(() => {
     let mounted = true;
@@ -53,21 +65,23 @@ export default function DashboardScreen({route}: Props) {
     .toUpperCase();
 
   const navItems = [
-    { label: "Teams",        mobileLabel: "Teams",  icon: "people-outline" },
+    { label: "Teams",        mobileLabel: "Teams",    icon: "people-outline" },
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
       ? [{ label: "Assign Tasks", mobileLabel: "Assign", icon: "clipboard-outline" }] : []),
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
       ? [{ label: "Student List", mobileLabel: "Students", icon: "people-outline" }] : []),
-    ...(permissions.canManageTAs
-      ? [{ label: "TA Manager",   mobileLabel: "TAs",    icon: "shield-outline" }] : []),
-    ...(role == 'Instructor' || role == "HTA"
-      ? [{ label: "Upload",   mobileLabel: "Upload",    icon: "cloud-upload-outline" }] : []),
+    ...(role === 'HTA' || role === 'Instructor'
+      ? [{ label: "Staff Manager", mobileLabel: "Staff", icon: "shield-outline" }] : []),
+    ...(role === 'Instructor' || role === 'HTA'
+      ? [{ label: "Upload", mobileLabel: "Upload", icon: "cloud-upload-outline" }] : []),
     ...(role !== 'Instructor'
       ? [{ label: "Tasks",        mobileLabel: "Tasks",  icon: "checkmark-circle-outline" }] : []),
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
-      ? [{ label: "At-Risk Students",   mobileLabel: "At-Risk",    icon: "alert-circle-outline" }] : []),
-    { label: "Profile",      mobileLabel: "Profile",icon: "person-circle-outline" },
-  ] as { label: string; mobileLabel: string; icon: string }[];
+      ? [{ label: "At-Risk Students", mobileLabel: "At-Risk", icon: "alert-circle-outline" }] : []),
+    ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
+      ? [{ label: "Staff Chat", mobileLabel: "Chat", icon: "chatbubbles-outline", badge: chatUnread, mobileHidden: true }] : []),
+    { label: "Profile",      mobileLabel: "Profile",  icon: "person-circle-outline" },
+  ] as { label: string; mobileLabel: string; icon: string; badge?: number; mobileHidden?: boolean }[];
 
   // Restore last active screen on mount; persist on every change
   useEffect(() => {
@@ -88,7 +102,8 @@ export default function DashboardScreen({route}: Props) {
       case "Teams":        return <TeamsScreen userRole={route.params.userRole} />;
       case "Student List": return <StudentListScreen userRole={route.params.userRole} />;
       case "Assign Tasks": return <TaskAssignmentScreen />;
-      case "TA Manager":   return <TAManager />;
+      case "Staff Manager": return <StaffManagerScreen userRole={role} />;
+      case "Staff Chat":  return <StaffChatScreen myNetid={netid} myName={displayName} userRole={role} onUnreadChange={setChatUnread} />;
       case "Upload":       return <UploadScreen/>;
       case "Tasks":        return <AssignmentsScreen />;
       case "Profile":      return <ProfileScreen userRole={role} onLogout={isMobile ? route.params.onLogout : undefined} />;
@@ -129,6 +144,13 @@ export default function DashboardScreen({route}: Props) {
             <Text className={`font-medium ${isActive ? "text-yellow-900" : "text-white"}`}>
               {item.label}
             </Text>
+            {!!item.badge && item.badge > 0 && (
+              <View style={{ marginLeft: 'auto', backgroundColor: '#dc2626', borderRadius: 10, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+                <Text style={{ color: 'white', fontSize: 11, fontWeight: '700' }}>
+                  {item.badge > 99 ? '99+' : item.badge}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         );
       })}
@@ -191,7 +213,7 @@ export default function DashboardScreen({route}: Props) {
           borderTopWidth: 1.5,
           borderTopColor: 'rgba(241,190,72,0.45)',
         }}>
-          {navItems.map((item) => {
+          {navItems.filter(i => !i.mobileHidden).map((item) => {
             const isActive = activeScreen === item.label;
             return (
               <TouchableOpacity
@@ -200,11 +222,13 @@ export default function DashboardScreen({route}: Props) {
                 onPress={() => setActiveScreen(item.label)}
                 activeOpacity={0.7}
               >
-                <Ionicons
-                  name={item.icon as any}
-                  size={22}
-                  color={isActive ? '#F1BE48' : 'rgba(255,255,255,0.65)'}
-                />
+                <View>
+                  <Ionicons
+                    name={item.icon as any}
+                    size={22}
+                    color={isActive ? '#F1BE48' : 'rgba(255,255,255,0.65)'}
+                  />
+                </View>
                 <Text style={{
                   color: isActive ? '#F1BE48' : 'rgba(255,255,255,0.65)',
                   fontSize: 10,
