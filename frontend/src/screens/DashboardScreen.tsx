@@ -75,7 +75,7 @@ export default function DashboardScreen({route}: Props) {
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
       ? [{ label: "At-Risk Students", mobileLabel: "At-Risk", icon: "alert-circle-outline" }] : []),
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
-      ? [{ label: "Student List", mobileLabel: "Students", icon: "people-outline" }] : []),
+      ? [{ label: "Student List", mobileLabel: "Students", icon: "list-outline" }] : []),
     ...(role === 'HTA' || role === 'Instructor'
       ? [{ label: "Staff Manager", mobileLabel: "Staff", icon: "shield-outline" }] : []),
     ...(role === 'Instructor' || role === 'HTA'
