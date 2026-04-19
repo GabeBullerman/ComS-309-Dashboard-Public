@@ -43,6 +43,8 @@ export default function ClassStudentsScreen({ userRole }: Props) {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [sectionFilter, setSectionFilter] = useState('All');
+  const [taFilter, setTaFilter] = useState('All');
+  const [sortAsc, setSortAsc] = useState(true);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
@@ -134,22 +136,28 @@ export default function ClassStudentsScreen({ userRole }: Props) {
     return ['All', ...sections];
   }, [students]);
 
+  const taOptions = useMemo(() => {
+    const tas = Array.from(new Set(students.map((s) => s.ta)))
+      .filter(Boolean)
+      .sort();
+    return ['All', ...tas];
+  }, [students]);
+
   const filteredStudents = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return students.filter((s) => {
+    const list = students.filter((s) => {
       const fullName = `${s.studentFirstName} ${s.studentLastName}`.toLowerCase();
       const matchesSearch =
         !q ||
         fullName.includes(q) ||
         s.netid.toLowerCase().includes(q) ||
         s.ta.toLowerCase().includes(q);
-
-      const matchesSection =
-        sectionFilter === 'All' || String(s.section) === sectionFilter;
-
-      return matchesSearch && matchesSection;
+      const matchesSection = sectionFilter === 'All' || String(s.section) === sectionFilter;
+      const matchesTa = taFilter === 'All' || s.ta === taFilter;
+      return matchesSearch && matchesSection && matchesTa;
     });
-  }, [students, searchQuery, sectionFilter]);
+    return sortAsc ? list : [...list].reverse();
+  }, [students, searchQuery, sectionFilter, taFilter, sortAsc]);
 
   if (isLoading) {
     return (
@@ -169,8 +177,8 @@ export default function ClassStudentsScreen({ userRole }: Props) {
     );
   }
 
-  const canFilterSection =
-    effectiveRole === 'Instructor' || effectiveRole === 'HTA' || effectiveRole === 'TA';
+  const canFilterSection = effectiveRole === 'Instructor' || effectiveRole === 'HTA' || effectiveRole === 'TA';
+  const canFilterTa = effectiveRole === 'Instructor' || effectiveRole === 'HTA';
 
   return (
     <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
@@ -244,11 +252,66 @@ export default function ClassStudentsScreen({ userRole }: Props) {
           )
         )}
 
-        {/* Count + Email button */}
+        {/* TA filter (HTA/Instructor only) */}
+        {canFilterTa && (
+          Platform.OS !== 'web' ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {taOptions.map((opt) => {
+                const active = taFilter === opt;
+                return (
+                  <Text
+                    key={opt}
+                    onPress={() => setTaFilter(opt)}
+                    style={{
+                      paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
+                      backgroundColor: active ? '#b91c1c' : '#f3f4f6',
+                      color: active ? '#fff' : '#374151',
+                      fontSize: 12, fontWeight: '500', overflow: 'hidden',
+                    }}
+                  >
+                    {opt === 'All' ? 'All TAs' : opt}
+                  </Text>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16 }}>
+              <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>TA</Text>
+              <View style={{
+                backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1,
+                borderRadius: 8, overflow: 'hidden', width: 180,
+              }}>
+                <Picker
+                  selectedValue={taFilter}
+                  onValueChange={(v) => setTaFilter(v)}
+                  dropdownIconColor="#000"
+                  style={{ height: 36, borderWidth: 0 }}
+                >
+                  {taOptions.map((opt) => (
+                    <Picker.Item key={opt} label={opt === 'All' ? 'All TAs' : opt} value={opt} />
+                  ))}
+                </Picker>
+              </View>
+            </View>
+          )
+        )}
+
+        {/* Count + Sort + Email button */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <Text style={{ fontSize: 13, color: '#6B7280' }}>
-            Showing {filteredStudents.length} of {students.length} student{students.length !== 1 ? 's' : ''}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 13, color: '#6B7280' }}>
+              Showing {filteredStudents.length} of {students.length} student{students.length !== 1 ? 's' : ''}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setSortAsc(v => !v)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#f3f4f6', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+            >
+              <Ionicons name={sortAsc ? 'arrow-up' : 'arrow-down'} size={12} color="#6B7280" />
+              <Text style={{ fontSize: 12, color: '#6B7280', fontWeight: '500' }}>
+                {sortAsc ? 'A → Z' : 'Z → A'}
+              </Text>
+            </TouchableOpacity>
+          </View>
           {filteredStudents.length > 0 && (
             <TouchableOpacity
               onPress={() => {
