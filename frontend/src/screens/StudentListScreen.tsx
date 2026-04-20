@@ -292,94 +292,85 @@ export default function ClassStudentsScreen({ userRole }: Props) {
           />
         </View>
 
-        {/* Section filter */}
+        {/* Section + TA filters — single row */}
         {canFilterSection && (
           Platform.OS !== 'web' ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-              {sectionOptions.map((opt) => {
-                const active = sectionFilter === opt;
-                return (
-                  <Text
-                    key={opt}
-                    onPress={() => setSectionFilter(opt)}
-                    style={{
-                      paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
-                      backgroundColor: active ? '#b91c1c' : '#f3f4f6',
-                      color: active ? '#fff' : '#374151',
-                      fontSize: 12, fontWeight: '500', overflow: 'hidden',
-                    }}
-                  >
-                    {opt === 'All' ? 'All Sections' : `Section ${opt}`}
-                  </Text>
-                );
-              })}
-            </View>
-          ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16 }}>
-              <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>Section</Text>
-              <View style={{
-                backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1,
-                borderRadius: 8, overflow: 'hidden', width: 130,
-              }}>
-                <Picker
-                  selectedValue={sectionFilter}
-                  onValueChange={(v) => setSectionFilter(v)}
-                  dropdownIconColor="#000"
-                  style={{ height: 36, borderWidth: 0 }}
-                >
-                  {sectionOptions.map((opt) => (
-                    <Picker.Item
+            <View style={{ marginBottom: 8 }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: canFilterTa ? 6 : 0 }}>
+                {sectionOptions.map((opt) => {
+                  const active = sectionFilter === opt;
+                  return (
+                    <Text
                       key={opt}
-                      label={opt === 'All' ? 'All Sections' : `Section ${opt}`}
-                      value={opt}
-                    />
-                  ))}
-                </Picker>
+                      onPress={() => setSectionFilter(opt)}
+                      style={{
+                        paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
+                        backgroundColor: active ? '#b91c1c' : '#f3f4f6',
+                        color: active ? '#fff' : '#374151',
+                        fontSize: 12, fontWeight: '500', overflow: 'hidden',
+                      }}
+                    >
+                      {opt === 'All' ? 'All Sections' : `Section ${opt}`}
+                    </Text>
+                  );
+                })}
               </View>
-            </View>
-          )
-        )}
-
-        {/* TA filter (HTA/Instructor only) */}
-        {canFilterTa && (
-          Platform.OS !== 'web' ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-              {taOptions.map((opt) => {
-                const active = taFilter === opt;
-                return (
-                  <Text
-                    key={opt}
-                    onPress={() => setTaFilter(opt)}
-                    style={{
-                      paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
-                      backgroundColor: active ? '#b91c1c' : '#f3f4f6',
-                      color: active ? '#fff' : '#374151',
-                      fontSize: 12, fontWeight: '500', overflow: 'hidden',
-                    }}
-                  >
-                    {opt === 'All' ? 'All TAs' : opt}
-                  </Text>
-                );
-              })}
+              {canFilterTa && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {taOptions.map((opt) => {
+                    const active = taFilter === opt;
+                    return (
+                      <Text
+                        key={opt}
+                        onPress={() => setTaFilter(opt)}
+                        style={{
+                          paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
+                          backgroundColor: active ? '#b91c1c' : '#f3f4f6',
+                          color: active ? '#fff' : '#374151',
+                          fontSize: 12, fontWeight: '500', overflow: 'hidden',
+                        }}
+                      >
+                        {opt === 'All' ? 'All TAs' : opt}
+                      </Text>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           ) : (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16 }}>
-              <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>TA</Text>
-              <View style={{
-                backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1,
-                borderRadius: 8, overflow: 'hidden', width: 180,
-              }}>
-                <Picker
-                  selectedValue={taFilter}
-                  onValueChange={(v) => setTaFilter(v)}
-                  dropdownIconColor="#000"
-                  style={{ height: 36, borderWidth: 0 }}
-                >
-                  {taOptions.map((opt) => (
-                    <Picker.Item key={opt} label={opt === 'All' ? 'All TAs' : opt} value={opt} />
-                  ))}
-                </Picker>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>Section</Text>
+                <View style={{ backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8, overflow: 'hidden', width: 130 }}>
+                  <Picker
+                    selectedValue={sectionFilter}
+                    onValueChange={(v) => setSectionFilter(v)}
+                    dropdownIconColor="#000"
+                    style={{ height: 36, borderWidth: 0 }}
+                  >
+                    {sectionOptions.map((opt) => (
+                      <Picker.Item key={opt} label={opt === 'All' ? 'All Sections' : `Section ${opt}`} value={opt} />
+                    ))}
+                  </Picker>
+                </View>
               </View>
+              {canFilterTa && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>TA</Text>
+                  <View style={{ backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8, overflow: 'hidden', width: 180 }}>
+                    <Picker
+                      selectedValue={taFilter}
+                      onValueChange={(v) => setTaFilter(v)}
+                      dropdownIconColor="#000"
+                      style={{ height: 36, borderWidth: 0 }}
+                    >
+                      {taOptions.map((opt) => (
+                        <Picker.Item key={opt} label={opt === 'All' ? 'All TAs' : opt} value={opt} />
+                      ))}
+                    </Picker>
+                  </View>
+                </View>
+              )}
             </View>
           )
         )}
