@@ -295,6 +295,9 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
     }
   }, [teamName, teamSection, selectedTaNetid, studentRows]);
 
+  // ── Format tooltip state ──────────────────────────────────────────────────
+  const [showFormatTip, setShowFormatTip] = useState(false);
+
   // ── Clear semester state ──────────────────────────────────────────────────
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [clearText, setClearText] = useState('');
@@ -490,34 +493,6 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
           </Text>
         </View>
 
-        {/* Required Upload Format */}
-        <View style={{ marginBottom: 16, padding: 16, backgroundColor: '#f9fafb', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827', marginBottom: 8 }}>Expected File Format</Text>
-          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>
-            Accepted formats: <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.csv</Text> or{' '}
-            <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.xlsx</Text>
-          </Text>
-          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
-            The file must have a header row followed by one student per row with exactly 4 columns in this order:
-          </Text>
-          <View style={{ backgroundColor: '#f3f4f6', borderRadius: 8, padding: 10, gap: 4 }}>
-            {[
-              ['Column 1', 'First name'],
-              ['Column 2', 'Last name'],
-              ['Column 3', 'NetID'],
-              ['Column 4', 'Team name'],
-            ].map(([col, label]) => (
-              <View key={col} style={{ flexDirection: 'row', gap: 8 }}>
-                <Text style={{ fontSize: 11, fontFamily: 'monospace', color: '#6b7280', width: 68 }}>{col}</Text>
-                <Text style={{ fontSize: 11, color: '#374151' }}>{label}</Text>
-              </View>
-            ))}
-          </View>
-          <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 8 }}>
-            Example: <Text style={{ fontFamily: 'monospace' }}>John,Doe,jdoe,Team A1</Text>
-          </Text>
-        </View>
-
         {/* Manual team creation button */}
         <TouchableOpacity
           onPress={openCreateModal}
@@ -526,6 +501,57 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
           <Ionicons name="people-circle-outline" size={18} color="#b91c1c" />
           <Text style={{ color: '#b91c1c', fontWeight: '700', fontSize: 14 }}>Create Team Manually</Text>
         </TouchableOpacity>
+
+        {/* File upload section header with format tooltip */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827', flex: 1 }}>Upload Team File</Text>
+          <TouchableOpacity
+            onPress={() => setShowFormatTip(true)}
+            style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#e0e7ff', alignItems: 'center', justifyContent: 'center' }}
+            accessibilityLabel="Show expected file format"
+          >
+            <Ionicons name="information-circle-outline" size={20} color="#4f46e5" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Format tooltip modal */}
+        <Modal visible={showFormatTip} transparent animationType="fade" onRequestClose={() => setShowFormatTip(false)}>
+          <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 24 }} activeOpacity={1} onPress={() => setShowFormatTip(false)}>
+            <TouchableOpacity activeOpacity={1} style={{ backgroundColor: 'white', borderRadius: 14, padding: 20, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 8 }}>
+                <Ionicons name="document-text-outline" size={18} color="#4f46e5" />
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827', flex: 1 }}>Expected File Format</Text>
+                <TouchableOpacity onPress={() => setShowFormatTip(false)}>
+                  <Ionicons name="close" size={20} color="#9ca3af" />
+                </TouchableOpacity>
+              </View>
+              <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 6 }}>
+                Accepted formats:{' '}
+                <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.csv</Text> or{' '}
+                <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.xlsx</Text>
+              </Text>
+              <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 10 }}>
+                Header row followed by one student per row with exactly 4 columns:
+              </Text>
+              <View style={{ backgroundColor: '#f3f4f6', borderRadius: 8, padding: 12, gap: 6 }}>
+                {[
+                  ['Column 1', 'First name'],
+                  ['Column 2', 'Last name'],
+                  ['Column 3', 'NetID'],
+                  ['Column 4', 'Team name'],
+                ].map(([col, label]) => (
+                  <View key={col} style={{ flexDirection: 'row', gap: 10 }}>
+                    <Text style={{ fontSize: 12, fontFamily: 'monospace', color: '#6b7280', width: 72 }}>{col}</Text>
+                    <Text style={{ fontSize: 12, color: '#374151' }}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 10 }}>
+                Example: <Text style={{ fontFamily: 'monospace' }}>John,Doe,jdoe,Team A1</Text>
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
 
         {/* Drop Zone */}
         <DropZone
@@ -621,8 +647,8 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
           </Text>
 
           {Platform.OS === 'web' ? (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1, position: 'relative' }}>
+            <View style={{ flexDirection: 'column', gap: 8 }}>
+              <View style={{ position: 'relative' }}>
                 <View style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: '#F1BE48', opacity: avatarUploading ? 0.6 : 1 }}>
                   {avatarUploading ? <ActivityIndicator color="#111827" /> : <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>Choose Files</Text>}
                 </View>
@@ -632,7 +658,7 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
                     onChange={(e: any) => { const fs = Array.from(e.target.files || []) as File[]; e.target.value = ''; if (fs.length) handleAvatarFiles(fs); }} />
                 )}
               </View>
-              <View style={{ flex: 1, position: 'relative' }}>
+              <View style={{ position: 'relative' }}>
                 <View style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb', opacity: avatarUploading ? 0.6 : 1 }}>
                   <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>Choose Folder</Text>
                 </View>

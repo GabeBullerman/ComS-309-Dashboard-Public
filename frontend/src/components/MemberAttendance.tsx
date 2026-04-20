@@ -225,7 +225,7 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
       {/* View dropdown menu */}
       <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
         <Pressable style={{ flex: 1 }} onPress={() => setMenuOpen(false)}>
-          <View style={{ position: "absolute", top: menuPos.y + 4, right: 16, minWidth: 130, backgroundColor: "white", borderRadius: 8, borderWidth: 1, borderColor: "#e5e7eb", elevation: 8, shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 6, overflow: "hidden" }}>
+          <View style={{ position: "absolute", top: menuPos.y + 4, left: Math.max(4, menuPos.x + menuPos.w - 130), minWidth: 130, backgroundColor: "white", borderRadius: 8, borderWidth: 1, borderColor: "#e5e7eb", elevation: 8, shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 6, overflow: "hidden" }}>
             {(["all", "class", "ta_meeting"] as CalendarView[]).map((v) => (
               <TouchableOpacity
                 key={v}
@@ -393,7 +393,7 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
                   style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 8, borderRadius: 8, borderWidth: 1, backgroundColor: "#F9FAFB", borderColor: "#E5E7EB", opacity: saving ? 0.6 : 1 }}
                 >
                   <Ionicons name="trash-outline" size={12} color="#9ca3af" />
-                  <Text style={{ fontSize: 11, fontWeight: "600", color: "#9ca3af" }}>Clear</Text>
+                  <Text style={{ fontSize: 11, fontWeight: "600", color: "#9ca3af" }}>Clear day</Text>
                 </TouchableOpacity>
               </>
             ) : (

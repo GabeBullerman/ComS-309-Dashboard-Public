@@ -1,6 +1,12 @@
 appId: edu.iastate.dashboard.desktop
 productName: Class Dashboard
 
+# Auto-update: upload built installer + latest.yml to any public URL (e.g. GitHub Release).
+# To publish: set GH_TOKEN env var and run: npx electron-builder --publish always
+publish:
+  provider: generic
+  url: https://github.com/GabeBullerman/ComS-309-Dashboard-Public/releases/latest/download
+
 asar: false
 
 directories:
