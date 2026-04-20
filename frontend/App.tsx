@@ -84,6 +84,13 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('Student');
   const [connStatus, setConnStatus] = useState<ConnStatus>('checking');
+  const [updateReady, setUpdateReady] = useState(false);
+
+  // Listen for Electron's "update downloaded" signal via the preload bridge
+  useEffect(() => {
+    const api = (window as any).electronAPI;
+    if (api?.onUpdateReady) api.onUpdateReady(() => setUpdateReady(true));
+  }, []);
 
   const checkConnection = useCallback(async () => {
     setConnStatus('checking');
@@ -163,6 +170,23 @@ export default function App() {
   }
 
   return (
+    <View style={{ flex: 1 }}>
+      {updateReady && (
+        <TouchableOpacity
+          onPress={() => (window as any).electronAPI?.installUpdate()}
+          style={{
+            position: 'absolute', top: 0, left: 0, right: 0, zIndex: 9999,
+            backgroundColor: '#16a34a',
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+            paddingVertical: 10, paddingHorizontal: 16, gap: 10,
+          }}
+        >
+          <Ionicons name="arrow-up-circle-outline" size={18} color="white" />
+          <Text style={{ color: 'white', fontWeight: '700', fontSize: 13 }}>
+            Update ready — click to restart and install
+          </Text>
+        </TouchableOpacity>
+      )}
     <NavigationContainer>
       <Stack.Navigator>
         {!isLoggedIn ? (
@@ -186,5 +210,6 @@ export default function App() {
         )}
       </Stack.Navigator>
     </NavigationContainer>
+    </View>
   );
 }

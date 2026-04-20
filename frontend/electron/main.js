@@ -1,71 +1,16 @@
-const { app, BrowserWindow, shell, Menu, dialog } = require('electron');
-Menu.setApplicationMenu(null);
+const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
-const http = require('http');
-const fs = require('fs');
-const url = require('url');
+
+Menu.setApplicationMenu(null);
 
 const isDev = !app.isPackaged;
+const SERVER_URL = 'http://coms-4020-006.class.las.iastate.edu:8080';
 
-const MIME_TYPES = {
-  '.html': 'text/html',
-  '.js': 'application/javascript',
-  '.mjs': 'application/javascript',
-  '.css': 'text/css',
-  '.json': 'application/json',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon',
-  '.woff': 'font/woff',
-  '.woff2': 'font/woff2',
-  '.ttf': 'font/ttf',
-  '.webp': 'image/webp',
-};
-
-/**
- * Spins up a minimal static HTTP server to serve the Expo web export.
- * A real server (rather than file://) is required because Expo's web output
- * uses absolute paths (e.g. /_expo/static/js/...) that don't resolve under
- * the file:// protocol.
- */
-function startStaticServer(distPath) {
-  return new Promise((resolve, reject) => {
-    const server = http.createServer((req, res) => {
-      const parsedUrl = url.parse(req.url);
-      let filePath = path.join(distPath, parsedUrl.pathname === '/' ? 'index.html' : parsedUrl.pathname);
-
-      fs.stat(filePath, (statErr, stat) => {
-        // If not found or is a directory, fall back to index.html (SPA)
-        if (statErr || stat.isDirectory()) {
-          filePath = path.join(distPath, 'index.html');
-        }
-
-        const ext = path.extname(filePath).toLowerCase();
-        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-        fs.readFile(filePath, (readErr, data) => {
-          if (readErr) {
-            res.writeHead(404);
-            res.end('Not found');
-            return;
-          }
-          res.writeHead(200, { 'Content-Type': contentType });
-          res.end(data);
-        });
-      });
-    });
-
-    // Port 0 lets the OS pick a free port
-    server.listen(0, '127.0.0.1', () => resolve(server.address().port));
-    server.on('error', reject);
-  });
-}
+let mainWindow = null;
 
 async function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 800,
@@ -75,23 +20,67 @@ async function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
 
   if (isDev) {
-    await win.loadURL('http://localhost:8081');
+    await mainWindow.loadURL('http://localhost:8081');
   } else {
-    await win.loadURL('http://coms-4020-006.class.las.iastate.edu:8080');
+    await mainWindow.loadURL(SERVER_URL).catch(() => {
+      // Handled by did-fail-load below
+    });
   }
 
-  // Open any links that try to open a new window in the system browser instead
-  win.webContents.setWindowOpenHandler(({ url: targetUrl }) => {
-    shell.openExternal(targetUrl);
+  // If the server is unreachable, show the local offline page instead of a blank screen
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, _desc, validatedURL) => {
+    // Ignore aborted navigations (-3) and failures on the offline page itself
+    if (errorCode === -3 || (validatedURL && validatedURL.startsWith('file://'))) return;
+    mainWindow.loadFile(path.join(__dirname, 'offline.html')).catch(() => {});
+  });
+
+  // Open external links in the system browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
     return { action: 'deny' };
   });
 }
 
-app.whenReady().then(createWindow);
+// ── Auto-updater ──────────────────────────────────────────────────────────────
+
+function setupAutoUpdater() {
+  if (isDev) return; // electron-updater doesn't work in dev mode
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-downloaded', () => {
+    // Notify the React app so it can show the update banner
+    if (mainWindow) mainWindow.webContents.send('update-ready');
+  });
+
+  autoUpdater.on('error', (err) => {
+    // Silently swallow update errors — update is optional
+    console.warn('[updater] error:', err?.message ?? err);
+  });
+
+  // Check for updates shortly after launch so the app feels responsive first
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch(() => {});
+  }, 8000);
+}
+
+// User clicked "Restart & Update" in the React banner
+ipcMain.on('install-update', () => {
+  autoUpdater.quitAndInstall(false, true);
+});
+
+// ── App lifecycle ─────────────────────────────────────────────────────────────
+
+app.whenReady().then(() => {
+  createWindow();
+  setupAutoUpdater();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
