@@ -15,6 +15,25 @@ import { UserRole, UserSummary } from '../utils/auth';
 const POLL_MS = 5000;
 const ROLES = ['everyone', 'TA', 'HTA', 'Instructor'];
 
+const EMOJI_CATEGORIES = [
+  {
+    label: 'Smileys', icon: '😀',
+    emojis: ['😀','😁','😂','🤣','😅','😊','😉','🥰','😍','🤩','😎','🤔','🥺','😢','😭','😤','🤦','🤷','🙃','😶','😴','🥱','😋','😬'],
+  },
+  {
+    label: 'Gestures', icon: '👍',
+    emojis: ['👍','👎','👏','🙌','🤝','💪','✌️','🖐️','🤞','❤️','🔥','💯','✅','⭐','🎉','💡','🚀','🏆','😈'],
+  },
+  {
+    label: 'Tech', icon: '💻',
+    emojis: ['💻','🖥️','📱','⌨️','🖱️','🛠️','🔧','🐛','✨','📊','📈','📋','🗒️','📚','🎓','🔒','🔑','📡','⚙️','🧪'],
+  },
+  {
+    label: 'Food', icon: '🍕',
+    emojis: ['🍕','🍔','🌮','🍜','🍣','☕','🧃','🍺','🍦','🍩','🍪','🎂','🍎','🥑','🌶️','🥐','🍰','🍟','🥗'],
+  },
+] as const;
+
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
@@ -80,7 +99,7 @@ interface Props {
   onUnreadChange: (count: number) => void;
 }
 
-export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadChange }: Props) {
+export default function StaffChatScreen({ myNetid, myName: _myName, userRole, onUnreadChange }: Props) {
   const isInstructor = userRole === 'Instructor';
   const [activeChannel, setActiveChannel] = useState('general');
   const [channelMeta, setChannelMeta] = useState<Record<string, ChannelMeta>>({});
@@ -100,6 +119,8 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
   const [editingMsg, setEditingMsg] = useState<ChatMessage | null>(null);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [emojiCategory, setEmojiCategory] = useState(0);
 
   const scrollRef = useRef<ScrollView>(null);
   const isAtBottomRef = useRef(true);
@@ -227,6 +248,11 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
     setMentionQuery(null);
   };
 
+  const insertEmoji = (emoji: string) => {
+    setInputText(prev => prev + emoji);
+    inputRef.current?.focus();
+  };
+
   const mentionSuggestions = useMemo(() => {
     if (mentionQuery === null) return [];
     const q = mentionQuery.trim();
@@ -282,6 +308,7 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
       }
       setInputText('');
       setMentionQuery(null);
+      setShowEmojiPicker(false);
     } catch {
       Alert.alert('Error', 'Failed to send message.');
     } finally { setSending(false); }
@@ -616,8 +643,40 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
           </View>
         )}
 
+        {/* Emoji picker panel */}
+        {showEmojiPicker && (
+          <View style={{ backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingBottom: 4 }}>
+            {/* Category tabs */}
+            <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingHorizontal: 8 }}>
+              {EMOJI_CATEGORIES.map((cat, idx) => (
+                <TouchableOpacity
+                  key={cat.label}
+                  onPress={() => setEmojiCategory(idx)}
+                  style={{ paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 2, borderBottomColor: emojiCategory === idx ? '#b91c1c' : 'transparent' }}
+                >
+                  <Text style={{ fontSize: 18 }}>{cat.icon}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {/* Emoji grid */}
+            <ScrollView horizontal={false} style={{ maxHeight: 150 }} contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', padding: 6 }} keyboardShouldPersistTaps="always">
+              {EMOJI_CATEGORIES[emojiCategory].emojis.map(emoji => (
+                <TouchableOpacity key={emoji} onPress={() => insertEmoji(emoji)} style={{ padding: 5 }}>
+                  <Text style={{ fontSize: 22 }}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
         {/* Input bar */}
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', padding: 12, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#e5e7eb', gap: 8 }}>
+          <TouchableOpacity
+            onPress={() => setShowEmojiPicker(v => !v)}
+            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: showEmojiPicker ? '#e5e7eb' : 'transparent', alignItems: 'center', justifyContent: 'center', marginBottom: 2 }}
+          >
+            <Ionicons name="happy-outline" size={22} color={showEmojiPicker ? '#374151' : '#9ca3af'} />
+          </TouchableOpacity>
           <TextInput
             ref={inputRef}
             value={inputText}

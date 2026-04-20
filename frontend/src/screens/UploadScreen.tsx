@@ -2,17 +2,24 @@ import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   Platform,
+  Modal,
+  Alert,
 } from "react-native";
 
+import { Ionicons } from "@expo/vector-icons";
 import FileUpload from "@/components/FileUpload";
 import DropZone from "@/components/DropZone";
 import axiosInstance from "@/api/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getUsersByRole } from "@/api/users";
+import { createUser, getUserByNetid } from "@/api/users";
+import { createTeam, addStudentToTeam, clearSemester } from "@/api/teams";
+import { UserRole, UserSummary } from "@/utils/auth";
 import * as ImagePicker from "expo-image-picker";
 
 const ACCEPTED_TYPES = new Set([
@@ -29,8 +36,6 @@ function isAccepted(f: UploadedFile): boolean {
   return lower.endsWith('.csv') || lower.endsWith('.xlsx');
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface UploadedFile {
   name: string;
   size: number;
@@ -39,7 +44,14 @@ interface UploadedFile {
 
 type UploadResult = { name: string; ok: boolean; message: string };
 
-export default function UploadScreen(): React.JSX.Element {
+interface Props {
+  userRole?: UserRole;
+}
+
+export default function UploadScreen({ userRole }: Props): React.JSX.Element {
+  const isInstructor = userRole === 'Instructor';
+
+  // ── CSV upload state ──────────────────────────────────────────────────────
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [uploading, setUploading] = useState(false);
@@ -63,7 +75,6 @@ export default function UploadScreen(): React.JSX.Element {
     const validFiles = files.filter(isAccepted);
     setUploading(true);
     setResults([]);
-
     const uploadResults: UploadResult[] = await Promise.all(
       validFiles.map(async (f) => {
         const formData = new FormData();
@@ -79,10 +90,8 @@ export default function UploadScreen(): React.JSX.Element {
         }
       })
     );
-
     setResults(uploadResults);
     setUploading(false);
-    // Remove successfully uploaded files from the list
     const failedNames = new Set(uploadResults.filter((r) => !r.ok).map((r) => r.name));
     setFiles((prev) => prev.filter((f) => failedNames.has(f.name)));
   }, [files]);
@@ -90,7 +99,7 @@ export default function UploadScreen(): React.JSX.Element {
   const validCount = files.filter(isAccepted).length;
   const invalidCount = files.length - validCount;
 
-  // Avatar bulk upload
+  // ── Avatar upload state ───────────────────────────────────────────────────
   const [avatarResults, setAvatarResults] = useState<{ key: string; ok: boolean; unchanged?: boolean; noMatch?: boolean; name: string }[]>([]);
   const [avatarUploading, setAvatarUploading] = useState(false);
 
@@ -98,8 +107,6 @@ export default function UploadScreen(): React.JSX.Element {
     if (!fileList.length) return;
     setAvatarUploading(true);
     setAvatarResults([]);
-
-    // Best-effort name→netid lookup with 3s timeout so it never blocks file processing
     const nameToNetid = new Map<string, string>();
     try {
       const lookupTimeout = new Promise<never>((_, rej) => setTimeout(() => rej(), 3000));
@@ -115,21 +122,18 @@ export default function UploadScreen(): React.JSX.Element {
           if (u.name) nameToNetid.set(u.name.toLowerCase().replace(/\s+/g, ''), u.netid);
         }
       }
-    } catch { /* timed out or failed — use raw filename as netid */ }
+    } catch { /* timed out — use raw filename as netid */ }
 
     const isImage = (f: File) =>
-      f.type.startsWith('image/') ||
-      /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(f.name);
+      f.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(f.name);
 
-    const results: { key: string; ok: boolean; unchanged?: boolean; name: string }[] = [];
-    for (let i = 0; i < fileList.length; i++) {
-      const file = fileList[i];
+    const res: { key: string; ok: boolean; unchanged?: boolean; name: string }[] = [];
+    for (const file of fileList) {
       if (!isImage(file)) continue;
       const baseName = file.name.replace(/\.[^.]+$/, '').toLowerCase().replace(/\s+/g, '');
       const matched = nameToNetid.get(baseName);
-      // If lookup succeeded but no student matched, skip — don't save under unknown key
       if (!matched && nameToNetid.size > 0) {
-        results.push({ key: baseName, ok: false, noMatch: true, name: file.name });
+        res.push({ key: baseName, ok: false, noMatch: true, name: file.name });
         continue;
       }
       const resolvedNetid = matched ?? baseName;
@@ -148,19 +152,17 @@ export default function UploadScreen(): React.JSX.Element {
         const storageKey = `member_avatar_${resolvedNetid}`;
         const existing = await AsyncStorage.getItem(storageKey);
         if (existing === dataUrl) {
-          results.push({ key: resolvedNetid, ok: true, unchanged: true, name: file.name });
+          res.push({ key: resolvedNetid, ok: true, unchanged: true, name: file.name });
         } else {
           await AsyncStorage.setItem(storageKey, dataUrl);
-          results.push({ key: resolvedNetid, ok: true, name: file.name });
+          res.push({ key: resolvedNetid, ok: true, name: file.name });
         }
       } catch {
-        results.push({ key: resolvedNetid, ok: false, name: file.name });
+        res.push({ key: resolvedNetid, ok: false, name: file.name });
       }
     }
-    if (results.length === 0) {
-      results.push({ key: '', ok: false, name: 'No image files found in selection' });
-    }
-    setAvatarResults(results);
+    if (res.length === 0) res.push({ key: '', ok: false, name: 'No image files found in selection' });
+    setAvatarResults(res);
     setAvatarUploading(false);
   }, []);
 
@@ -174,11 +176,9 @@ export default function UploadScreen(): React.JSX.Element {
       base64: true,
     });
     if (result.canceled || !result.assets.length) return;
-
     setAvatarUploading(true);
     setAvatarResults([]);
-    const results: { key: string; ok: boolean; unchanged?: boolean; name: string }[] = [];
-
+    const res: { key: string; ok: boolean; unchanged?: boolean; name: string }[] = [];
     for (const asset of result.assets) {
       const fileName = asset.fileName ?? asset.uri.split('/').pop() ?? 'unknown';
       const resolvedNetid = fileName.replace(/\.[^.]+$/, '').toLowerCase().replace(/\s+/g, '');
@@ -187,22 +187,296 @@ export default function UploadScreen(): React.JSX.Element {
         const storageKey = `member_avatar_${resolvedNetid}`;
         const existing = await AsyncStorage.getItem(storageKey);
         if (existing === dataUrl) {
-          results.push({ key: resolvedNetid, ok: true, unchanged: true, name: fileName });
+          res.push({ key: resolvedNetid, ok: true, unchanged: true, name: fileName });
         } else {
           await AsyncStorage.setItem(storageKey, dataUrl);
-          results.push({ key: resolvedNetid, ok: true, name: fileName });
+          res.push({ key: resolvedNetid, ok: true, name: fileName });
         }
       } catch {
-        results.push({ key: resolvedNetid, ok: false, name: fileName });
+        res.push({ key: resolvedNetid, ok: false, name: fileName });
       }
     }
-    if (results.length === 0) results.push({ key: '', ok: false, name: 'No images selected' });
-    setAvatarResults(results);
+    if (res.length === 0) res.push({ key: '', ok: false, name: 'No images selected' });
+    setAvatarResults(res);
     setAvatarUploading(false);
   }, []);
 
+  // ── Manual team creation state ────────────────────────────────────────────
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [taList, setTaList] = useState<UserSummary[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [createResult, setCreateResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [teamName, setTeamName] = useState('');
+  const [teamSection, setTeamSection] = useState('');
+  const [selectedTaNetid, setSelectedTaNetid] = useState('');
+  const [studentRows, setStudentRows] = useState([
+    { key: '1', firstName: '', lastName: '', netid: '' },
+  ]);
+
+  const openCreateModal = useCallback(async () => {
+    setShowCreateModal(true);
+    setCreateResult(null);
+    if (taList.length === 0) {
+      try {
+        const [tas, htas] = await Promise.all([
+          getUsersByRole('TA').catch(() => [] as UserSummary[]),
+          getUsersByRole('HTA').catch(() => [] as UserSummary[]),
+        ]);
+        setTaList([...tas, ...htas]);
+      } catch {}
+    }
+  }, [taList.length]);
+
+  const addRow = () =>
+    setStudentRows(prev => [...prev, { key: Date.now().toString(), firstName: '', lastName: '', netid: '' }]);
+
+  const removeRow = (key: string) =>
+    setStudentRows(prev => prev.length > 1 ? prev.filter(r => r.key !== key) : prev);
+
+  const updateRow = (key: string, field: 'firstName' | 'lastName' | 'netid', value: string) =>
+    setStudentRows(prev => prev.map(r => r.key === key ? { ...r, [field]: value } : r));
+
+  const resetForm = () => {
+    setTeamName('');
+    setTeamSection('');
+    setSelectedTaNetid('');
+    setStudentRows([{ key: '1', firstName: '', lastName: '', netid: '' }]);
+    setCreateResult(null);
+  };
+
+  const handleCreateTeam = useCallback(async () => {
+    const name = teamName.trim();
+    const sectionNum = parseInt(teamSection, 10);
+    if (!name || isNaN(sectionNum)) return;
+
+    const validRows = studentRows.filter(r => r.firstName.trim() && r.lastName.trim() && r.netid.trim());
+
+    setCreating(true);
+    setCreateResult(null);
+    try {
+      const studentIds: number[] = [];
+      for (const row of validRows) {
+        try {
+          const existing = await getUserByNetid(row.netid.trim());
+          if (existing?.id) {
+            studentIds.push(existing.id);
+          } else {
+            const created = await createUser({
+              netid: row.netid.trim(),
+              name: `${row.firstName.trim()} ${row.lastName.trim()}`,
+              password: Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2),
+              role: ['STUDENT'],
+            });
+            if (created?.id) studentIds.push(created.id);
+          }
+        } catch { /* skip individual student errors */ }
+      }
+
+      const team = await createTeam({
+        name,
+        section: sectionNum,
+        taNetid: selectedTaNetid || undefined,
+      });
+
+      if (team.id) {
+        await Promise.all(studentIds.map(sid => addStudentToTeam(team.id!, sid).catch(() => {})));
+      }
+
+      setCreateResult({
+        ok: true,
+        message: `Team "${name}" created with ${studentIds.length} student${studentIds.length !== 1 ? 's' : ''}.`,
+      });
+      resetForm();
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.response?.data || err?.message || 'Failed to create team.';
+      setCreateResult({ ok: false, message: String(msg) });
+    } finally {
+      setCreating(false);
+    }
+  }, [teamName, teamSection, selectedTaNetid, studentRows]);
+
+  // ── Clear semester state ──────────────────────────────────────────────────
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearText, setClearText] = useState('');
+  const [clearing, setClearing] = useState(false);
+  const [clearSuccess, setClearSuccess] = useState(false);
+
+  const handleClearSemester = useCallback(async () => {
+    setClearing(true);
+    try {
+      await clearSemester();
+      setClearText('');
+      setShowClearConfirm(false);
+      setClearSuccess(true);
+      setTimeout(() => setClearSuccess(false), 6000);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.response?.data || err?.message
+        || 'Failed. Make sure your account has the CAN_DELETE_SEMESTER permission.';
+      Alert.alert('Clear Failed', String(msg));
+    } finally {
+      setClearing(false);
+    }
+  }, []);
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <View className="flex-1 bg-gray-100">
+
+      {/* ── Manual Team Creation Modal ── */}
+      <Modal
+        visible={showCreateModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { if (!creating) setShowCreateModal(false); }}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: 'white', borderRadius: 16, maxHeight: '90%', overflow: 'hidden' }}>
+            {/* Modal header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>Create Team Manually</Text>
+              {!creating && (
+                <TouchableOpacity onPress={() => setShowCreateModal(false)}>
+                  <Ionicons name="close" size={22} color="#6b7280" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView keyboardShouldPersistTaps="always" contentContainerStyle={{ padding: 20, gap: 16 }}>
+              {/* Team name */}
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Team Name *</Text>
+                <TextInput
+                  value={teamName}
+                  onChangeText={setTeamName}
+                  placeholder="e.g. Team A1"
+                  placeholderTextColor="#9ca3af"
+                  style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#111827', backgroundColor: '#f9fafb' }}
+                />
+              </View>
+
+              {/* Section */}
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Section Number *</Text>
+                <TextInput
+                  value={teamSection}
+                  onChangeText={setTeamSection}
+                  placeholder="e.g. 1"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="numeric"
+                  style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#111827', backgroundColor: '#f9fafb' }}
+                />
+              </View>
+
+              {/* TA selector */}
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Assign TA (optional)</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  <TouchableOpacity
+                    onPress={() => setSelectedTaNetid('')}
+                    style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: !selectedTaNetid ? '#b91c1c' : '#f3f4f6' }}
+                  >
+                    <Text style={{ fontSize: 12, color: !selectedTaNetid ? 'white' : '#374151', fontWeight: '500' }}>None</Text>
+                  </TouchableOpacity>
+                  {taList.map(ta => (
+                    <TouchableOpacity
+                      key={ta.netid}
+                      onPress={() => setSelectedTaNetid(ta.netid ?? '')}
+                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: selectedTaNetid === ta.netid ? '#b91c1c' : '#f3f4f6' }}
+                    >
+                      <Text style={{ fontSize: 12, color: selectedTaNetid === ta.netid ? 'white' : '#374151', fontWeight: '500' }}>
+                        {ta.name ?? ta.netid}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Students */}
+              <View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>Students</Text>
+                  <TouchableOpacity
+                    onPress={addRow}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#f3f4f6', borderRadius: 8 }}
+                  >
+                    <Ionicons name="add" size={14} color="#374151" />
+                    <Text style={{ fontSize: 12, color: '#374151', fontWeight: '500' }}>Add Student</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {studentRows.map((row, idx) => (
+                  <View key={row.key} style={{ marginBottom: 10, padding: 12, backgroundColor: '#f9fafb', borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <Text style={{ fontSize: 11, color: '#9ca3af', fontWeight: '600' }}>Student {idx + 1}</Text>
+                      {studentRows.length > 1 && (
+                        <TouchableOpacity onPress={() => removeRow(row.key)}>
+                          <Ionicons name="close-circle" size={16} color="#9ca3af" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+                      <TextInput
+                        value={row.firstName}
+                        onChangeText={v => updateRow(row.key, 'firstName', v)}
+                        placeholder="First name"
+                        placeholderTextColor="#9ca3af"
+                        style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: '#111827', backgroundColor: 'white' }}
+                      />
+                      <TextInput
+                        value={row.lastName}
+                        onChangeText={v => updateRow(row.key, 'lastName', v)}
+                        placeholder="Last name"
+                        placeholderTextColor="#9ca3af"
+                        style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: '#111827', backgroundColor: 'white' }}
+                      />
+                    </View>
+                    <TextInput
+                      value={row.netid}
+                      onChangeText={v => updateRow(row.key, 'netid', v)}
+                      placeholder="NetID (e.g. jdoe)"
+                      placeholderTextColor="#9ca3af"
+                      autoCapitalize="none"
+                      style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: '#111827', backgroundColor: 'white' }}
+                    />
+                  </View>
+                ))}
+                <Text style={{ fontSize: 11, color: '#9ca3af' }}>
+                  Rows with any empty field are skipped. If a NetID already exists the student is added without re-creating.
+                </Text>
+              </View>
+
+              {/* Result banner */}
+              {createResult && (
+                <View style={{ padding: 12, borderRadius: 10, backgroundColor: createResult.ok ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: createResult.ok ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)' }}>
+                  <Text style={{ fontSize: 13, color: createResult.ok ? '#059669' : '#dc2626', fontWeight: '600' }}>
+                    {createResult.ok ? '✓ ' : '✗ '}{createResult.message}
+                  </Text>
+                </View>
+              )}
+
+              {/* Submit */}
+              <TouchableOpacity
+                onPress={handleCreateTeam}
+                disabled={creating || !teamName.trim() || !teamSection.trim()}
+                style={{
+                  backgroundColor: (creating || !teamName.trim() || !teamSection.trim()) ? '#e5e7eb' : '#b91c1c',
+                  borderRadius: 10, paddingVertical: 14, alignItems: 'center',
+                }}
+              >
+                {creating
+                  ? <ActivityIndicator color="white" />
+                  : <Text style={{ color: (!teamName.trim() || !teamSection.trim()) ? '#9ca3af' : 'white', fontWeight: '700', fontSize: 14 }}>
+                      Create Team
+                    </Text>
+                }
+              </TouchableOpacity>
+
+              <View style={{ height: 20 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-6 py-10"
@@ -210,19 +484,18 @@ export default function UploadScreen(): React.JSX.Element {
       >
         {/* Header */}
         <View className="mb-8">
-          <Text className="text-base text-xl font-bold mb-2">
-            Upload Teams
-          </Text>
+          <Text className="text-base text-xl font-bold mb-2">Upload Teams</Text>
           <Text className="text-zinc-500 text-sm mt-1.5">
             Drag and drop or browse to attach your documents.
           </Text>
         </View>
 
         {/* Required Upload Format */}
-        <View style={{ marginBottom: 24, padding: 16, backgroundColor: '#f9fafb', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
+        <View style={{ marginBottom: 16, padding: 16, backgroundColor: '#f9fafb', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827', marginBottom: 8 }}>Expected File Format</Text>
           <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>
-            Accepted formats: <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.csv</Text> or <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.xlsx</Text>
+            Accepted formats: <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.csv</Text> or{' '}
+            <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.xlsx</Text>
           </Text>
           <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
             The file must have a header row followed by one student per row with exactly 4 columns in this order:
@@ -245,6 +518,15 @@ export default function UploadScreen(): React.JSX.Element {
           </Text>
         </View>
 
+        {/* Manual team creation button */}
+        <TouchableOpacity
+          onPress={openCreateModal}
+          style={{ marginBottom: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'white', borderRadius: 12, borderWidth: 1.5, borderColor: '#b91c1c', paddingVertical: 14 }}
+        >
+          <Ionicons name="people-circle-outline" size={18} color="#b91c1c" />
+          <Text style={{ color: '#b91c1c', fontWeight: '700', fontSize: 14 }}>Create Team Manually</Text>
+        </TouchableOpacity>
+
         {/* Drop Zone */}
         <DropZone
           onFilesSelected={handleFilesSelected}
@@ -255,41 +537,31 @@ export default function UploadScreen(): React.JSX.Element {
         {/* File List */}
         {files.length > 0 && (
           <View className="mt-6">
-            {/* Section header */}
             <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-zinc-400 text-xs font-bold tracking-widest uppercase">
-                Uploaded Files
-              </Text>
+              <Text className="text-zinc-400 text-xs font-bold tracking-widest uppercase">Uploaded Files</Text>
               <View className="flex-row gap-2">
                 {validCount > 0 && (
                   <View className="bg-emerald-500/15 px-2 py-0.5 rounded-full">
-                    <Text className="text-emerald-400 text-xs font-semibold">
-                      {validCount} valid
-                    </Text>
+                    <Text className="text-emerald-400 text-xs font-semibold">{validCount} valid</Text>
                   </View>
                 )}
                 {invalidCount > 0 && (
                   <View className="bg-rose-500/15 px-2 py-0.5 rounded-full">
-                    <Text className="text-rose-400 text-xs font-semibold">
-                      {invalidCount} invalid
-                    </Text>
+                    <Text className="text-rose-400 text-xs font-semibold">{invalidCount} invalid</Text>
                   </View>
                 )}
               </View>
             </View>
 
-            {/* Cards */}
             {files.map((file) => (
               <FileUpload key={file.name} file={file} onRemove={handleRemove} />
             ))}
 
-            {/* Invalid type warning */}
             {invalidCount > 0 && (
               <View className="flex-row items-start gap-2.5 mt-2 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3">
                 <Text className="text-rose-400 text-base mt-0.5">⚠️</Text>
                 <Text className="text-rose-300 text-xs leading-5 flex-1">
-                  {invalidCount} file{invalidCount > 1 ? "s have" : " has"} an
-                  unsupported format. Only CSV and XLSX files are accepted.
+                  {invalidCount} file{invalidCount > 1 ? "s have" : " has"} an unsupported format. Only CSV and XLSX files are accepted.
                 </Text>
               </View>
             )}
@@ -310,12 +582,8 @@ export default function UploadScreen(): React.JSX.Element {
               >
                 <Text style={{ fontSize: 14 }}>{r.ok ? '✅' : '❌'}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: r.ok ? '#059669' : '#DC2626' }}>
-                    {r.name}
-                  </Text>
-                  <Text style={{ fontSize: 12, color: r.ok ? '#065f46' : '#991b1b', marginTop: 2 }}>
-                    {r.message}
-                  </Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: r.ok ? '#059669' : '#DC2626' }}>{r.name}</Text>
+                  <Text style={{ fontSize: 12, color: r.ok ? '#065f46' : '#991b1b', marginTop: 2 }}>{r.message}</Text>
                 </View>
               </View>
             ))}
@@ -334,20 +602,13 @@ export default function UploadScreen(): React.JSX.Element {
             {uploading ? (
               <ActivityIndicator color="#18181b" />
             ) : (
-              <Text
-                className={`text-sm font-bold tracking-wide ${
-                  invalidCount === 0 && validCount > 0
-                    ? "text-zinc-900"
-                    : "text-zinc-500"
-                }`}
-              >
-                {invalidCount > 0
-                  ? "RESOLVE ERRORS TO CONTINUE"
-                  : `UPLOAD ${validCount} FILE${validCount !== 1 ? "S" : ""}`}
+              <Text className={`text-sm font-bold tracking-wide ${invalidCount === 0 && validCount > 0 ? "text-zinc-900" : "text-zinc-500"}`}>
+                {invalidCount > 0 ? "RESOLVE ERRORS TO CONTINUE" : `UPLOAD ${validCount} FILE${validCount !== 1 ? "S" : ""}`}
               </Text>
             )}
           </TouchableOpacity>
         )}
+
         {/* Avatar Bulk Upload */}
         <View style={{ marginTop: 32, backgroundColor: 'white', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
           <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 }}>Upload Avatars</Text>
@@ -355,21 +616,20 @@ export default function UploadScreen(): React.JSX.Element {
             Name images after the student's netid (e.g. <Text style={{ fontFamily: 'monospace' }}>jdoe.jpg</Text>). Images are stored locally on this device.
           </Text>
           <Text style={{ fontSize: 11, color: '#9ca3af', marginBottom: 14 }}>
-            Full name files also work — spaces are stripped and lowercased (e.g. <Text style={{ fontFamily: 'monospace' }}>john doe.png</Text> → key <Text style={{ fontFamily: 'monospace' }}>johndoe</Text>).
+            Full name files also work — spaces are stripped and lowercased (e.g.{' '}
+            <Text style={{ fontFamily: 'monospace' }}>john doe.png</Text> → key <Text style={{ fontFamily: 'monospace' }}>johndoe</Text>).
           </Text>
 
           {Platform.OS === 'web' ? (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <View style={{ flex: 1, position: 'relative' }}>
                 <View style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: '#F1BE48', opacity: avatarUploading ? 0.6 : 1 }}>
-                  {avatarUploading
-                    ? <ActivityIndicator color="#111827" />
-                    : <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>Choose Files</Text>}
+                  {avatarUploading ? <ActivityIndicator color="#111827" /> : <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>Choose Files</Text>}
                 </View>
                 {!avatarUploading && (
                   <input type="file" accept="image/*" multiple
                     style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' } as any}
-                    onChange={(e: any) => { const files = Array.from(e.target.files || []) as File[]; e.target.value = ''; if (files.length) handleAvatarFiles(files); }} />
+                    onChange={(e: any) => { const fs = Array.from(e.target.files || []) as File[]; e.target.value = ''; if (fs.length) handleAvatarFiles(fs); }} />
                 )}
               </View>
               <View style={{ flex: 1, position: 'relative' }}>
@@ -380,7 +640,7 @@ export default function UploadScreen(): React.JSX.Element {
                   <input type="file" accept="image/*" multiple
                     {...{ webkitdirectory: '', directory: '' } as any}
                     style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' } as any}
-                    onChange={(e: any) => { const files = Array.from(e.target.files || []) as File[]; e.target.value = ''; if (files.length) handleAvatarFiles(files); }} />
+                    onChange={(e: any) => { const fs = Array.from(e.target.files || []) as File[]; e.target.value = ''; if (fs.length) handleAvatarFiles(fs); }} />
                 )}
               </View>
             </View>
@@ -390,9 +650,7 @@ export default function UploadScreen(): React.JSX.Element {
               disabled={avatarUploading}
               style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: '#F1BE48', opacity: avatarUploading ? 0.6 : 1 }}
             >
-              {avatarUploading
-                ? <ActivityIndicator color="#111827" />
-                : <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>Choose Photos</Text>}
+              {avatarUploading ? <ActivityIndicator color="#111827" /> : <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>Choose Photos</Text>}
             </TouchableOpacity>
           )}
 
@@ -418,6 +676,98 @@ export default function UploadScreen(): React.JSX.Element {
             </View>
           )}
         </View>
+
+        {/* ── Danger Zone (Instructor only) ── */}
+        {isInstructor && (
+          <View style={{ marginTop: 40, marginBottom: 20, borderWidth: 2, borderColor: '#dc2626', borderRadius: 16, overflow: 'hidden' }}>
+            {/* Header bar */}
+            <View style={{ backgroundColor: '#dc2626', paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Ionicons name="warning" size={22} color="white" />
+              <Text style={{ color: 'white', fontWeight: '800', fontSize: 17, letterSpacing: 1 }}>DANGER ZONE</Text>
+            </View>
+
+            <View style={{ padding: 20, backgroundColor: 'white' }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 6 }}>Clear Semester</Text>
+              <Text style={{ fontSize: 13, color: '#6b7280', lineHeight: 20, marginBottom: 4 }}>
+                Permanently deletes{' '}
+                <Text style={{ fontWeight: '700', color: '#dc2626' }}>all teams</Text>
+                {' '}and{' '}
+                <Text style={{ fontWeight: '700', color: '#dc2626' }}>all students assigned to those teams</Text>.
+                Staff accounts (TAs, HTAs, Instructors) are not affected.
+              </Text>
+              <Text style={{ fontSize: 12, color: '#9ca3af', marginBottom: 20 }}>
+                Students who are not currently assigned to any team will also not be deleted. This action cannot be undone.
+              </Text>
+
+              {clearSuccess && (
+                <View style={{ backgroundColor: 'rgba(16,185,129,0.1)', borderRadius: 8, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' }}>
+                  <Text style={{ color: '#059669', fontWeight: '600', fontSize: 13 }}>✓ Semester cleared successfully. All team and student data has been removed.</Text>
+                </View>
+              )}
+
+              {!showClearConfirm ? (
+                <TouchableOpacity
+                  onPress={() => setShowClearConfirm(true)}
+                  style={{ backgroundColor: '#dc2626', borderRadius: 10, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                >
+                  <Ionicons name="trash-outline" size={16} color="white" />
+                  <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>Clear Semester Data</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={{ gap: 12 }}>
+                  <View style={{ backgroundColor: '#fef2f2', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#fca5a5' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#dc2626', marginBottom: 6 }}>⚠️ Are you absolutely sure?</Text>
+                    <Text style={{ fontSize: 13, color: '#7f1d1d', lineHeight: 18 }}>
+                      This will permanently delete all teams and their students. Type{' '}
+                      <Text style={{ fontFamily: 'monospace', fontWeight: '800' }}>CLEAR SEMESTER</Text>
+                      {' '}exactly to proceed.
+                    </Text>
+                  </View>
+
+                  <TextInput
+                    value={clearText}
+                    onChangeText={setClearText}
+                    placeholder="Type CLEAR SEMESTER"
+                    placeholderTextColor="#9ca3af"
+                    autoCapitalize="characters"
+                    style={{
+                      borderWidth: 2,
+                      borderColor: clearText === 'CLEAR SEMESTER' ? '#dc2626' : '#d1d5db',
+                      borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12,
+                      fontSize: 15, color: '#111827', backgroundColor: '#f9fafb',
+                      fontFamily: 'monospace',
+                    }}
+                  />
+
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity
+                      onPress={() => { setShowClearConfirm(false); setClearText(''); }}
+                      style={{ flex: 1, backgroundColor: '#f3f4f6', borderRadius: 10, paddingVertical: 13, alignItems: 'center' }}
+                    >
+                      <Text style={{ color: '#374151', fontWeight: '600', fontSize: 14 }}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleClearSemester}
+                      disabled={clearText !== 'CLEAR SEMESTER' || clearing}
+                      style={{
+                        flex: 1,
+                        backgroundColor: clearText === 'CLEAR SEMESTER' ? '#dc2626' : '#e5e7eb',
+                        borderRadius: 10, paddingVertical: 13, alignItems: 'center',
+                      }}
+                    >
+                      {clearing
+                        ? <ActivityIndicator color="white" size="small" />
+                        : <Text style={{ color: clearText === 'CLEAR SEMESTER' ? 'white' : '#9ca3af', fontWeight: '700', fontSize: 14 }}>
+                            Delete Everything
+                          </Text>
+                      }
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
       </ScrollView>
     </View>
   );

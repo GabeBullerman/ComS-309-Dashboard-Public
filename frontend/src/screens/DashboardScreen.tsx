@@ -66,20 +66,20 @@ export default function DashboardScreen({route}: Props) {
 
   const navItems = [
     { label: "Teams",        mobileLabel: "Teams",    icon: "people-outline" },
+    ...(role !== 'Instructor'
+      ? [{ label: "Tasks",        mobileLabel: "Tasks",  icon: "checkmark-circle-outline" }] : []),
+    ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
+      ? [{ label: "Staff Chat", mobileLabel: "Chat", icon: "chatbubbles-outline", badge: chatUnread, mobileHidden: true }] : []),
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
       ? [{ label: "Assign Tasks", mobileLabel: "Assign", icon: "clipboard-outline" }] : []),
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
-      ? [{ label: "Student List", mobileLabel: "Students", icon: "people-outline" }] : []),
+      ? [{ label: "At-Risk Students", mobileLabel: "At-Risk", icon: "alert-circle-outline" }] : []),
+    ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
+      ? [{ label: "Student List", mobileLabel: "Students", icon: "list-outline" }] : []),
     ...(role === 'HTA' || role === 'Instructor'
       ? [{ label: "Staff Manager", mobileLabel: "Staff", icon: "shield-outline" }] : []),
     ...(role === 'Instructor' || role === 'HTA'
       ? [{ label: "Upload", mobileLabel: "Upload", icon: "cloud-upload-outline" }] : []),
-    ...(role !== 'Instructor'
-      ? [{ label: "Tasks",        mobileLabel: "Tasks",  icon: "checkmark-circle-outline" }] : []),
-    ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
-      ? [{ label: "At-Risk Students", mobileLabel: "At-Risk", icon: "alert-circle-outline" }] : []),
-    ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
-      ? [{ label: "Staff Chat", mobileLabel: "Chat", icon: "chatbubbles-outline", badge: chatUnread, mobileHidden: true }] : []),
     { label: "Profile",      mobileLabel: "Profile",  icon: "person-circle-outline" },
   ] as { label: string; mobileLabel: string; icon: string; badge?: number; mobileHidden?: boolean }[];
 
@@ -104,7 +104,7 @@ export default function DashboardScreen({route}: Props) {
       case "Assign Tasks": return <TaskAssignmentScreen />;
       case "Staff Manager": return <StaffManagerScreen userRole={role} />;
       case "Staff Chat":  return <StaffChatScreen myNetid={netid} myName={displayName} userRole={role} onUnreadChange={setChatUnread} />;
-      case "Upload":       return <UploadScreen/>;
+      case "Upload":       return <UploadScreen userRole={role} />;
       case "Tasks":        return <AssignmentsScreen />;
       case "Profile":      return <ProfileScreen userRole={role} onLogout={isMobile ? route.params.onLogout : undefined} />;
       case "At-Risk Students": return <AtRiskStudentsScreen userRole={route.params.userRole} />;
