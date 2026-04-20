@@ -30,9 +30,6 @@ public class PasswordResetService {
     @Value("${app.mail.from:309-dashboard@iastate.edu}")
     private String fromAddress;
 
-    @Value("${spring.mail.username:}")
-    private String mailUsername;
-
     public PasswordResetService(UserRepository userRepository,
                                 PasswordEncoder passwordEncoder,
                                 JavaMailSender mailSender) {
@@ -43,11 +40,6 @@ public class PasswordResetService {
 
     @Transactional
     public void sendTemporaryPassword(String netid) {
-        if (mailUsername == null || mailUsername.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                "Email is not configured on this server. Contact your instructor to reset your password.");
-        }
-
         User user = userRepository.findByNetid(netid)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No account found for NetID: " + netid));
 

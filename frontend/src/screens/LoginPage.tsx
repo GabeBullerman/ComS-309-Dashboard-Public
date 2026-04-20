@@ -143,10 +143,8 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       setForgotSent(true);
     } catch (e: any) {
       const status = e?.response?.status;
-      const msg = e?.response?.data?.message ?? '';
       setForgotError(
         status === 404 ? 'No account found for that NetID.' :
-        status === 503 ? 'Email not configured — contact your instructor.' :
         'Failed to send — try again.'
       );
     } finally {
