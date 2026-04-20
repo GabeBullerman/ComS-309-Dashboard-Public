@@ -621,8 +621,8 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
           </Text>
 
           {Platform.OS === 'web' ? (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1, position: 'relative' }}>
+            <View style={{ flexDirection: 'column', gap: 8 }}>
+              <View style={{ position: 'relative' }}>
                 <View style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: '#F1BE48', opacity: avatarUploading ? 0.6 : 1 }}>
                   {avatarUploading ? <ActivityIndicator color="#111827" /> : <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>Choose Files</Text>}
                 </View>
@@ -632,7 +632,7 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
                     onChange={(e: any) => { const fs = Array.from(e.target.files || []) as File[]; e.target.value = ''; if (fs.length) handleAvatarFiles(fs); }} />
                 )}
               </View>
-              <View style={{ flex: 1, position: 'relative' }}>
+              <View style={{ position: 'relative' }}>
                 <View style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb', opacity: avatarUploading ? 0.6 : 1 }}>
                   <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>Choose Folder</Text>
                 </View>

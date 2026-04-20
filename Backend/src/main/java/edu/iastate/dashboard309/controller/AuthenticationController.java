@@ -24,6 +24,7 @@ import edu.iastate.dashboard309.repository.RefreshTokenRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
 import edu.iastate.dashboard309.service.GoogleAuthService;
 import edu.iastate.dashboard309.service.JwtService;
+import edu.iastate.dashboard309.service.PasswordResetService;
 import edu.iastate.dashboard309.service.UserService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,14 +48,24 @@ public class AuthenticationController {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtService jwtService;
     private final GoogleAuthService googleAuthService;
+    private final PasswordResetService passwordResetService;
 
-    public AuthenticationController(UserService userService, UserRepository userRepository, JwtService jwtService, GoogleAuthService googleAuthService, RefreshTokenRepository refreshTokenRepository, PasswordEncoder passwordEncoder){
+    public AuthenticationController(UserService userService, UserRepository userRepository, JwtService jwtService, GoogleAuthService googleAuthService, RefreshTokenRepository refreshTokenRepository, PasswordEncoder passwordEncoder, PasswordResetService passwordResetService){
         this.userService = userService;
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.googleAuthService = googleAuthService;
+        this.passwordResetService = passwordResetService;
+    }
+
+    public record ForgotPasswordRequest(String netid) {}
+
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void forgotPassword(@RequestBody ForgotPasswordRequest req) {
+        passwordResetService.sendTemporaryPassword(req.netid().trim().toLowerCase());
     }
 
     @PostMapping("/login")

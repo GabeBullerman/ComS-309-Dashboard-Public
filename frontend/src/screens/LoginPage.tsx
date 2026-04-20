@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Platform, View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { Platform, View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, Modal, ActivityIndicator } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import axiosInstance, { apiBaseUrl } from '@/api/client';
@@ -17,6 +17,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [loginError, setLoginError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotNetid, setForgotNetid] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState('');
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: '124195890479-kh157q1foah7sc96ckjbvdvrdt9esu0q.apps.googleusercontent.com',
@@ -127,6 +133,27 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    const netid = forgotNetid.trim().toLowerCase();
+    if (!netid) { setForgotError('Enter your NetID.'); return; }
+    setForgotLoading(true);
+    setForgotError('');
+    try {
+      await axiosInstance.post('/api/auth/forgot-password', { netid });
+      setForgotSent(true);
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const msg = e?.response?.data?.message ?? '';
+      setForgotError(
+        status === 404 ? 'No account found for that NetID.' :
+        status === 503 ? 'Email not configured — contact your instructor.' :
+        'Failed to send — try again.'
+      );
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
@@ -184,6 +211,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity onPress={() => { setShowForgot(true); setForgotNetid(''); setForgotSent(false); setForgotError(''); }} style={{ alignSelf: 'center', marginTop: 10 }}>
+          <Text style={{ fontSize: 13, color: '#64748b', textDecorationLine: 'underline' }}>Forgot password?</Text>
+        </TouchableOpacity>
+
         {/* Divider */}
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
@@ -216,6 +247,53 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Forgot Password Modal */}
+      <Modal visible={showForgot} transparent animationType="fade" onRequestClose={() => setShowForgot(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 24, width: '100%', maxWidth: 360, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, elevation: 8 }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: '#1e293b', marginBottom: 6 }}>Reset Password</Text>
+            {forgotSent ? (
+              <View>
+                <Text style={{ fontSize: 14, color: '#16a34a', lineHeight: 20, marginBottom: 16 }}>
+                  A temporary password has been sent to <Text style={{ fontWeight: '700' }}>{forgotNetid.trim().toLowerCase()}@iastate.edu</Text>. Use it to log in, then change your password in Profile.
+                </Text>
+                <TouchableOpacity onPress={() => setShowForgot(false)} style={{ backgroundColor: '#C8102E', borderRadius: 8, paddingVertical: 11, alignItems: 'center' }}>
+                  <Text style={{ color: 'white', fontWeight: '600' }}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View>
+                <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 14, lineHeight: 18 }}>
+                  Enter your NetID and we'll email a temporary password to your @iastate.edu address.
+                </Text>
+                <TextInput
+                  value={forgotNetid}
+                  onChangeText={t => { setForgotNetid(t); setForgotError(''); }}
+                  placeholder="e.g. jdoe"
+                  placeholderTextColor="#9ca3af"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={{ borderWidth: 1, borderColor: forgotError ? '#ef4444' : '#e2e8f0', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, backgroundColor: '#f8fafc', marginBottom: 6 }}
+                />
+                {!!forgotError && <Text style={{ fontSize: 12, color: '#ef4444', marginBottom: 8 }}>{forgotError}</Text>}
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                  <TouchableOpacity onPress={() => setShowForgot(false)} style={{ flex: 1, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, paddingVertical: 11, alignItems: 'center' }}>
+                    <Text style={{ color: '#64748b', fontWeight: '600' }}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleForgotPassword}
+                    disabled={forgotLoading || !forgotNetid.trim()}
+                    style={{ flex: 1, backgroundColor: '#C8102E', borderRadius: 8, paddingVertical: 11, alignItems: 'center', opacity: forgotLoading || !forgotNetid.trim() ? 0.6 : 1 }}
+                  >
+                    {forgotLoading ? <ActivityIndicator size="small" color="white" /> : <Text style={{ color: 'white', fontWeight: '600' }}>Send</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
     </ScrollView>
   );
 };
@@ -228,12 +306,15 @@ const styles = StyleSheet.create({
   contentContainer: {
     flexGrow: 1,
     justifyContent: 'flex-start',
+    alignItems: 'center',
     paddingTop: 56,
     paddingBottom: 20,
+    paddingHorizontal: 16,
   },
   header: {
     alignItems: 'center',
     width: '100%',
+    maxWidth: 380,
     paddingTop: 12,
     paddingBottom: 12,
     marginBottom: 26,
@@ -257,11 +338,12 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   formContainer: {
-    marginHorizontal: 20,
+    width: '100%',
+    maxWidth: 380,
     backgroundColor: '#ffffff',
     borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 28,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

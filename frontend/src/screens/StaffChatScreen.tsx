@@ -669,7 +669,17 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
           </View>
         )}
 
-        {/* Input bar */}
+        {/* Read-only banner for non-Instructors in Announcements */}
+        {activeChannel === 'announcements' && !isInstructor ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, backgroundColor: '#fffbeb', borderTopWidth: 1, borderTopColor: '#fde68a' }}>
+            <Ionicons name="megaphone-outline" size={16} color="#92400e" />
+            <Text style={{ fontSize: 13, color: '#92400e', fontWeight: '500' }}>
+              Only Instructors can post in Announcements.
+            </Text>
+          </View>
+        ) : (
+
+        /* Input bar */
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', padding: 12, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#e5e7eb', gap: 8 }}>
           <TouchableOpacity
             onPress={() => setShowEmojiPicker(v => !v)}
@@ -704,6 +714,8 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
             }
           </TouchableOpacity>
         </View>
+        )}
+
       </KeyboardAvoidingView>
     </View>
   );

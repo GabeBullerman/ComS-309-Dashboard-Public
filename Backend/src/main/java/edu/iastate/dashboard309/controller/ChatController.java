@@ -49,6 +49,10 @@ public class ChatController {
     @ResponseStatus(HttpStatus.CREATED)
     public ChatMessageDto create(@Valid @RequestBody CreateRequest req, Authentication authentication) {
         requireStaff(authentication);
+        if ("announcements".equals(req.channel()) && !authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equalsIgnoreCase("INSTRUCTOR"))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only Instructors can post in Announcements");
+        }
         User sender = getUser(authentication);
         return chatService.createMessage(
             sender.getNetid(), sender.getName(),

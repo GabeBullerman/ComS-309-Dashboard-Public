@@ -25,6 +25,7 @@ export interface ChatMessage {
 export const CHANNELS = [
   { id: 'general',         defaultLabel: 'General',        icon: 'chatbubble-ellipses-outline' as const },
   { id: 'system-feedback', defaultLabel: 'System Feedback', icon: 'construct-outline' as const },
+  { id: 'announcements',   defaultLabel: 'Announcements',   icon: 'megaphone-outline' as const },
 ];
 
 export interface ChannelMeta {

@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 @Service
 public class ChatService {
 
-    static final List<String> CHANNELS = List.of("general", "system-feedback");
+    static final List<String> CHANNELS = List.of("general", "system-feedback", "announcements");
 
     private final ChatMessageRepository messageRepo;
     private final ChatReadRepository readRepo;
@@ -44,6 +44,10 @@ public class ChatService {
         if (!channelRepo.existsById("system-feedback")) {
             channelRepo.save(new ChatChannel("system-feedback", "System Feedback",
                 "Report bugs, suggest improvements, or discuss feature requests"));
+        }
+        if (!channelRepo.existsById("announcements")) {
+            channelRepo.save(new ChatChannel("announcements", "Announcements",
+                "Important updates from the Instructor — read only for TAs and HTAs"));
         }
     }
 
