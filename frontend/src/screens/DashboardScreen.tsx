@@ -104,7 +104,7 @@ export default function DashboardScreen({route}: Props) {
       case "Assign Tasks": return <TaskAssignmentScreen />;
       case "Staff Manager": return <StaffManagerScreen userRole={role} />;
       case "Staff Chat":  return <StaffChatScreen myNetid={netid} myName={displayName} userRole={role} onUnreadChange={setChatUnread} />;
-      case "Upload":       return <UploadScreen/>;
+      case "Upload":       return <UploadScreen userRole={role} />;
       case "Tasks":        return <AssignmentsScreen />;
       case "Profile":      return <ProfileScreen userRole={role} onLogout={isMobile ? route.params.onLogout : undefined} />;
       case "At-Risk Students": return <AtRiskStudentsScreen userRole={route.params.userRole} />;
