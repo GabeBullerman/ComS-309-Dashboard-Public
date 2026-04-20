@@ -86,7 +86,7 @@ export default function AssignmentsScreen() {
     });
   }, [myTasks, filter]);
 
-  const canUpdateStatus = userRole === 'TA' || userRole === 'HTA';
+  const canUpdateStatus = true;
 
   const STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; border: string; label: string }> = {
     TODO:     { bg: '#f3f4f6', text: '#374151', border: '#e5e7eb', label: 'To Do' },
