@@ -267,7 +267,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 <TextInput
                   value={forgotNetid}
                   onChangeText={t => { setForgotNetid(t); setForgotError(''); }}
-                  placeholder="e.g. jdoe"
+                  placeholder="e.g. jdoe or jdoe@iastate.edu"
                   placeholderTextColor="#9ca3af"
                   autoCapitalize="none"
                   autoCorrect={false}

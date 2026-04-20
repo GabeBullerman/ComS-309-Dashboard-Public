@@ -65,7 +65,9 @@ public class AuthenticationController {
     @PostMapping("/forgot-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void forgotPassword(@RequestBody ForgotPasswordRequest req) {
-        passwordResetService.sendTemporaryPassword(req.netid().trim().toLowerCase());
+        String netid = req.netid().trim().toLowerCase();
+        if (netid.contains("@")) netid = netid.split("@")[0];
+        passwordResetService.sendTemporaryPassword(netid);
     }
 
     @PostMapping("/login")
