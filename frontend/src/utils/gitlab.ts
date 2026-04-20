@@ -24,6 +24,11 @@ export async function saveGitLabToken(token: string): Promise<void> {
   await saveGitLabTokenToBackend(trimmed).catch(() => {});
 }
 
+export async function clearGitLabToken(): Promise<void> {
+  await AsyncStorage.removeItem(TOKEN_KEY);
+  await saveGitLabTokenToBackend('').catch(() => {});
+}
+
 /** Extracts and URL-encodes the project path from any GitLab web URL */
 function extractProjectPath(gitlabUrl: string): string | null {
   try {
