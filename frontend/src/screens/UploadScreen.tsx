@@ -127,7 +127,7 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
     const isImage = (f: File) =>
       f.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(f.name);
 
-    const res: { key: string; ok: boolean; unchanged?: boolean; name: string }[] = [];
+    const res: { key: string; ok: boolean; unchanged?: boolean; noMatch?: boolean; name: string }[] = [];
     for (const file of fileList) {
       if (!isImage(file)) continue;
       const baseName = file.name.replace(/\.[^.]+$/, '').toLowerCase().replace(/\s+/g, '');
@@ -639,7 +639,7 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
         <View style={{ marginTop: 32, backgroundColor: 'white', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
           <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 }}>Upload Avatars</Text>
           <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
-            Name images after the student's netid (e.g. <Text style={{ fontFamily: 'monospace' }}>jdoe.jpg</Text>). Images are stored locally on this device.
+            {"Name images after the student's netid (e.g. "}<Text style={{ fontFamily: 'monospace' }}>jdoe.jpg</Text>{"). Images are stored locally on this device."}
           </Text>
           <Text style={{ fontSize: 11, color: '#9ca3af', marginBottom: 14 }}>
             Full name files also work — spaces are stripped and lowercased (e.g.{' '}

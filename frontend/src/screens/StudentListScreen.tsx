@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { UserRole, normalizeRole, getUserPermissions } from '../utils/auth';
+import { UserRole, normalizeRole } from '../utils/auth';
 import { getCurrentUser, getUsersByRole, deleteUser } from '../api/users';
 import { getTeams, TeamApiResponse, removeStudentFromTeam } from '../api/teams';
 import { StudentListCard } from '../components/StudentListCard';
@@ -73,7 +73,7 @@ export default function ClassStudentsScreen({ userRole }: Props) {
         const normalizedRole = normalizeRole(String(effectiveRole));
 
         // Fetch teams — TAs only get their own teams
-        let rawTeams: TeamApiResponse[] =
+        const rawTeams: TeamApiResponse[] =
           normalizedRole === 'TA' ? await getTeams(netid) : await getTeams();
 
         // Build netid → full name map for TAs/HTAs

@@ -547,7 +547,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
               return (
                 <View
                   key={`msg-${msg.id}`}
-                  // @ts-ignore web-only hover
+                  // @ts-expect-error web-only hover
                   onMouseEnter={() => setHoveredId(msg.id)}
                   onMouseLeave={() => setHoveredId(null)}
                   style={{
@@ -730,7 +730,6 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
             placeholder={`Message ${activeDisplayName}... use @ to mention`}
             placeholderTextColor="#9ca3af"
             multiline
-            // @ts-ignore — web-only prop
             onKeyPress={(e: any) => {
               if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
                 e.preventDefault();

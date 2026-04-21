@@ -83,7 +83,7 @@ const copyViaDom = (text: string) => {
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function AtRiskStudentsScreen({ userRole }: Props) {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const _navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { width } = useWindowDimensions();
   const numColumns = width < 640 ? 1 : width < 960 ? 2 : width < 1280 ? 3 : 4;
   const isMobile = width < 640;

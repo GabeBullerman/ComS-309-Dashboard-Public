@@ -30,7 +30,6 @@ export type RootStackParamList = {
   TAManager: undefined;
   Courses: undefined;
   Upload: undefined;
-  Landing: { userEmail: string; onLogout: () => void };
   Login: { onLogin: (email: string, role?: string) => void };
   DashboardScreen: { userRole: UserRole; onLogout: () => void };
 };
@@ -95,7 +94,7 @@ export default function App() {
   const checkConnection = useCallback(async () => {
     setConnStatus('checking');
     try {
-      await fetch(`${apiBaseUrl}/api/auth/login`, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+      await fetch(`${apiBaseUrl}/api/auth/login`, { method: 'HEAD', mode: 'no-cors', signal: AbortSignal.timeout(5000) });
       setConnStatus('online');
     } catch {
       setConnStatus('offline');
@@ -166,7 +165,7 @@ export default function App() {
   }
 
   if (connStatus === 'offline') {
-    return <NoConnectionScreen onRetry={checkConnection} checking={connStatus === 'checking'} />;
+    return <NoConnectionScreen onRetry={checkConnection} checking={false} />;
   }
 
   return (
@@ -199,13 +198,12 @@ export default function App() {
         ) : (
           <>
             <Stack.Screen name="DashboardScreen" component={DashboardScreen} options={{ headerShown: false, title: 'Dashboard' }} initialParams={{ userRole, onLogout: handleLogout }} />
-            <Stack.Screen name="TAManager" component={TAManager} options={{ headerShown: false }} />
+            <Stack.Screen name="TAManager" options={{ headerShown: false }}>
+              {(props) => <TAManager {...props} userRole={userRole} />}
+            </Stack.Screen>
             <Stack.Screen name="TeamDetail" component={TeamDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen name="TeamMemberDetail" component={TeamMemberDetail} options={{ headerShown: false }} />
             <Stack.Screen name="Upload" component={UploadScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Landing" options={{ headerShown: false }}>
-              {(props) => <LandingPage {...props} userEmail={userEmail} onLogout={handleLogout} />}
-            </Stack.Screen>
           </>
         )}
       </Stack.Navigator>
