@@ -1,5 +1,6 @@
 package edu.iastate.dashboard309.service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -67,6 +68,22 @@ public class AttendanceService {
         }
 
         return attendanceRepository.countByStudentNetidAndStatus(studentNetid, AttendanceStatus.ABSENT);
+    }
+
+    @Transactional
+    public List<Long> getAttendanceCountByStudentNetid(String studentNetid) {
+        if (!userRepository.existsByNetid(studentNetid)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+
+        List<Long> counts = new ArrayList<>();
+
+        counts.add(attendanceRepository.countByStudentNetidAndStatus(studentNetid, AttendanceStatus.PRESENT));
+        counts.add(attendanceRepository.countByStudentNetidAndStatus(studentNetid, AttendanceStatus.LATE));
+        counts.add(attendanceRepository.countByStudentNetidAndStatus(studentNetid, AttendanceStatus.ABSENT));
+        counts.add(attendanceRepository.countByStudentNetidAndStatus(studentNetid, AttendanceStatus.EXCUSED));
+
+        return counts;
     }
 
     @Transactional

@@ -49,7 +49,20 @@ public class DemoPerformanceService {
     }
 
     @Transactional
+    public DemoPerformanceRequest getDemoPerformanceByStudentIdAndDemoNumber(String studentNetid, int demoNumber){
+        if (!userRepository.existsByNetid(studentNetid)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+
+        DemoPerformance demo = demoPerformanceRepository.findByStudentNetidAndDemoNumber(studentNetid, demoNumber)
+            .orElse(null);
+        return toRequest(demo);
+    }
+
+    @Transactional
     private DemoPerformanceRequest toRequest(DemoPerformance demoPerformance) {
+        if(demoPerformance == null) return null;
+        
         return new DemoPerformanceRequest(
             demoPerformance.getId(),
             demoPerformance.getStudent().getNetid(),
