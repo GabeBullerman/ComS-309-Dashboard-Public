@@ -14,6 +14,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/chat")
@@ -21,6 +23,11 @@ public class ChatController {
 
     private final ChatService chatService;
     private final UserRepository userRepository;
+
+    // channel → (netid → [displayName, timestampMillis])
+    private final ConcurrentHashMap<String, ConcurrentHashMap<String, long[]>> typingTimestamps = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ConcurrentHashMap<String, String>> typingNames = new ConcurrentHashMap<>();
+    private static final long TYPING_TTL_MS = 5000;
 
     public ChatController(ChatService chatService, UserRepository userRepository) {
         this.chatService = chatService;
@@ -129,6 +136,35 @@ public class ChatController {
         requireStaff(authentication);
         String channel = req.channel() != null ? req.channel() : "general";
         chatService.markRead(authentication.getName(), req.lastMessageId(), channel);
+    }
+
+    public record TypingRequest(String channel) {}
+
+    @PostMapping("/typing")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void sendTyping(@RequestBody TypingRequest req, Authentication authentication) {
+        requireStaff(authentication);
+        String channel = req.channel() != null ? req.channel() : "general";
+        String netid = authentication.getName();
+        User user = getUser(authentication);
+        String displayName = user.getName() != null ? user.getName() : netid;
+        typingTimestamps.computeIfAbsent(channel, k -> new ConcurrentHashMap<>()).put(netid, new long[]{ System.currentTimeMillis() });
+        typingNames.computeIfAbsent(channel, k -> new ConcurrentHashMap<>()).put(netid, displayName);
+    }
+
+    @GetMapping("/typing")
+    public List<String> getTyping(@RequestParam(defaultValue = "general") String channel,
+                                  Authentication authentication) {
+        requireStaff(authentication);
+        String self = authentication.getName();
+        long now = System.currentTimeMillis();
+        ConcurrentHashMap<String, long[]> timestamps = typingTimestamps.get(channel);
+        ConcurrentHashMap<String, String> names = typingNames.get(channel);
+        if (timestamps == null || names == null) return List.of();
+        return timestamps.entrySet().stream()
+            .filter(e -> !e.getKey().equals(self) && (now - e.getValue()[0]) < TYPING_TTL_MS)
+            .map(e -> names.getOrDefault(e.getKey(), e.getKey()))
+            .collect(Collectors.toList());
     }
 
     private String extractRole(Authentication authentication) {

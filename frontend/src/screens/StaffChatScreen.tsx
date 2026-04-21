@@ -8,6 +8,7 @@ import {
   ChatMessage, ChannelMeta, CHANNELS,
   getMessages, sendMessage, editMessage, deleteMessage,
   markRead, getAllUnreadCounts, getChannels, updateChannel,
+  sendTyping, getTyping,
 } from '../api/chat';
 import { getUsersByRole } from '../api/users';
 import { UserRole, UserSummary } from '../utils/auth';
@@ -121,12 +122,14 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(0);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
 
   const scrollRef = useRef<ScrollView>(null);
   const isAtBottomRef = useRef(true);
   const mapRef = useRef<Map<number, ChatMessage>>(new Map());
   const inputRef = useRef<TextInput>(null);
   const activeChannelRef = useRef(activeChannel);
+  const lastTypingSentRef = useRef<number>(0);
   useEffect(() => { activeChannelRef.current = activeChannel; }, [activeChannel]);
 
   const staffMap = useMemo(
@@ -233,9 +236,29 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
     } catch {} finally { setLoadingMore(false); }
   };
 
+  // Poll typing state every 2s
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const names = await getTyping(activeChannelRef.current);
+        setTypingUsers(names);
+      } catch {}
+    };
+    const id = setInterval(poll, 2000);
+    return () => clearInterval(id);
+  }, []);
+
   // @mention autocomplete — allow single spaces for "First Last" searches
   const handleTextChange = (text: string) => {
     setInputText(text);
+    // Throttle: send at most once per 3s while typing
+    if (text.trim()) {
+      const now = Date.now();
+      if (now - lastTypingSentRef.current > 3000) {
+        lastTypingSentRef.current = now;
+        sendTyping(activeChannelRef.current).catch(() => {});
+      }
+    }
     const lastAt = text.lastIndexOf('@');
     if (lastAt !== -1) {
       const afterAt = text.slice(lastAt + 1);
@@ -598,6 +621,19 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
             })
           )}
         </ScrollView>
+
+        {/* Typing indicator */}
+        {typingUsers.length > 0 && (
+          <View style={{ paddingHorizontal: 20, paddingVertical: 4, minHeight: 22 }}>
+            <Text style={{ fontSize: 12, color: '#6b7280', fontStyle: 'italic' }}>
+              {typingUsers.length === 1
+                ? `${typingUsers[0]} is typing...`
+                : typingUsers.length === 2
+                  ? `${typingUsers[0]} and ${typingUsers[1]} are typing...`
+                  : `${typingUsers[0]} and ${typingUsers.length - 1} others are typing...`}
+            </Text>
+          </View>
+        )}
 
         {/* Mention autocomplete — scrollable */}
         {mentionSuggestions.length > 0 && (
