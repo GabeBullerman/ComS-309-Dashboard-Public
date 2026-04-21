@@ -317,7 +317,7 @@ const SKIP_FILENAMES = new Set([
 /** Trivial line patterns for frontend — getters, setters, lone braces, whitespace */
 const TRIVIAL_FRONTEND: RegExp[] = [
   // getter method signature
-  /^\s*(public\s+|private\s+|protected\s+)?\w[\w<>\[\], ]*\s+get[A-Z]\w*\s*\(\s*\)\s*\{?\s*$/,
+  /^\s*(public\s+|private\s+|protected\s+)?\w[\w<>[\], ]*\s+get[A-Z]\w*\s*\(\s*\)\s*\{?\s*$/,
   // setter method signature
   /^\s*(public\s+|private\s+|protected\s+)?void\s+set[A-Z]\w*\s*\([^)]*\)\s*\{?\s*$/,
   // simple return this.field;

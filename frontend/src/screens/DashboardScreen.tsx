@@ -26,7 +26,7 @@ export default function DashboardScreen({route}: Props) {
   const [displayName, setDisplayName] = useState("User");
   const [netid, setNetid] = useState("");
   const [chatUnread, setChatUnread] = useState(0);
-  const permissions = getUserPermissions(route.params.userRole);
+  const _permissions = getUserPermissions(route.params.userRole);
   const screenWidth = Dimensions.get("window").width;
   const isMobile = screenWidth < 768;
   const role = route.params.userRole;

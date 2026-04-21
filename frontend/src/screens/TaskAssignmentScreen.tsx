@@ -28,7 +28,6 @@ export default function TaskAssignmentScreen() {
   const [tas, setTas] = useState<UserSummary[]>([]);
   const [teams, setTeams] = useState<TeamApiResponse[]>([]);
   const [myTasks, setMyTasks] = useState<TaskApiResponse[]>([]);
-  const [taskLabelMap, setTaskLabelMap] = useState<Record<number, string>>({});
   const [recipientNameMap, setRecipientNameMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -115,38 +114,28 @@ export default function TaskAssignmentScreen() {
     if (!title.trim() || !netid) return;
 
     let recipients: string[] = [];
-    let recipientLabel = '';
 
     if (recipientType === 'specific-hta') {
       if (selectedHTANetids.size === 0) { Alert.alert('Select at least one HTA.'); return; }
       recipients = [...selectedHTANetids];
-      const names = recipients.map((n) => htas.find((h) => h.netid === n)?.name ?? n);
-      recipientLabel = names.length === 1 ? names[0] : `${names.length} HTAs`;
     } else if (recipientType === 'all-htas') {
       recipients = htas.map((h) => h.netid!).filter(Boolean);
-      recipientLabel = 'All HTAs';
     } else if (recipientType === 'specific-ta') {
       if (selectedTANetids.size === 0) { Alert.alert('Select at least one TA.'); return; }
       recipients = [...selectedTANetids];
-      const names = recipients.map((n) => tas.find((t) => t.netid === n)?.name ?? n);
-      recipientLabel = names.length === 1 ? names[0] : `${names.length} TAs`;
     } else if (recipientType === 'all-tas') {
       recipients = tas.map((t) => t.netid!).filter(Boolean);
-      recipientLabel = 'All TAs';
     } else if (recipientType === 'specific-team') {
       if (selectedTeamIds.size === 0) { Alert.alert('Select at least one team.'); return; }
       const selectedTeams = teams.filter((t) => t.id !== undefined && selectedTeamIds.has(t.id));
       const all = selectedTeams.flatMap((t) => (t.students ?? []).map((s) => s.netid!)).filter(Boolean);
       recipients = [...new Set(all)];
-      recipientLabel = selectedTeams.length === 1 ? (selectedTeams[0].name ?? 'Team') : `${selectedTeams.length} Teams`;
     } else if (recipientType === 'all-my-teams') {
       const all = teams.flatMap((t) => (t.students ?? []).map((s) => s.netid!)).filter(Boolean);
       recipients = [...new Set(all)];
-      recipientLabel = 'All My Teams';
     } else if (recipientType === 'all-students') {
       const all = teams.flatMap((t) => (t.students ?? []).map((s) => s.netid!)).filter(Boolean);
       recipients = [...new Set(all)];
-      recipientLabel = 'All Students';
     }
 
     if (recipients.length === 0) { Alert.alert('No recipients found.'); return; }
@@ -169,11 +158,6 @@ export default function TaskAssignmentScreen() {
         .map((r) => r.value);
       const failedCount = results.filter((r) => r.status === 'rejected').length;
       setMyTasks((prev) => [...created, ...prev]);
-      setTaskLabelMap((prev) => {
-        const next = { ...prev };
-        for (const t of created) next[t.id] = recipientLabel;
-        return next;
-      });
       setTitle('');
       setDescription('');
       setDueDate('');
@@ -250,8 +234,6 @@ export default function TaskAssignmentScreen() {
     WIP:      { bg: '#fef9c3', text: '#92400e', border: '#fde047', label: 'In Progress' },
     COMPLETE: { bg: '#dcfce7', text: '#166534', border: '#86efac', label: 'Complete' },
   };
-  const STATUS_CYCLE: TaskStatus[] = ['TODO', 'WIP', 'COMPLETE'];
-
   const pad = isMobile ? 12 : 24;
 
   const formPanel = (
@@ -457,8 +439,6 @@ export default function TaskAssignmentScreen() {
 
   const renderTaskItem = (g: typeof taskGroups[0]) => {
           const dateOnly = g.rep.dueDate ? g.rep.dueDate.split('T')[0] : null;
-          const recipientLabel = taskLabelMap[g.rep.id]
-            ?? (g.netids.length === 1 ? g.netids[0] : `${g.netids.length} recipients`);
           const isEditing = editingId === g.rep.id;
           return (
             <View style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, borderWidth: isEditing ? 1.5 : 1, borderColor: isEditing ? '#C8102E' : '#1f2937' }}>
@@ -574,7 +554,7 @@ export default function TaskAssignmentScreen() {
     <View style={{ flex: isMobile ? undefined : 1, backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden' }}>
       <View style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
         <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
-          Tasks I've Assigned ({taskGroups.length} task{taskGroups.length !== 1 ? 's' : ''})
+          {"Tasks I've Assigned"} ({taskGroups.length} task{taskGroups.length !== 1 ? 's' : ''})
         </Text>
       </View>
       {isMobile ? (
@@ -612,7 +592,7 @@ export default function TaskAssignmentScreen() {
     <>
       <Text style={{ fontSize: isMobile ? 22 : 26, fontWeight: '700', color: '#111827', marginBottom: 2 }}>Assign Tasks</Text>
       <Text style={{ color: '#64748b', marginBottom: 16, fontSize: 13 }}>
-        {isHtaOrInstructor ? 'Assign tasks to TAs or Student Teams' : 'Assign tasks to your Student Teams'}
+        {isHtaOrInstructor ? 'Assign tasks to TAs or Student Teams' : "Assign tasks to your Student Teams"}
       </Text>
     </>
   );

@@ -44,7 +44,6 @@ backend-tests:
 frontend-quality:
   stage: quality
   image: public.ecr.aws/docker/library/node:20
-  allow_failure: true
   cache:
     key: "${CI_JOB_NAME}"
     paths:

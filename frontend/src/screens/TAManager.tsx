@@ -96,7 +96,7 @@ export default function StaffManagerScreen({ userRole }: Props) {
     );
   };
 
-  const isAdminRole = (role: string) => role === 'HTA' || role === 'Instructor';
+  const _isAdminRole = (role: string) => role === 'HTA' || role === 'Instructor';
 
   const handleImportCSV = () => {
     const input = document.createElement('input');
@@ -358,7 +358,7 @@ export default function StaffManagerScreen({ userRole }: Props) {
           <Text style={{ fontSize: 11, color: '#0369a1' }}>• Role: TA{isInstructor ? ', HTA, or Instructor' : ' (only TA rows will be created as HTA)'} (defaults to TA)</Text>
           {isHTA && <Text style={{ fontSize: 11, color: '#c2410c' }}>• HTA and Instructor rows will be skipped — contact an Instructor to add admin accounts</Text>}
           {isInstructor && <Text style={{ fontSize: 11, color: '#0369a1' }}>• Instructor rows require confirmation before adding</Text>}
-          <Text style={{ fontSize: 11, color: '#0369a1' }}>• Password defaults to "changeme" if blank</Text>
+          <Text style={{ fontSize: 11, color: '#0369a1' }}>{'• Password defaults to "changeme" if blank'}</Text>
           <Text style={{ fontSize: 11, color: '#0369a1' }}>• Existing NetIDs are skipped (no overwrite)</Text>
         </View>
       )}
@@ -441,7 +441,7 @@ export default function StaffManagerScreen({ userRole }: Props) {
             <View style={{ backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa', borderRadius: 8, padding: 10, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Ionicons name="warning-outline" size={16} color="#c2410c" />
               <Text style={{ fontSize: 12, color: '#c2410c', flex: 1 }}>
-                Instructor has full admin permissions. You'll be asked to confirm before adding.
+                {"Instructor has full admin permissions. You'll be asked to confirm before adding."}
               </Text>
             </View>
           )}

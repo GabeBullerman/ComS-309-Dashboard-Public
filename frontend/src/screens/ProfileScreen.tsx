@@ -12,7 +12,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { getCurrentUser, changePassword } from '../api/users';
 import { getGitLabToken, saveGitLabToken, clearGitLabToken } from '../utils/gitlab';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProfileAvatar from '../components/ProfileAvatar';
 
 interface Props {

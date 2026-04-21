@@ -262,7 +262,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             ) : (
               <View>
                 <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 14, lineHeight: 18 }}>
-                  Enter your NetID and we'll email a temporary password to your @iastate.edu address.
+                  {"Enter your NetID and we'll email a temporary password to your @iastate.edu address."}
                 </Text>
                 <TextInput
                   value={forgotNetid}
