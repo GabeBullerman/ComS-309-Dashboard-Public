@@ -17,17 +17,17 @@ import { getCurrentUser, getUsersByRole, getUserByNetid } from '../api/users';
 import { getTeams, TeamApiResponse } from '../api/teams';
 import { getTasksAssignedBy, createTask, updateTask, deleteTask, TaskApiResponse, TaskStatus } from '../api/tasks';
 
-type RecipientType = 'specific-ta' | 'all-tas' | 'specific-team' | 'all-my-teams' | 'all-students';
+type RecipientType = 'specific-hta' | 'all-htas' | 'specific-ta' | 'all-tas' | 'specific-team' | 'all-my-teams' | 'all-students';
 
 export default function TaskAssignmentScreen() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const [netid, setNetid] = useState<string | null>(null);
   const [role, setRole] = useState<string>('TA');
+  const [htas, setHtas] = useState<UserSummary[]>([]);
   const [tas, setTas] = useState<UserSummary[]>([]);
   const [teams, setTeams] = useState<TeamApiResponse[]>([]);
   const [myTasks, setMyTasks] = useState<TaskApiResponse[]>([]);
-  const [taskLabelMap, setTaskLabelMap] = useState<Record<number, string>>({});
   const [recipientNameMap, setRecipientNameMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -38,8 +38,9 @@ export default function TaskAssignmentScreen() {
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [recipientType, setRecipientType] = useState<RecipientType>('specific-ta');
-  const [selectedTANetid, setSelectedTANetid] = useState<string | null>(null);
-  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [selectedHTANetids, setSelectedHTANetids] = useState<Set<string>>(new Set());
+  const [selectedTANetids, setSelectedTANetids] = useState<Set<string>>(new Set());
+  const [selectedTeamIds, setSelectedTeamIds] = useState<Set<number>>(new Set());
 
   const handleSaveEdit = async (ids: number[]) => {
     if (!editDraft.title.trim()) return;
@@ -89,8 +90,15 @@ export default function TaskAssignmentScreen() {
             .then((list) => setTas(list))
             .catch(() => {})
         );
+        if (r === 'Instructor') {
+          fetches.push(
+            getUsersByRole('HTA')
+              .then((list) => setHtas(list))
+              .catch(() => {})
+          );
+        }
         fetches.push(getTeams().then(setTeams).catch(() => {}));
-        setRecipientType('specific-ta');
+        setRecipientType(r === 'Instructor' ? 'specific-hta' : 'specific-ta');
       } else if (r === 'TA') {
         fetches.push(getTeams(user.netid).then(setTeams).catch(() => {}));
         setRecipientType('specific-team');
@@ -106,29 +114,28 @@ export default function TaskAssignmentScreen() {
     if (!title.trim() || !netid) return;
 
     let recipients: string[] = [];
-    let recipientLabel = '';
 
-    if (recipientType === 'specific-ta') {
-      if (!selectedTANetid) { Alert.alert('Select a TA first.'); return; }
-      recipients = [selectedTANetid];
-      const ta = tas.find((t) => t.netid === selectedTANetid);
-      recipientLabel = ta?.name ?? selectedTANetid;
+    if (recipientType === 'specific-hta') {
+      if (selectedHTANetids.size === 0) { Alert.alert('Select at least one HTA.'); return; }
+      recipients = [...selectedHTANetids];
+    } else if (recipientType === 'all-htas') {
+      recipients = htas.map((h) => h.netid!).filter(Boolean);
+    } else if (recipientType === 'specific-ta') {
+      if (selectedTANetids.size === 0) { Alert.alert('Select at least one TA.'); return; }
+      recipients = [...selectedTANetids];
     } else if (recipientType === 'all-tas') {
       recipients = tas.map((t) => t.netid!).filter(Boolean);
-      recipientLabel = 'All TAs';
     } else if (recipientType === 'specific-team') {
-      const team = teams.find((t) => t.id === selectedTeamId);
-      if (!team) { Alert.alert('Select a team first.'); return; }
-      recipients = (team.students ?? []).map((s) => s.netid!).filter(Boolean);
-      recipientLabel = team.name ?? 'Team';
+      if (selectedTeamIds.size === 0) { Alert.alert('Select at least one team.'); return; }
+      const selectedTeams = teams.filter((t) => t.id !== undefined && selectedTeamIds.has(t.id));
+      const all = selectedTeams.flatMap((t) => (t.students ?? []).map((s) => s.netid!)).filter(Boolean);
+      recipients = [...new Set(all)];
     } else if (recipientType === 'all-my-teams') {
       const all = teams.flatMap((t) => (t.students ?? []).map((s) => s.netid!)).filter(Boolean);
       recipients = [...new Set(all)];
-      recipientLabel = 'All My Teams';
     } else if (recipientType === 'all-students') {
       const all = teams.flatMap((t) => (t.students ?? []).map((s) => s.netid!)).filter(Boolean);
       recipients = [...new Set(all)];
-      recipientLabel = 'All Students';
     }
 
     if (recipients.length === 0) { Alert.alert('No recipients found.'); return; }
@@ -151,16 +158,12 @@ export default function TaskAssignmentScreen() {
         .map((r) => r.value);
       const failedCount = results.filter((r) => r.status === 'rejected').length;
       setMyTasks((prev) => [...created, ...prev]);
-      setTaskLabelMap((prev) => {
-        const next = { ...prev };
-        for (const t of created) next[t.id] = recipientLabel;
-        return next;
-      });
       setTitle('');
       setDescription('');
       setDueDate('');
-      setSelectedTANetid(null);
-      setSelectedTeamId(null);
+      setSelectedHTANetids(new Set());
+      setSelectedTANetids(new Set());
+      setSelectedTeamIds(new Set());
       const msg = failedCount > 0
         ? `Assigned to ${created.length} recipient${created.length !== 1 ? 's' : ''}. ${failedCount} failed (user may not exist).`
         : `Task assigned to ${created.length} recipient${created.length !== 1 ? 's' : ''}.`;
@@ -172,7 +175,16 @@ export default function TaskAssignmentScreen() {
     }
   };
 
-  const recipientOptions: { key: RecipientType; label: string }[] = isHtaOrInstructor
+  const recipientOptions: { key: RecipientType; label: string }[] = role === 'Instructor'
+    ? [
+        { key: 'specific-hta', label: 'Specific HTA' },
+        { key: 'all-htas', label: 'All HTAs' },
+        { key: 'specific-ta', label: 'Specific TA' },
+        { key: 'all-tas', label: 'All TAs' },
+        { key: 'specific-team', label: 'Specific Team' },
+        { key: 'all-students', label: 'All Students' },
+      ]
+    : isHtaOrInstructor
     ? [
         { key: 'specific-ta', label: 'Specific TA' },
         { key: 'all-tas', label: 'All TAs' },
@@ -222,8 +234,6 @@ export default function TaskAssignmentScreen() {
     WIP:      { bg: '#fef9c3', text: '#92400e', border: '#fde047', label: 'In Progress' },
     COMPLETE: { bg: '#dcfce7', text: '#166534', border: '#86efac', label: 'Complete' },
   };
-  const STATUS_CYCLE: TaskStatus[] = ['TODO', 'WIP', 'COMPLETE'];
-
   const pad = isMobile ? 12 : 24;
 
   const formPanel = (
@@ -278,7 +288,12 @@ export default function TaskAssignmentScreen() {
             {recipientOptions.map((opt) => (
               <TouchableOpacity
                 key={opt.key}
-                onPress={() => setRecipientType(opt.key)}
+                onPress={() => {
+                  setRecipientType(opt.key);
+                  setSelectedHTANetids(new Set());
+                  setSelectedTANetids(new Set());
+                  setSelectedTeamIds(new Set());
+                }}
                 className={`px-3 py-2 rounded-lg ${
                   recipientType === opt.key ? 'bg-red-700' : 'bg-gray-100'
                 }`}
@@ -294,33 +309,69 @@ export default function TaskAssignmentScreen() {
             ))}
           </View>
 
+          {/* HTA picker */}
+          {recipientType === 'specific-hta' && (
+            <>
+              <Text className="text-xs font-semibold text-gray-700 mb-1.5">
+                Select HTA{selectedHTANetids.size > 0 ? ` (${selectedHTANetids.size} selected)` : ''}
+              </Text>
+              <ScrollView className="max-h-28 border border-gray-200 rounded-lg mb-3">
+                {htas.length === 0 ? (
+                  <Text className="p-3 text-gray-400 text-sm">No HTAs found.</Text>
+                ) : (
+                  htas.map((hta) => {
+                    const selected = selectedHTANetids.has(hta.netid!);
+                    return (
+                      <TouchableOpacity
+                        key={hta.netid}
+                        onPress={() => setSelectedHTANetids((prev) => {
+                          const next = new Set(prev);
+                          selected ? next.delete(hta.netid!) : next.add(hta.netid!);
+                          return next;
+                        })}
+                        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: selected ? '#fee2e2' : 'transparent' }}
+                      >
+                        <Ionicons name={selected ? 'checkbox' : 'square-outline'} size={16} color={selected ? '#b91c1c' : '#9ca3af'} style={{ marginRight: 8 }} />
+                        <Text style={{ fontSize: 13, color: selected ? '#b91c1c' : '#374151', fontWeight: selected ? '600' : '400' }}>
+                          {hta.name ?? hta.netid}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
+              </ScrollView>
+            </>
+          )}
+
           {/* TA picker */}
           {recipientType === 'specific-ta' && (
             <>
-              <Text className="text-xs font-semibold text-gray-700 mb-1.5">Select TA</Text>
+              <Text className="text-xs font-semibold text-gray-700 mb-1.5">
+                Select TA{selectedTANetids.size > 0 ? ` (${selectedTANetids.size} selected)` : ''}
+              </Text>
               <ScrollView className="max-h-28 border border-gray-200 rounded-lg mb-3">
                 {tas.length === 0 ? (
                   <Text className="p-3 text-gray-400 text-sm">No TAs found.</Text>
                 ) : (
-                  tas.map((ta) => (
-                    <TouchableOpacity
-                      key={ta.netid}
-                      onPress={() => setSelectedTANetid(ta.netid ?? null)}
-                      className={`px-3 py-2 ${
-                        selectedTANetid === ta.netid ? 'bg-red-100' : 'bg-transparent'
-                      }`}
-                    >
-                      <Text
-                        className={`text-sm ${
-                          selectedTANetid === ta.netid
-                            ? 'text-red-700 font-semibold'
-                            : 'text-gray-700 font-normal'
-                        }`}
+                  tas.map((ta) => {
+                    const selected = selectedTANetids.has(ta.netid!);
+                    return (
+                      <TouchableOpacity
+                        key={ta.netid}
+                        onPress={() => setSelectedTANetids((prev) => {
+                          const next = new Set(prev);
+                          selected ? next.delete(ta.netid!) : next.add(ta.netid!);
+                          return next;
+                        })}
+                        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: selected ? '#fee2e2' : 'transparent' }}
                       >
-                        {ta.name ?? ta.netid}
-                      </Text>
-                    </TouchableOpacity>
-                  ))
+                        <Ionicons name={selected ? 'checkbox' : 'square-outline'} size={16} color={selected ? '#b91c1c' : '#9ca3af'} style={{ marginRight: 8 }} />
+                        <Text style={{ fontSize: 13, color: selected ? '#b91c1c' : '#374151', fontWeight: selected ? '600' : '400' }}>
+                          {ta.name ?? ta.netid}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })
                 )}
               </ScrollView>
             </>
@@ -329,30 +380,33 @@ export default function TaskAssignmentScreen() {
           {/* Team picker */}
           {recipientType === 'specific-team' && (
             <>
-              <Text className="text-xs font-semibold text-gray-700 mb-1.5">Select Team</Text>
+              <Text className="text-xs font-semibold text-gray-700 mb-1.5">
+                Select Team{selectedTeamIds.size > 0 ? ` (${selectedTeamIds.size} selected)` : ''}
+              </Text>
               <ScrollView className="max-h-28 border border-gray-200 rounded-lg mb-3">
                 {teams.length === 0 ? (
                   <Text className="p-3 text-gray-400 text-sm">No teams found.</Text>
                 ) : (
-                  teams.map((team) => (
-                    <TouchableOpacity
-                      key={team.id}
-                      onPress={() => setSelectedTeamId(team.id ?? null)}
-                      className={`px-3 py-2 ${
-                        selectedTeamId === team.id ? 'bg-red-100' : 'bg-transparent'
-                      }`}
-                    >
-                      <Text
-                        className={`text-sm ${
-                          selectedTeamId === team.id
-                            ? 'text-red-700 font-semibold'
-                            : 'text-gray-700 font-normal'
-                        }`}
+                  teams.map((team) => {
+                    const selected = team.id !== undefined && selectedTeamIds.has(team.id);
+                    return (
+                      <TouchableOpacity
+                        key={team.id}
+                        onPress={() => setSelectedTeamIds((prev) => {
+                          if (team.id === undefined) return prev;
+                          const next = new Set(prev);
+                          selected ? next.delete(team.id) : next.add(team.id);
+                          return next;
+                        })}
+                        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: selected ? '#fee2e2' : 'transparent' }}
                       >
-                        {team.name}{team.section ? ` · Sec ${team.section}` : ''}
-                      </Text>
-                    </TouchableOpacity>
-                  ))
+                        <Ionicons name={selected ? 'checkbox' : 'square-outline'} size={16} color={selected ? '#b91c1c' : '#9ca3af'} style={{ marginRight: 8 }} />
+                        <Text style={{ fontSize: 13, color: selected ? '#b91c1c' : '#374151', fontWeight: selected ? '600' : '400' }}>
+                          {team.name}{team.section ? ` · Sec ${team.section}` : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })
                 )}
               </ScrollView>
             </>
@@ -385,8 +439,6 @@ export default function TaskAssignmentScreen() {
 
   const renderTaskItem = (g: typeof taskGroups[0]) => {
           const dateOnly = g.rep.dueDate ? g.rep.dueDate.split('T')[0] : null;
-          const recipientLabel = taskLabelMap[g.rep.id]
-            ?? (g.netids.length === 1 ? g.netids[0] : `${g.netids.length} recipients`);
           const isEditing = editingId === g.rep.id;
           return (
             <View style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 12, borderWidth: isEditing ? 1.5 : 1, borderColor: isEditing ? '#C8102E' : '#1f2937' }}>
@@ -502,7 +554,7 @@ export default function TaskAssignmentScreen() {
     <View style={{ flex: isMobile ? undefined : 1, backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', overflow: 'hidden' }}>
       <View style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}>
         <Text style={{ fontSize: 15, fontWeight: '600', color: '#111827' }}>
-          Tasks I've Assigned ({taskGroups.length} task{taskGroups.length !== 1 ? 's' : ''})
+          {"Tasks I've Assigned"} ({taskGroups.length} task{taskGroups.length !== 1 ? 's' : ''})
         </Text>
       </View>
       {isMobile ? (
@@ -540,7 +592,7 @@ export default function TaskAssignmentScreen() {
     <>
       <Text style={{ fontSize: isMobile ? 22 : 26, fontWeight: '700', color: '#111827', marginBottom: 2 }}>Assign Tasks</Text>
       <Text style={{ color: '#64748b', marginBottom: 16, fontSize: 13 }}>
-        {isHtaOrInstructor ? 'Assign tasks to TAs or Student Teams' : 'Assign tasks to your Student Teams'}
+        {isHtaOrInstructor ? 'Assign tasks to TAs or Student Teams' : "Assign tasks to your Student Teams"}
       </Text>
     </>
   );

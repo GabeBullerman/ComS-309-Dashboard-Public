@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Team, TeamMember } from '../types/Teams';
 import { TeamCard } from '../components/TeamCard';
 import { getUserPermissions, normalizeRole, UserRole } from '../utils/auth';
-import { getCurrentUser, getUsersByRole } from '../api/users';
+import { getCurrentUser, getUsersByRole, getGitLabTokenFromBackend } from '../api/users';
 import { getTeams, TeamApiResponse } from '../api/teams';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -80,6 +80,7 @@ export default function ClassTeamsScreen({ userRole }: Props) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [hasGitlabToken, setHasGitlabToken] = useState<boolean>(true);
 
   const toInitials = (name?: string) => {
     if (!name) return 'NA';
@@ -135,6 +136,8 @@ export default function ClassTeamsScreen({ userRole }: Props) {
       let rawTeams: TeamApiResponse[] = normalizedRole === 'TA' ? await getTeams(netid) : await getTeams();
       if (normalizedRole === 'Student') {
         rawTeams = rawTeams.filter((team) => (team.students ?? []).some((s) => s.netid === netid));
+        const token = await getGitLabTokenFromBackend().catch(() => null);
+        setHasGitlabToken(!!token);
       }
 
       const [tas, htas] = await Promise.all([getUsersByRole('TA').catch(() => []), getUsersByRole('HTA').catch(() => [])]);
@@ -301,6 +304,15 @@ export default function ClassTeamsScreen({ userRole }: Props) {
             </View>
           )}
         </View>
+
+        {isStudentView && !hasGitlabToken && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 }}>
+            <Ionicons name="information-circle-outline" size={18} color="#92400e" />
+            <Text style={{ flex: 1, fontSize: 13, color: '#92400e', lineHeight: 18 }}>
+              Add your GitLab token in the <Text style={{ fontWeight: '700' }}>Profile</Text> tab to see your contribution stats and compliance data.
+            </Text>
+          </View>
+        )}
 
         {!isStudentView && (
           <>

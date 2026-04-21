@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cannot Reach Server — Class Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f7fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      -webkit-app-region: drag;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 40px 36px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      -webkit-app-region: no-drag;
+    }
+    .stripe { height: 5px; background: #C8102E; border-radius: 3px; margin-bottom: 32px; }
+    .icon-wrap {
+      width: 76px; height: 76px; background: #f1f5f9; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; margin: 0 auto 22px;
+    }
+    h1 { font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 14px; }
+    p { font-size: 14px; color: #475569; line-height: 1.65; margin-bottom: 6px; }
+    .bold { font-weight: 700; color: #1e293b; }
+    .sub { font-size: 13px; color: #94a3b8; margin-top: 10px; margin-bottom: 28px; }
+    button {
+      background: #C8102E; color: white; border: none; border-radius: 10px;
+      padding: 13px 0; font-size: 15px; font-weight: 700; cursor: pointer;
+      width: 180px; transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.88; }
+    button:active { opacity: 0.75; }
+    button:disabled { opacity: 0.55; cursor: default; }
+    .hint { margin-top: 18px; font-size: 12px; color: #cbd5e1; }
+    .spinner {
+      display: none; width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,0.35); border-top-color: white;
+      border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="stripe"></div>
+    <div class="icon-wrap">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
+           stroke="#94a3b8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="1" y1="1" x2="23" y2="23"/>
+        <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+        <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+        <path d="M10.71 5.05A16 16 0 0 1 22.56 9"/>
+        <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+        <line x1="12" y1="20" x2="12.01" y2="20"/>
+      </svg>
+    </div>
+    <h1>Cannot Reach Server</h1>
+    <p>
+      The dashboard server is only accessible on the
+      <span class="bold">ISU campus network</span> or via the
+      <span class="bold">Iowa State VPN</span>.
+    </p>
+    <p class="sub">Connect to the VPN, then click Retry.</p>
+    <button id="retryBtn" onclick="retry()">
+      <span id="btnLabel">Retry</span>
+      <div class="spinner" id="spinner"></div>
+    </button>
+    <p class="hint">VPN: vpn.iastate.edu</p>
+  </div>
+  <script>
+    const SERVER = 'http://coms-4020-006.class.las.iastate.edu:8080';
+    function retry() {
+      const btn = document.getElementById('retryBtn');
+      document.getElementById('btnLabel').style.display = 'none';
+      document.getElementById('spinner').style.display = 'block';
+      btn.disabled = true;
+      window.location.href = SERVER;
+    }
+  </script>
+</body>
+</html>

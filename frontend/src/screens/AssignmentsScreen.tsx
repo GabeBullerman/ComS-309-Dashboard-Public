@@ -46,7 +46,6 @@ export default function AssignmentsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>('All');
   const [assignerMap, setAssignerMap] = useState<Record<string, UserSummary>>({});
-  const [userRole, setUserRole] = useState<string>('Student');
 
   useEffect(() => {
     getCurrentUser().then((user) => {
@@ -54,7 +53,6 @@ export default function AssignmentsScreen() {
       setNetid(user.netid);
       const r = normalizeRole(String(user.role));
       setRole(r);
-      setUserRole(r);
       getTasksAssignedTo(user.netid).then((tasks) => {
         setMyTasks(tasks);
         const uniqueNetids = [...new Set(tasks.map((t) => t.assignedByNetid).filter(Boolean))] as string[];
@@ -86,7 +84,7 @@ export default function AssignmentsScreen() {
     });
   }, [myTasks, filter]);
 
-  const canUpdateStatus = userRole === 'TA' || userRole === 'HTA';
+  const canUpdateStatus = true;
 
   const STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; border: string; label: string }> = {
     TODO:     { bg: '#f3f4f6', text: '#374151', border: '#e5e7eb', label: 'To Do' },

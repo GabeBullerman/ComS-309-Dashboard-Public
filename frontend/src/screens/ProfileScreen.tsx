@@ -11,8 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCurrentUser, changePassword } from '../api/users';
-import { getGitLabToken, saveGitLabToken } from '../utils/gitlab';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getGitLabToken, saveGitLabToken, clearGitLabToken } from '../utils/gitlab';
 import ProfileAvatar from '../components/ProfileAvatar';
 
 interface Props {
@@ -74,7 +73,7 @@ export default function ProfileScreen({ userRole, onLogout }: Props) {
           text: 'Remove',
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.removeItem('gitlab_token');
+            await clearGitLabToken();
             setGlToken(null);
             setEditing(false);
           },

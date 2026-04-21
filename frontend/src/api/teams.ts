@@ -50,3 +50,24 @@ export const getTeam = async (teamId: number): Promise<TeamApiResponse> => {
 export const updateTeamInfo = async (teamId: number, data: { name?: string; gitlab?: string; discord?: string }): Promise<void> => {
   await axiosInstance.put(`/api/teams/${teamId}`, data);
 };
+
+export const createTeam = async (data: { name: string; section: number; taNetid?: string }): Promise<TeamApiResponse> => {
+  const res = await axiosInstance.post('/api/teams', data);
+  return res.data;
+};
+
+export const deleteTeam = async (id: number): Promise<void> => {
+  await axiosInstance.delete(`/api/teams/${id}`);
+};
+
+export const addStudentToTeam = async (teamId: number, studentId: number): Promise<void> => {
+  await axiosInstance.put(`/api/teams/${teamId}/add/${studentId}`);
+};
+
+export const removeStudentFromTeam = async (teamId: number, studentId: number): Promise<void> => {
+  await axiosInstance.put(`/api/teams/${teamId}/remove/${studentId}`);
+};
+
+export const clearSemester = async (): Promise<void> => {
+  await axiosInstance.delete('/api/teams/clear');
+};
