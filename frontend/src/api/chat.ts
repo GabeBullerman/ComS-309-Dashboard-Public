@@ -88,3 +88,12 @@ export const getAllUnreadCounts = async (): Promise<Record<string, number>> => {
 export const markRead = async (lastMessageId: number, channel: string): Promise<void> => {
   await axiosInstance.post('/api/chat/mark-read', { lastMessageId, channel });
 };
+
+export const sendTyping = async (channel: string): Promise<void> => {
+  await axiosInstance.post('/api/chat/typing', { channel });
+};
+
+export const getTyping = async (channel: string): Promise<string[]> => {
+  const res = await axiosInstance.get('/api/chat/typing', { params: { channel } });
+  return res.data as string[];
+};
