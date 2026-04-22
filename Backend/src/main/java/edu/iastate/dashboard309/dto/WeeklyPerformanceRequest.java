@@ -13,5 +13,10 @@ public record WeeklyPerformanceRequest(
     @NotNull LocalDate weekStartDate,
     @NotNull @Min(0) @Max(2) Integer codeScore,
     @NotNull @Min(0) @Max(2) Integer teamworkScore
-) {
+) implements Comparable<WeeklyPerformanceRequest> {
+
+    @Override
+    public int compareTo(WeeklyPerformanceRequest other){
+        return this.weekStartDate.compareTo(other.weekStartDate);
+    }
 }

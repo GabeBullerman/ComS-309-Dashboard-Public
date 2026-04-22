@@ -3,10 +3,16 @@ package edu.iastate.dashboard309.service;
 import jakarta.transaction.Transactional;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
@@ -19,9 +25,12 @@ import org.springframework.stereotype.Service;
 import edu.iastate.dashboard309.dto.DemoPerformanceRequest;
 import edu.iastate.dashboard309.dto.TeamRequest;
 import edu.iastate.dashboard309.dto.UserRequest;
+import edu.iastate.dashboard309.dto.WeeklyPerformanceRequest;
 
 @Service
 public class ExportService {
+
+    private final WeeklyPerformanceService weeklyPerformanceService;
 
     /*
         0: First name
@@ -45,6 +54,9 @@ public class ExportService {
         18: Code
         19: Teamwork
     */
+
+    private final int NUM_WEEKS = 16;
+
     private final int TEAM_FEATURES = 20;
 
     private final int TEAM_NAME_INDEX_START = 0;
@@ -56,62 +68,65 @@ public class ExportService {
     private final int TEAM_DEMO_INDEX_END = 19;
 
     private final String[] teamHeader = new String[]{"first_name", "last_name", "netid", "attendance", "present", "late", "absent", "excused", "demo 1", "code", "teamwork", "demo 2", "code", "teamwork", "demo 3", "code", "teamwork", "demo 4", "code", "teamwork"};
+    
+    private final int STUDENT_FEATURES = 4;
+
+    private final int STUDENT_NAME_INDEX_START = 0;
+    private final int STUDENT_NAME_INDEX_END = 1;
+    private final int STUDENT_NETID_INDEX = 2;
+    private final int STUDENT_TEAM_NAME_INDEX = 3;
     private final String[] studentHeader = new String[]{"first_name", "last_name", "netid", "team_name"};
 
     private final TeamService teamService;
     private final AttendanceService attendanceService;
     private final DemoPerformanceService demoPerformanceService;
 
-    public ExportService(TeamService teamService, AttendanceService attendanceService, DemoPerformanceService demoPerformanceService){
+    public ExportService(TeamService teamService, AttendanceService attendanceService, DemoPerformanceService demoPerformanceService, WeeklyPerformanceService weeklyPerformanceService){
         this.teamService = teamService;
         this.attendanceService = attendanceService;
         this.demoPerformanceService = demoPerformanceService;
+        this.weeklyPerformanceService = weeklyPerformanceService;
     }
+
+    // Cell colors
+    XSSFCellStyle red;
+    XSSFCellStyle yellow;
+    XSSFCellStyle green;
+    XSSFCellStyle gray;
 
     // Puts all teams currently in the database into a .xlsx
     @Transactional
     public XSSFWorkbook exportXLSX() throws IOException{
         XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet studentSheet = workbook.createSheet("Students");
         List<TeamRequest> teams = teamService.getAllTeams();
 
+        loadColors(workbook);
+
         for(TeamRequest team : teams){
-            XSSFSheet sheet = createTeamSheet(workbook, team);    
+            XSSFSheet teamSheet = createTeamSheet(workbook, team);   
+            List<UserRequest> students = team.students(); 
+            for(UserRequest student : students){
+                // Add the student to the studentSheet
+            }
         }
 
         return workbook;
     }
-
 
     private XSSFSheet createTeamSheet(XSSFWorkbook workbook, TeamRequest team){
         XSSFSheet sheet = workbook.createSheet(team.name());
         String[] studentData = new String[TEAM_FEATURES];
 
         // Header row
-        XSSFRow headerRow = sheet.createRow(0);
+        XSSFRow headerRow1 = sheet.createRow(0);
         for(int i = 0; i < teamHeader.length; i++){
-            headerRow.createCell(i).setCellValue(teamHeader[i]);
+            headerRow1.createCell(i).setCellValue(teamHeader[i]);
         }
 
         // Fill in the data
         List<UserRequest> students = team.students();
         int rowNum = 1;
-
-        // Cell colors
-        XSSFCellStyle red = workbook.createCellStyle();
-        red.setFillForegroundColor(IndexedColors.RED.getIndex());
-        red.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-
-        XSSFCellStyle yellow = workbook.createCellStyle();
-        yellow.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
-        yellow.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-
-        XSSFCellStyle green = workbook.createCellStyle();
-        green.setFillForegroundColor(IndexedColors.GREEN.getIndex());
-        green.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-
-        XSSFCellStyle gray = workbook.createCellStyle();
-        gray.setFillForegroundColor(new XSSFColor(new byte[]{(byte) 128, (byte) 128, (byte) 128}));
-        gray.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
         for(UserRequest student : students){
             studentData = getStudentData(student);
@@ -152,6 +167,101 @@ public class ExportService {
         }
 
         // Weekly performance
+        // Get the performances of all students
+        Map<Long, List<WeeklyPerformanceRequest>> performanceMap = new HashMap<>();
+        LocalDate earliest = null;
+        for(UserRequest student : students){
+            List<WeeklyPerformanceRequest> performance = new ArrayList<>(weeklyPerformanceService.getWeeklyPerformanceByStudentNetid(student.netid()));
+            if(!performance.isEmpty()){
+                Collections.sort(performance);
+                if(earliest == null || performance.get(0).weekStartDate().compareTo(earliest) < 0){
+                    earliest = performance.get(0).weekStartDate();
+                }
+                performanceMap.put(student.id(), performance);
+            }
+        }
+
+        // If there are no weekly performances, skip
+        if(earliest == null){
+            return sheet;
+        }
+
+        // Header row
+        rowNum += 2;
+        XSSFRow headerRow2 = sheet.createRow(rowNum);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd");
+        headerRow2.createCell(0).setCellValue("Weekly Performance");
+        for(int i = 0; i < NUM_WEEKS; i++){
+            headerRow2.createCell(i+3).setCellValue(earliest.plusWeeks(i).format(formatter));
+        }
+        rowNum++;
+
+        // Fill in weekly performance for all students
+        for(UserRequest student : students){
+            // Create rows
+            XSSFRow codePerformanceRow = sheet.createRow(rowNum);
+            XSSFRow teamworkPerformanceRow = sheet.createRow(rowNum+1);
+            rowNum += 3;
+
+            // Fill identifying information
+            String[] name = student.name().split(" ", 2);
+            codePerformanceRow.createCell(0).setCellValue(name[0]); // First name
+            codePerformanceRow.createCell(1).setCellValue(name[1]); // Last name
+            codePerformanceRow.createCell(2).setCellValue("Code");
+
+            teamworkPerformanceRow.createCell(0).setCellValue(student.netid()); // Netid
+            teamworkPerformanceRow.createCell(2).setCellValue("Teamwork");
+
+            // Fill in performances
+            List<WeeklyPerformanceRequest> performances = performanceMap.get(student.id());
+            WeeklyPerformanceRequest performance;
+            int index = 0;
+            for(int i = 0; i < NUM_WEEKS; i++){
+                LocalDate date = earliest.plusWeeks(i);
+
+                // Check if there is data for performance that week, or if we iterated through the entire list
+                if(performances != null && index < performances.size() && performances.get(index).weekStartDate().equals(date)){
+                    performance = performances.get(index);
+                    index++;
+                }
+                // No performance data for that week
+                else{
+                    codePerformanceRow.createCell(i+3).setCellStyle(gray);
+                    teamworkPerformanceRow.createCell(i+3).setCellStyle(gray);
+                    continue;
+                }
+
+                // Set code row
+                int code = performance.codeScore();
+                if(code == 0){
+                    codePerformanceRow.createCell(i+3).setCellStyle(red);
+                }
+                else if(code == 1){
+                    codePerformanceRow.createCell(i+3).setCellStyle(yellow);
+                }
+                else if(code == 2){
+                    codePerformanceRow.createCell(i+3).setCellStyle(green);
+                }
+                else{
+                    codePerformanceRow.createCell(i+3).setCellStyle(gray);
+                }
+
+                // Set teamwork row
+                int teamwork = performance.teamworkScore();
+                if(teamwork == 0){
+                    teamworkPerformanceRow.createCell(i+3).setCellStyle(red);
+                }
+                else if(teamwork == 1){
+                    teamworkPerformanceRow.createCell(i+3).setCellStyle(yellow);
+                }
+                else if(teamwork == 2){
+                    teamworkPerformanceRow.createCell(i+3).setCellStyle(green);
+                }
+                else{
+                    teamworkPerformanceRow.createCell(i+3).setCellStyle(gray);
+                }
+            }
+        }
 
         return sheet;
     }
@@ -200,5 +310,40 @@ public class ExportService {
         }
 
         return data;
+    }
+
+    private void loadColors(XSSFWorkbook workbook){
+        // Set cell colors
+        red = workbook.createCellStyle();
+        red.setFillForegroundColor(IndexedColors.RED.getIndex());
+        red.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        red.setBorderTop(BorderStyle.THIN);
+        red.setBorderBottom(BorderStyle.THIN);
+        red.setBorderLeft(BorderStyle.THIN);
+        red.setBorderRight(BorderStyle.THIN);
+
+        yellow = workbook.createCellStyle();
+        yellow.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+        yellow.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        yellow.setBorderTop(BorderStyle.THIN);
+        yellow.setBorderBottom(BorderStyle.THIN);
+        yellow.setBorderLeft(BorderStyle.THIN);
+        yellow.setBorderRight(BorderStyle.THIN);
+
+        green = workbook.createCellStyle();
+        green.setFillForegroundColor(IndexedColors.GREEN.getIndex());
+        green.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        green.setBorderTop(BorderStyle.THIN);
+        green.setBorderBottom(BorderStyle.THIN);
+        green.setBorderLeft(BorderStyle.THIN);
+        green.setBorderRight(BorderStyle.THIN);
+
+        gray = workbook.createCellStyle();
+        gray.setFillForegroundColor(new XSSFColor(new byte[]{(byte) 128, (byte) 128, (byte) 128}));
+        gray.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        gray.setBorderTop(BorderStyle.THIN);
+        gray.setBorderBottom(BorderStyle.THIN);
+        gray.setBorderLeft(BorderStyle.THIN);
+        gray.setBorderRight(BorderStyle.THIN);
     }
 }
