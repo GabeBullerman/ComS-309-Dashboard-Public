@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MemberAvatar from './MemberAvatar';
+import { useTheme } from '../contexts/ThemeContext';
 
 export interface TeamCardProps {
   name: string;
@@ -15,20 +16,30 @@ export interface TeamCardProps {
   onPress?: () => void;
 }
 
-const STATUS_STYLES: Record<TeamCardProps['status'], { bg: string; text: string }> = {
-  Good:     { bg: '#dcfce7', text: '#15803d' },
-  Moderate: { bg: '#fef9c3', text: '#92400e' },
-  Poor:     { bg: '#fee2e2', text: '#b91c1c' },
-};
-
-const SCORE_COLOR: Record<number, string> = { 0: '#fca5a5', 1: '#fde68a', 2: '#86efac' };
-const SCORE_BORDER: Record<number, string> = { 0: '#dc2626', 1: '#d97706', 2: '#16a34a' };
-
 export const TeamCard: React.FC<TeamCardProps> = ({
   name, memberCount, ta, section, status, members, demoScores, onPress,
 }) => {
-  const { bg, text } = STATUS_STYLES[status];
+  const { colors } = useTheme();
   const [rowWidth, setRowWidth] = useState(0);
+
+  const STATUS_STYLES: Record<TeamCardProps['status'], { bg: string; text: string }> = {
+    Good:     { bg: colors.statusGoodBg,     text: colors.statusGoodText },
+    Moderate: { bg: colors.statusModerateBg, text: colors.statusModerateText },
+    Poor:     { bg: colors.statusPoorBg,     text: colors.statusPoorText },
+  };
+
+  const SCORE_COLOR: Record<number, string> = {
+    0: colors.score0Bg,
+    1: colors.score1Bg,
+    2: colors.score2Bg,
+  };
+  const SCORE_BORDER: Record<number, string> = {
+    0: colors.score0Border,
+    1: colors.score1Border,
+    2: colors.score2Border,
+  };
+
+  const { bg, text } = STATUS_STYLES[status];
 
   const GAP = 6;
   const n = members.length || 1;
@@ -39,18 +50,18 @@ export const TeamCard: React.FC<TeamCardProps> = ({
   return (
     <Pressable
       onPress={onPress}
-      android_ripple={{ color: '#e5e7eb' }}
+      android_ripple={{ color: colors.ripple }}
       style={({ pressed }) => ({
         flex: 1,
         opacity: pressed ? 0.9 : 1,
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
-      <View style={{ flex: 1, backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
+      <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 16, shadowColor: colors.shadow, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
 
         {/* Header */}
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-          <Text style={{ flex: 1, paddingRight: 8, fontSize: 18, fontWeight: '700', color: '#111827' }}>
+          <Text style={{ flex: 1, paddingRight: 8, fontSize: 18, fontWeight: '700', color: colors.text }}>
             {name}
           </Text>
           <View style={{ alignItems: 'flex-end', gap: 5 }}>
@@ -61,9 +72,9 @@ export const TeamCard: React.FC<TeamCardProps> = ({
               <View style={{ flexDirection: 'row', gap: 4 }}>
                 {demoScores.map((d, i) => (
                   <View key={`ds-${i}`} style={{ flexDirection: 'row', gap: 2, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 8, color: '#111827', marginRight: 1 }}>D{i + 1}</Text>
+                    <Text style={{ fontSize: 8, color: colors.text, marginRight: 1 }}>D{i + 1}</Text>
                     {[d.code, d.teamwork].map((score, j) => (
-                      <View key={`ds-${i}-${j}`} style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: score != null ? SCORE_COLOR[score] : '#e5e7eb', borderWidth: 1, borderColor: score != null ? SCORE_BORDER[score] : '#d1d5db' }} />
+                      <View key={`ds-${i}-${j}`} style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: score != null ? SCORE_COLOR[score] : colors.border, borderWidth: 1, borderColor: score != null ? SCORE_BORDER[score] : colors.borderMedium }} />
                     ))}
                   </View>
                 ))}
@@ -74,23 +85,23 @@ export const TeamCard: React.FC<TeamCardProps> = ({
 
         {/* Member count */}
         <View className="flex-row items-center" style={{ marginBottom: 6 }}>
-          <Ionicons name="people" size={17} color="#F1BE48" style={{ marginRight: 6 }} />
-          <Text style={{ fontSize: 14, color: '#4B5563' }}>{memberCount} members</Text>
+          <Ionicons name="people" size={17} color={colors.iconPeople} style={{ marginRight: 6 }} />
+          <Text style={{ fontSize: 14, color: colors.textSecondary }}>{memberCount} members</Text>
         </View>
 
         {/* TA */}
         <View className="flex-row items-center" style={{ marginBottom: 6 }}>
-          <Ionicons name="person-sharp" size={17} color="#64f0cd" style={{ marginRight: 6 }} />
-          <Text style={{ fontSize: 14, color: '#4B5563' }}>TA: {ta}</Text>
+          <Ionicons name="person-sharp" size={17} color={colors.iconTA} style={{ marginRight: 6 }} />
+          <Text style={{ fontSize: 14, color: colors.textSecondary }}>TA: {ta}</Text>
         </View>
 
         {/* Section */}
         <View className="flex-row items-center" style={{ marginBottom: 16 }}>
-          <Ionicons name="book" size={17} color="#C8102E" style={{ marginRight: 6 }} />
-          <Text style={{ fontSize: 14, color: '#4B5563' }}>Section: {section}</Text>
+          <Ionicons name="book" size={17} color={colors.primary} style={{ marginRight: 6 }} />
+          <Text style={{ fontSize: 14, color: colors.textSecondary }}>Section: {section}</Text>
         </View>
 
-        {/* Member avatars — fill full card width */}
+        {/* Member avatars */}
         <View
           style={{ flexDirection: 'row', gap: GAP }}
           onLayout={e => setRowWidth(e.nativeEvent.layout.width)}

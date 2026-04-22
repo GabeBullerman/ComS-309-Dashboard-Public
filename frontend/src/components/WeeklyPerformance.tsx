@@ -8,15 +8,19 @@ import {
   createWeeklyPerformance,
   deleteWeeklyPerformance,
 } from "@/api/weeklyPerformance";
+import { useTheme } from '../contexts/ThemeContext';
+import { ColorPalette } from '../constants/colors';
 
 type ProgressLevel = "good" | "moderate" | "poor" | "ungraded";
 
-const COLOR_MAP: Record<ProgressLevel, string> = {
-  good: "#22c55e",
-  moderate: "#facc15",
-  poor: "#ef4444",
-  ungraded: "#9ca3af",
-};
+function colorForLevel(level: ProgressLevel, colors: ColorPalette): string {
+  switch (level) {
+    case 'good':     return colors.statusGoodBar;
+    case 'moderate': return colors.statusModerateBar;
+    case 'poor':     return colors.statusPoorBar;
+    default:         return colors.statusUngraded;
+  }
+}
 
 const LABEL_MAP: Record<ProgressLevel, string> = {
   good: "Good",
@@ -27,7 +31,6 @@ const LABEL_MAP: Record<ProgressLevel, string> = {
 
 const LEVELS: ProgressLevel[] = ["ungraded", "good", "moderate", "poor"];
 
-// Backend uses 0-2 integers; "ungraded" = no record in DB
 const SCORE_TO_LEVEL: Record<number, ProgressLevel> = { 0: "poor", 1: "moderate", 2: "good" };
 const LEVEL_TO_SCORE: Record<string, number> = { poor: 0, moderate: 1, good: 2 };
 
@@ -53,6 +56,7 @@ function buildWeeks(count: number): { label: string; key: string }[] {
 }
 
 function ProgressCell({ level, onPress, readOnly }: { level: ProgressLevel; onPress: (l: ProgressLevel) => void; readOnly?: boolean }) {
+  const { colors } = useTheme();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ x: 0, y: 0, w: 0 });
   const ref = useRef<View>(null);
@@ -63,23 +67,23 @@ function ProgressCell({ level, onPress, readOnly }: { level: ProgressLevel; onPr
         ref={ref}
         onPress={() => !readOnly && ref.current?.measure((_fx, _fy, w, h, px, py) => { setPos({ x: px, y: py + h, w }); setOpen(true); })}
         activeOpacity={readOnly ? 1 : 0.7}
-        style={{ height: 30, backgroundColor: COLOR_MAP[level], borderRadius: 6, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4 }}
+        style={{ height: 30, backgroundColor: colorForLevel(level, colors), borderRadius: 6, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4 }}
       >
-        <Text style={{ color: 'white', fontSize: 11, fontWeight: '600' }}>{LABEL_MAP[level]}</Text>
-        {!readOnly && <Ionicons name={open ? "chevron-up" : "chevron-down"} size={10} color="white" />}
+        <Text style={{ color: colors.textInverse, fontSize: 11, fontWeight: '600' }}>{LABEL_MAP[level]}</Text>
+        {!readOnly && <Ionicons name={open ? "chevron-up" : "chevron-down"} size={10} color={colors.textInverse} />}
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)}>
-          <View style={{ position: 'absolute', top: pos.y + 4, left: pos.x, minWidth: Math.max(pos.w, 140), backgroundColor: 'white', borderRadius: 6, borderWidth: 1, borderColor: '#E5E7EB', elevation: 8, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, overflow: 'hidden' }}>
+          <View style={{ position: 'absolute', top: pos.y + 4, left: pos.x, minWidth: Math.max(pos.w, 140), backgroundColor: colors.surface, borderRadius: 6, borderWidth: 1, borderColor: colors.border, elevation: 8, shadowColor: colors.shadow, shadowOpacity: 0.12, shadowRadius: 6, overflow: 'hidden' }}>
             {LEVELS.map((l) => (
               <TouchableOpacity
                 key={l}
                 onPress={() => { onPress(l); setOpen(false); }}
-                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}
+                style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}
               >
-                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLOR_MAP[l], marginRight: 8 }} />
-                <Text style={{ fontSize: 12, color: '#374151' }}>{LABEL_MAP[l]}</Text>
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colorForLevel(l, colors), marginRight: 8 }} />
+                <Text style={{ fontSize: 12, color: colors.textSecondary }}>{LABEL_MAP[l]}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -90,6 +94,7 @@ function ProgressCell({ level, onPress, readOnly }: { level: ProgressLevel; onPr
 }
 
 function WeekDropdown({ weeks, selected, onSelect }: { weeks: { label: string; key: string }[]; selected: string; onSelect: (key: string) => void }) {
+  const { colors } = useTheme();
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ x: 0, y: 0, w: 0 });
   const ref = useRef<View>(null);
@@ -100,27 +105,27 @@ function WeekDropdown({ weeks, selected, onSelect }: { weeks: { label: string; k
       <TouchableOpacity
         ref={ref}
         onPress={() => ref.current?.measure((_fx, _fy, w, h, px, py) => { setPos({ x: px, y: py + h, w }); setOpen(true); })}
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB' }}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.borderLight, borderWidth: 1, borderColor: colors.border }}
         activeOpacity={0.7}
       >
-        <Ionicons name="calendar-outline" size={14} color="#6B7280" />
-        <Text style={{ fontSize: 13, color: '#374151', fontWeight: '500' }}>{current?.label ?? 'Select week'}</Text>
-        <Ionicons name="chevron-down" size={12} color="#6B7280" />
+        <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
+        <Text style={{ fontSize: 13, color: colors.textSecondary, fontWeight: '500' }}>{current?.label ?? 'Select week'}</Text>
+        <Ionicons name="chevron-down" size={12} color={colors.textMuted} />
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)}>
-          <View style={{ position: 'absolute', top: pos.y + 4, left: pos.x, minWidth: Math.max(pos.w, 220), backgroundColor: 'white', borderRadius: 10, borderWidth: 1, borderColor: '#E5E7EB', elevation: 8, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6, overflow: 'hidden' }}>
+          <View style={{ position: 'absolute', top: pos.y + 4, left: pos.x, minWidth: Math.max(pos.w, 220), backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, elevation: 8, shadowColor: colors.shadow, shadowOpacity: 0.12, shadowRadius: 6, overflow: 'hidden' }}>
             {weeks.map((w, i) => {
               const isActive = w.key === selected;
               return (
                 <TouchableOpacity
                   key={w.key}
                   onPress={() => { onSelect(w.key); setOpen(false); }}
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: i < weeks.length - 1 ? 1 : 0, borderBottomColor: '#F3F4F6', backgroundColor: isActive ? '#fef2f2' : 'white' }}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: i < weeks.length - 1 ? 1 : 0, borderBottomColor: colors.borderLight, backgroundColor: isActive ? colors.statusPoorBg : colors.surface }}
                 >
-                  <Text style={{ fontSize: 13, color: isActive ? '#b91c1c' : '#374151', fontWeight: isActive ? '600' : '400' }}>{w.label}</Text>
-                  {isActive && <Ionicons name="checkmark" size={14} color="#b91c1c" />}
+                  <Text style={{ fontSize: 13, color: isActive ? colors.statusPoorText : colors.textSecondary, fontWeight: isActive ? '600' : '400' }}>{w.label}</Text>
+                  {isActive && <Ionicons name="checkmark" size={14} color={colors.statusPoorText} />}
                 </TouchableOpacity>
               );
             })}
@@ -137,9 +142,9 @@ interface Props {
 }
 
 export default function WeeklyPerformance({ members, readOnly = false }: Props) {
+  const { colors } = useTheme();
   const weeks = buildWeeks(8);
   const [selectedWeek, setSelectedWeek] = useState(weeks[0].key);
-  // netid -> weekKey -> { code, teamwork }
   const [scores, setScores] = useState<Record<string, Record<string, MemberScore>>>({});
   const originalScoresRef = useRef<Record<string, Record<string, MemberScore>>>({});
   const [loading, setLoading] = useState(true);
@@ -230,7 +235,6 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
   };
 
   const handleSave = () => {
-    // Only confirm when the user is changing a record that was already graded at load time
     const hasExisting = members.some(m => {
       if (!m.netid) return false;
       const orig = originalScoresRef.current[m.netid]?.[selectedWeek];
@@ -251,15 +255,15 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
   };
 
   return (
-    <View style={{ backgroundColor: 'white', borderRadius: 12, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
+    <View style={{ backgroundColor: colors.surface, borderRadius: 12, overflow: 'hidden', shadowColor: colors.shadow, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
-        <Ionicons name="bar-chart-outline" size={18} color="#be123c" />
-        <Text style={{ fontSize: 15, fontWeight: '600', marginLeft: 8, color: '#111827', flex: 1 }}>Weekly Performance</Text>
-        {loading && <ActivityIndicator size="small" color="#be123c" style={{ marginRight: 8 }} />}
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+        <Ionicons name="bar-chart-outline" size={18} color={colors.primary} />
+        <Text style={{ fontSize: 15, fontWeight: '600', marginLeft: 8, color: colors.text, flex: 1 }}>Weekly Performance</Text>
+        {loading && <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 8 }} />}
         {!readOnly && saveStatus && !saving && (
-          <View style={{ backgroundColor: saveStatus.failed > 0 ? '#fee2e2' : '#dcfce7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginRight: 8 }}>
-            <Text style={{ color: saveStatus.failed > 0 ? '#b91c1c' : '#15803d', fontSize: 11, fontWeight: '500' }}>
+          <View style={{ backgroundColor: saveStatus.failed > 0 ? colors.criticalBg : colors.statusGoodBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginRight: 8 }}>
+            <Text style={{ color: saveStatus.failed > 0 ? colors.criticalText : colors.statusGoodText, fontSize: 11, fontWeight: '500' }}>
               {saveStatus.failed > 0
                 ? saveStatus.ok > 0
                   ? `${saveStatus.ok} saved, ${saveStatus.failed} failed`
@@ -269,19 +273,19 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
           </View>
         )}
         {!readOnly && unsaved && !loading && !saveStatus && (
-          <View style={{ backgroundColor: '#fef9c3', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginRight: 8 }}>
-            <Text style={{ color: '#a16207', fontSize: 11, fontWeight: '500' }}>Unsaved</Text>
+          <View style={{ backgroundColor: colors.statusModerateBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, marginRight: 8 }}>
+            <Text style={{ color: colors.statusModerateText, fontSize: 11, fontWeight: '500' }}>Unsaved</Text>
           </View>
         )}
         {!readOnly && (
           <TouchableOpacity
             onPress={handleSave}
             disabled={saving || loading}
-            style={{ backgroundColor: '#dc2626', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, opacity: saving ? 0.6 : 1 }}
+            style={{ backgroundColor: colors.criticalBorder, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, opacity: saving ? 0.6 : 1 }}
           >
             {saving
-              ? <ActivityIndicator size="small" color="white" />
-              : <Text style={{ color: 'white', fontSize: 12, fontWeight: '600' }}>Save</Text>
+              ? <ActivityIndicator size="small" color={colors.textInverse} />
+              : <Text style={{ color: colors.textInverse, fontSize: 12, fontWeight: '600' }}>Save</Text>
             }
           </TouchableOpacity>
         )}
@@ -295,13 +299,13 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
 
         {/* Column headers */}
         <View style={{ flexDirection: 'row', marginBottom: 4, paddingHorizontal: 4 }}>
-          <Text style={{ flex: 2, fontSize: 12, color: '#6B7280', fontWeight: '500' }}>Member</Text>
-          <Text style={{ flex: 2, fontSize: 12, color: '#6B7280', fontWeight: '500' }}>Code</Text>
+          <Text style={{ flex: 2, fontSize: 12, color: colors.textMuted, fontWeight: '500' }}>Member</Text>
+          <Text style={{ flex: 2, fontSize: 12, color: colors.textMuted, fontWeight: '500' }}>Code</Text>
           <View style={{ width: 8 }} />
-          <Text style={{ flex: 2, fontSize: 12, color: '#6B7280', fontWeight: '500' }}>Teamwork</Text>
+          <Text style={{ flex: 2, fontSize: 12, color: colors.textMuted, fontWeight: '500' }}>Teamwork</Text>
         </View>
         {!readOnly && (
-          <Text style={{ fontSize: 10, color: '#9CA3AF', paddingHorizontal: 4, marginBottom: 8 }}>
+          <Text style={{ fontSize: 10, color: colors.textFaint, paddingHorizontal: 4, marginBottom: 8 }}>
             Both fields must be set to save or ungrade a row.
           </Text>
         )}
@@ -314,9 +318,9 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
             return (
               <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <View style={{ flex: 2 }}>
-                  <Text style={{ fontSize: 13, color: '#111827', fontWeight: '500' }} numberOfLines={1}>{member.name}</Text>
+                  <Text style={{ fontSize: 13, color: colors.text, fontWeight: '500' }} numberOfLines={1}>{member.name}</Text>
                   {member.netid && (
-                    <Text style={{ fontSize: 10, color: '#9CA3AF' }}>{member.netid}</Text>
+                    <Text style={{ fontSize: 10, color: colors.textFaint }}>{member.netid}</Text>
                   )}
                 </View>
                 <View style={{ flex: 2 }}>
@@ -343,8 +347,8 @@ export default function WeeklyPerformance({ members, readOnly = false }: Props) 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 14, gap: 12 }}>
           {(Object.entries(LABEL_MAP) as [ProgressLevel, string][]).map(([key, label]) => (
             <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: COLOR_MAP[key] }} />
-              <Text style={{ fontSize: 11, color: '#6B7280' }}>{label}</Text>
+              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colorForLevel(key, colors) }} />
+              <Text style={{ fontSize: 11, color: colors.textMuted }}>{label}</Text>
             </View>
           ))}
         </View>

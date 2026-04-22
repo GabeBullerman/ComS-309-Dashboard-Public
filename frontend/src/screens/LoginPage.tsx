@@ -4,6 +4,7 @@ import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import axiosInstance, { apiBaseUrl } from '@/api/client';
 import { storeToken, storeRefreshToken } from '@/utils/auth';
+import { useTheme } from '../contexts/ThemeContext';
 
 if (Platform.OS === 'web') WebBrowser.maybeCompleteAuthSession();
 
@@ -12,6 +13,7 @@ interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+  const { colors } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -152,6 +154,30 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     }
   };
 
+  const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    contentContainer: { flexGrow: 1, justifyContent: 'flex-start', alignItems: 'center', paddingTop: 56, paddingBottom: 20, paddingHorizontal: 16 },
+    header: { alignItems: 'center', width: '100%', maxWidth: 380, paddingTop: 12, paddingBottom: 12, marginBottom: 26, zIndex: 2, backgroundColor: 'transparent' },
+    logo: { width: 140, height: 140, marginBottom: 8, resizeMode: 'contain' },
+    title: { fontSize: 28, fontWeight: 'bold', color: colors.primary, marginBottom: 6 },
+    subtitle: { fontSize: 16, color: colors.textMuted },
+    formContainer: { width: '100%', maxWidth: 380, backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 28, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 },
+    label: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: 8, marginTop: 16 },
+    input: { backgroundColor: colors.inputBg, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.text },
+    inputError: { borderColor: colors.statusPoorBar, backgroundColor: colors.statusPoorBg },
+    errorText: { color: colors.statusPoorBar, fontSize: 12, marginTop: 4 },
+    loginErrorText: { color: colors.statusPoorBar, fontSize: 12, marginTop: 8 },
+    hint: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
+    button: { backgroundColor: colors.primary, borderRadius: 8, paddingVertical: 12, alignItems: 'center', marginTop: 24 },
+    buttonText: { color: colors.textInverse, fontSize: 16, fontWeight: '600' },
+    dividerRow: { flexDirection: 'row', alignItems: 'center', marginTop: 20, marginBottom: 16 },
+    dividerLine: { flex: 1, height: 1, backgroundColor: colors.inputBorder },
+    dividerText: { marginHorizontal: 12, fontSize: 13, color: colors.textFaint, fontWeight: '500' },
+    googleButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingVertical: 11, shadowColor: colors.shadow, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2, elevation: 1 },
+    googleIcon: { width: 18, height: 18, marginRight: 10 },
+    googleButtonText: { fontSize: 15, fontWeight: '600', color: colors.text },
+  });
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
@@ -210,7 +236,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => { setShowForgot(true); setForgotNetid(''); setForgotSent(false); setForgotError(''); }} style={{ alignSelf: 'center', marginTop: 10 }}>
-          <Text style={{ fontSize: 13, color: '#64748b', textDecorationLine: 'underline' }}>Forgot password?</Text>
+          <Text style={{ fontSize: 13, color: colors.textMuted, textDecorationLine: 'underline' }}>Forgot password?</Text>
         </TouchableOpacity>
 
         {/* Divider */}
@@ -247,43 +273,43 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
       {/* Forgot Password Modal */}
       <Modal visible={showForgot} transparent animationType="fade" onRequestClose={() => setShowForgot(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-          <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 24, width: '100%', maxWidth: 360, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, elevation: 8 }}>
-            <Text style={{ fontSize: 17, fontWeight: '700', color: '#1e293b', marginBottom: 6 }}>Reset Password</Text>
+        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 24, width: '100%', maxWidth: 360, shadowColor: colors.shadow, shadowOpacity: 0.2, shadowRadius: 10, elevation: 8 }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 6 }}>Reset Password</Text>
             {forgotSent ? (
               <View>
-                <Text style={{ fontSize: 14, color: '#16a34a', lineHeight: 20, marginBottom: 16 }}>
+                <Text style={{ fontSize: 14, color: colors.statusGoodText, lineHeight: 20, marginBottom: 16 }}>
                   A temporary password has been sent to <Text style={{ fontWeight: '700' }}>{forgotNetid.trim().toLowerCase()}@iastate.edu</Text>. Use it to log in, then change your password in Profile.
                 </Text>
-                <TouchableOpacity onPress={() => setShowForgot(false)} style={{ backgroundColor: '#C8102E', borderRadius: 8, paddingVertical: 11, alignItems: 'center' }}>
-                  <Text style={{ color: 'white', fontWeight: '600' }}>Done</Text>
+                <TouchableOpacity onPress={() => setShowForgot(false)} style={{ backgroundColor: colors.primary, borderRadius: 8, paddingVertical: 11, alignItems: 'center' }}>
+                  <Text style={{ color: colors.textInverse, fontWeight: '600' }}>Done</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <View>
-                <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 14, lineHeight: 18 }}>
+                <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 14, lineHeight: 18 }}>
                   {"Enter your NetID and we'll email a temporary password to your @iastate.edu address."}
                 </Text>
                 <TextInput
                   value={forgotNetid}
                   onChangeText={t => { setForgotNetid(t); setForgotError(''); }}
                   placeholder="e.g. jdoe or jdoe@iastate.edu"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={colors.textFaint}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  style={{ borderWidth: 1, borderColor: forgotError ? '#ef4444' : '#e2e8f0', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, backgroundColor: '#f8fafc', marginBottom: 6 }}
+                  style={{ borderWidth: 1, borderColor: forgotError ? colors.statusPoorBar : colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, backgroundColor: colors.inputBg, color: colors.text, marginBottom: 6 }}
                 />
-                {!!forgotError && <Text style={{ fontSize: 12, color: '#ef4444', marginBottom: 8 }}>{forgotError}</Text>}
+                {!!forgotError && <Text style={{ fontSize: 12, color: colors.statusPoorBar, marginBottom: 8 }}>{forgotError}</Text>}
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-                  <TouchableOpacity onPress={() => setShowForgot(false)} style={{ flex: 1, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, paddingVertical: 11, alignItems: 'center' }}>
-                    <Text style={{ color: '#64748b', fontWeight: '600' }}>Cancel</Text>
+                  <TouchableOpacity onPress={() => setShowForgot(false)} style={{ flex: 1, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingVertical: 11, alignItems: 'center' }}>
+                    <Text style={{ color: colors.textMuted, fontWeight: '600' }}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={handleForgotPassword}
                     disabled={forgotLoading || !forgotNetid.trim()}
-                    style={{ flex: 1, backgroundColor: '#C8102E', borderRadius: 8, paddingVertical: 11, alignItems: 'center', opacity: forgotLoading || !forgotNetid.trim() ? 0.6 : 1 }}
+                    style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 8, paddingVertical: 11, alignItems: 'center', opacity: forgotLoading || !forgotNetid.trim() ? 0.6 : 1 }}
                   >
-                    {forgotLoading ? <ActivityIndicator size="small" color="white" /> : <Text style={{ color: 'white', fontWeight: '600' }}>Send</Text>}
+                    {forgotLoading ? <ActivityIndicator size="small" color={colors.textInverse} /> : <Text style={{ color: colors.textInverse, fontWeight: '600' }}>Send</Text>}
                   </TouchableOpacity>
                 </View>
               </View>
@@ -295,149 +321,5 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f7fa',
-  },
-  contentContainer: {
-    flexGrow: 1,
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    paddingTop: 56,
-    paddingBottom: 20,
-    paddingHorizontal: 16,
-  },
-  header: {
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: 380,
-    paddingTop: 12,
-    paddingBottom: 12,
-    marginBottom: 26,
-    zIndex: 2,
-    backgroundColor: 'transparent',
-  },
-  logo: {
-    width: 140,
-    height: 140,
-    marginBottom: 8,
-    resizeMode: 'contain',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1e3a8a',
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#64748b',
-  },
-  formContainer: {
-    width: '100%',
-    maxWidth: 380,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    paddingHorizontal: 24,
-    paddingVertical: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1e3a8a',
-    marginBottom: 8,
-    marginTop: 16,
-  },
-  input: {
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#1e293b',
-  },
-  inputError: {
-    borderColor: '#ef4444',
-    backgroundColor: '#fef2f2',
-  },
-  errorText: {
-    color: '#ef4444',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  loginErrorText: {
-    color: '#ef4444',
-    fontSize: 12,
-    marginTop: 8,
-  },
-  hint: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 4,
-  },
-  button: {
-    backgroundColor: '#C8102E',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 16,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e2e8f0',
-  },
-  dividerText: {
-    marginHorizontal: 12,
-    fontSize: 13,
-    color: '#94a3b8',
-    fontWeight: '500',
-  },
-  googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 8,
-    paddingVertical: 11,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  googleIcon: {
-    width: 18,
-    height: 18,
-    marginRight: 10,
-  },
-  googleButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1e293b',
-  },
-});
 
 export default LoginPage;

@@ -13,7 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
+import { useTheme } from '../contexts/ThemeContext';
 import { UserRole, normalizeRole } from '../utils/auth';
 import { getCurrentUser, getUsersByRole, deleteUser } from '../api/users';
 import { getTeams, TeamApiResponse, removeStudentFromTeam } from '../api/teams';
@@ -38,6 +38,7 @@ interface Props {
 }
 
 export default function ClassStudentsScreen({ userRole }: Props) {
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { width } = useWindowDimensions();
   const isMobile = width < 640;
@@ -168,18 +169,18 @@ export default function ClassStudentsScreen({ userRole }: Props) {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
-        <ActivityIndicator size="large" color="#C8102E" />
-        <Text style={{ color: '#6B7280', marginTop: 12 }}>Loading students...</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ color: colors.textMuted, marginTop: 12 }}>Loading students...</Text>
       </View>
     );
   }
 
   if (errorMessage) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 18, fontWeight: '600', color: '#DC2626' }}>Unable to load students</Text>
-        <Text style={{ color: '#6B7280', marginTop: 8, textAlign: 'center' }}>{errorMessage}</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, paddingHorizontal: 24 }}>
+        <Text style={{ fontSize: 18, fontWeight: '600', color: colors.criticalBorder }}>Unable to load students</Text>
+        <Text style={{ color: colors.textMuted, marginTop: 8, textAlign: 'center' }}>{errorMessage}</Text>
       </View>
     );
   }
@@ -207,7 +208,7 @@ export default function ClassStudentsScreen({ userRole }: Props) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
 
       {/* Delete confirmation modal */}
       <Modal
@@ -216,30 +217,30 @@ export default function ClassStudentsScreen({ userRole }: Props) {
         animationType="fade"
         onRequestClose={() => { if (!isDeleting) { setDeletingStudent(null); setDeleteConfirmText(''); } }}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: 24 }}>
-          <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 24, borderTopWidth: 4, borderTopColor: '#dc2626' }}>
-            <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827', marginBottom: 6 }}>Delete Student</Text>
-            <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 4 }}>
+        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 24 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 24, borderTopWidth: 4, borderTopColor: colors.criticalBorder }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 6 }}>Delete Student</Text>
+            <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 4 }}>
               You are about to permanently delete{' '}
-              <Text style={{ fontWeight: '700', color: '#111827' }}>
+              <Text style={{ fontWeight: '700', color: colors.text }}>
                 {deletingStudent?.studentFirstName} {deletingStudent?.studentLastName}
               </Text>
               {' '}and remove them from their team. This cannot be undone.
             </Text>
-            <Text style={{ fontSize: 13, color: '#374151', marginBottom: 12, marginTop: 8 }}>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 12, marginTop: 8 }}>
               Type their NetID (<Text style={{ fontFamily: 'monospace', fontWeight: '700' }}>{deletingStudent?.netid}</Text>) to confirm:
             </Text>
             <TextInput
               value={deleteConfirmText}
               onChangeText={setDeleteConfirmText}
               placeholder={deletingStudent?.netid ?? ''}
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.textFaint}
               autoCapitalize="none"
               style={{
                 borderWidth: 1.5,
-                borderColor: deleteConfirmText === deletingStudent?.netid ? '#dc2626' : '#d1d5db',
+                borderColor: deleteConfirmText === deletingStudent?.netid ? colors.criticalBorder : colors.inputBorder,
                 borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
-                fontSize: 14, color: '#111827', backgroundColor: '#f9fafb', marginBottom: 16,
+                fontSize: 14, color: colors.text, backgroundColor: colors.inputBg, marginBottom: 16,
                 fontFamily: 'monospace',
               }}
             />
@@ -247,22 +248,22 @@ export default function ClassStudentsScreen({ userRole }: Props) {
               <TouchableOpacity
                 onPress={() => { setDeletingStudent(null); setDeleteConfirmText(''); }}
                 disabled={isDeleting}
-                style={{ flex: 1, backgroundColor: '#f3f4f6', borderRadius: 10, paddingVertical: 12, alignItems: 'center' }}
+                style={{ flex: 1, backgroundColor: colors.borderLight, borderRadius: 10, paddingVertical: 12, alignItems: 'center' }}
               >
-                <Text style={{ color: '#374151', fontWeight: '600' }}>Cancel</Text>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleDeleteStudent}
                 disabled={deleteConfirmText !== deletingStudent?.netid || isDeleting}
                 style={{
                   flex: 1,
-                  backgroundColor: deleteConfirmText === deletingStudent?.netid ? '#dc2626' : '#e5e7eb',
+                  backgroundColor: deleteConfirmText === deletingStudent?.netid ? colors.criticalBorder : colors.border,
                   borderRadius: 10, paddingVertical: 12, alignItems: 'center',
                 }}
               >
                 {isDeleting
-                  ? <ActivityIndicator color="white" size="small" />
-                  : <Text style={{ color: deleteConfirmText === deletingStudent?.netid ? 'white' : '#9ca3af', fontWeight: '700' }}>Delete Student</Text>
+                  ? <ActivityIndicator color={colors.textInverse} size="small" />
+                  : <Text style={{ color: deleteConfirmText === deletingStudent?.netid ? colors.textInverse : colors.textFaint, fontWeight: '700' }}>Delete Student</Text>
                 }
               </TouchableOpacity>
             </View>
@@ -272,23 +273,23 @@ export default function ClassStudentsScreen({ userRole }: Props) {
 
       <View style={{ flex: 1, paddingHorizontal: isMobile ? 12 : 24, paddingTop: isMobile ? 12 : 24 }}>
         {/* Title */}
-        <Text style={{ fontSize: isMobile ? 24 : 32, fontWeight: '800', color: '#111827', marginBottom: 14 }}>
+        <Text style={{ fontSize: isMobile ? 24 : 32, fontWeight: '800', color: colors.text, marginBottom: 14 }}>
           All Students
         </Text>
 
         {/* Search */}
         <View style={{
-          flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
-          borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB',
+          flexDirection: 'row', alignItems: 'center', backgroundColor: colors.inputBg,
+          borderRadius: 8, borderWidth: 1, borderColor: colors.inputBorder,
           paddingHorizontal: 10, paddingVertical: 8, marginBottom: 8,
         }}>
-          <Ionicons name="search" size={16} color="#9CA3AF" style={{ marginRight: 6 }} />
+          <Ionicons name="search" size={16} color={colors.textMuted} style={{ marginRight: 6 }} />
           <TextInput
             placeholder="Search by name, Net ID, or TA..."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            style={{ flex: 1, fontSize: 14, color: '#1e293b' }}
-            placeholderTextColor="#9CA3AF"
+            style={{ flex: 1, fontSize: 14, color: colors.text }}
+            placeholderTextColor={colors.textFaint}
           />
         </View>
 
@@ -305,8 +306,8 @@ export default function ClassStudentsScreen({ userRole }: Props) {
                       onPress={() => setSectionFilter(opt)}
                       style={{
                         paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
-                        backgroundColor: active ? '#b91c1c' : '#f3f4f6',
-                        color: active ? '#fff' : '#374151',
+                        backgroundColor: active ? colors.primary : colors.borderLight,
+                        color: active ? colors.textInverse : colors.textSecondary,
                         fontSize: 12, fontWeight: '500', overflow: 'hidden',
                       }}
                     >
@@ -325,8 +326,8 @@ export default function ClassStudentsScreen({ userRole }: Props) {
                         onPress={() => setTaFilter(opt)}
                         style={{
                           paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
-                          backgroundColor: active ? '#b91c1c' : '#f3f4f6',
-                          color: active ? '#fff' : '#374151',
+                          backgroundColor: active ? colors.primary : colors.borderLight,
+                          color: active ? colors.textInverse : colors.textSecondary,
                           fontSize: 12, fontWeight: '500', overflow: 'hidden',
                         }}
                       >
@@ -340,35 +341,25 @@ export default function ClassStudentsScreen({ userRole }: Props) {
           ) : (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>Section</Text>
-                <View style={{ backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8, overflow: 'hidden', width: 130 }}>
-                  <Picker
-                    selectedValue={sectionFilter}
-                    onValueChange={(v) => setSectionFilter(v)}
-                    dropdownIconColor="#000"
-                    style={{ height: 36, borderWidth: 0 }}
-                  >
-                    {sectionOptions.map((opt) => (
-                      <Picker.Item key={opt} label={opt === 'All' ? 'All Sections' : `Section ${opt}`} value={opt} />
-                    ))}
-                  </Picker>
-                </View>
+                <Text style={{ fontSize: 13, color: colors.textMuted, fontWeight: '500' }}>Section</Text>
+                {React.createElement('select', {
+                  value: sectionFilter,
+                  onChange: (e: any) => setSectionFilter(e.target.value),
+                  style: { height: 36, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingLeft: 8, paddingRight: 8, fontSize: 13, color: colors.text, backgroundColor: colors.inputBg, colorScheme: isDark ? 'dark' : 'light', cursor: 'pointer', width: 130 } as any,
+                }, sectionOptions.map(opt =>
+                  React.createElement('option', { key: opt, value: opt }, opt === 'All' ? 'All Sections' : `Section ${opt}`)
+                ))}
               </View>
               {canFilterTa && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>TA</Text>
-                  <View style={{ backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8, overflow: 'hidden', width: 180 }}>
-                    <Picker
-                      selectedValue={taFilter}
-                      onValueChange={(v) => setTaFilter(v)}
-                      dropdownIconColor="#000"
-                      style={{ height: 36, borderWidth: 0 }}
-                    >
-                      {taOptions.map((opt) => (
-                        <Picker.Item key={opt} label={opt === 'All' ? 'All TAs' : opt} value={opt} />
-                      ))}
-                    </Picker>
-                  </View>
+                  <Text style={{ fontSize: 13, color: colors.textMuted, fontWeight: '500' }}>TA</Text>
+                  {React.createElement('select', {
+                    value: taFilter,
+                    onChange: (e: any) => setTaFilter(e.target.value),
+                    style: { height: 36, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingLeft: 8, paddingRight: 8, fontSize: 13, color: colors.text, backgroundColor: colors.inputBg, colorScheme: isDark ? 'dark' : 'light', cursor: 'pointer', width: 180 } as any,
+                  }, taOptions.map(opt =>
+                    React.createElement('option', { key: opt, value: opt }, opt === 'All' ? 'All TAs' : opt)
+                  ))}
                 </View>
               )}
             </View>
@@ -378,15 +369,15 @@ export default function ClassStudentsScreen({ userRole }: Props) {
         {/* Count + Sort + Email button */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 13, color: '#6B7280' }}>
+            <Text style={{ fontSize: 13, color: colors.textMuted }}>
               Showing {filteredStudents.length} of {students.length} student{students.length !== 1 ? 's' : ''}
             </Text>
             <TouchableOpacity
               onPress={() => setSortAsc(v => !v)}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#f3f4f6', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: colors.borderLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}
             >
-              <Ionicons name={sortAsc ? 'arrow-up' : 'arrow-down'} size={12} color="#6B7280" />
-              <Text style={{ fontSize: 12, color: '#6B7280', fontWeight: '500' }}>
+              <Ionicons name={sortAsc ? 'arrow-up' : 'arrow-down'} size={12} color={colors.textMuted} />
+              <Text style={{ fontSize: 12, color: colors.textMuted, fontWeight: '500' }}>
                 {sortAsc ? 'A → Z' : 'Z → A'}
               </Text>
             </TouchableOpacity>
@@ -401,10 +392,10 @@ export default function ClassStudentsScreen({ userRole }: Props) {
                 if (Platform.OS === 'web') window.open(url, '_blank');
                 else Linking.openURL(url);
               }}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#b91c1c', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8 }}
             >
-              <Ionicons name="mail-outline" size={13} color="white" />
-              <Text style={{ fontSize: 12, fontWeight: '600', color: 'white' }}>
+              <Ionicons name="mail-outline" size={13} color={colors.textInverse} />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textInverse }}>
                 Email All ({filteredStudents.length})
               </Text>
             </TouchableOpacity>
@@ -442,9 +433,9 @@ export default function ClassStudentsScreen({ userRole }: Props) {
               {canDeleteStudents && (
                 <TouchableOpacity
                   onPress={() => { setDeletingStudent(item); setDeleteConfirmText(''); }}
-                  style={{ padding: 10, backgroundColor: '#fef2f2', borderRadius: 10, borderWidth: 1, borderColor: '#fca5a5' }}
+                  style={{ padding: 10, backgroundColor: colors.statusPoorBg, borderRadius: 10, borderWidth: 1, borderColor: colors.statusPoorBar }}
                 >
-                  <Ionicons name="trash-outline" size={16} color="#dc2626" />
+                  <Ionicons name="trash-outline" size={16} color={colors.criticalBorder} />
                 </TouchableOpacity>
               )}
             </View>

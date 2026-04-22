@@ -6,6 +6,7 @@ import {
   Platform,
 } from "react-native";
 import * as DocumentPicker from 'expo-document-picker';
+import { useTheme } from '../contexts/ThemeContext';
 
 const ACCEPTED_EXTENSIONS: string[] = [".csv", ".xlsx"];
 
@@ -29,6 +30,7 @@ export default function DropZone({
   isDragging,
   setIsDragging,
 }: DropZoneProps): React.JSX.Element {
+  const { colors } = useTheme();
   const handleDragOver = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
@@ -78,15 +80,15 @@ export default function DropZone({
             borderRadius: 16,
             borderWidth: 2,
             borderStyle: 'dashed' as any,
-            borderColor: isDragging ? '#facc15' : '#52525b',
+            borderColor: isDragging ? colors.gold : colors.borderMedium,
             backgroundColor: isDragging ? 'rgba(250,204,21,0.05)' : 'rgba(39,39,42,0.3)',
             overflow: 'hidden',
           }
         : {
             borderRadius: 16,
             borderWidth: 1,
-            borderColor: '#e5e7eb',
-            backgroundColor: '#f9fafb',
+            borderColor: colors.border,
+            backgroundColor: colors.background,
             overflow: 'hidden',
           }
       }
@@ -98,27 +100,22 @@ export default function DropZone({
           onDrop={handleDrop}
           style={{ padding: 0 }}
         >
-          <View className="items-center justify-center py-12 px-6 gap-4">
+          <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 48, paddingHorizontal: 24, gap: 16 }}>
             {/* Upload icon */}
-            <View
-              className={`w-16 h-16 rounded-2xl items-center justify-center ${
-                isDragging ? "bg-yellow-400/20" : "bg-zinc-700/50"
-              }`}
-            >
-              <Text className="text-4xl">{isDragging ? "📂" : "☁️"}</Text>
+            <View style={{ width: 64, height: 64, borderRadius: 16, backgroundColor: isDragging ? 'rgba(241,190,72,0.2)' : colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 32 }}>{isDragging ? "📂" : "☁️"}</Text>
             </View>
 
             {/* Heading */}
-            <View className="items-center gap-1">
-              <Text className="text-base text-lg font-semibold text-center">
+            <View style={{ alignItems: 'center', gap: 4 }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', textAlign: 'center', color: colors.text }}>
                 {isDragging ? "Release to upload" : "Drop files here"}
               </Text>
-              <Text className="text-zinc-500 text-sm text-center">
+              <Text style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center' }}>
                 or{" "}
                 <Text
-                  className="text-yellow-400 font-semibold"
+                  style={{ color: colors.gold, fontWeight: '600', cursor: "pointer" } as any}
                   onPress={handleBrowse}
-                  style={{ cursor: "pointer" }}
                 >
                   browse your device
                 </Text>
@@ -126,18 +123,18 @@ export default function DropZone({
             </View>
 
             {/* Accepted types */}
-            <View className="flex-row flex-wrap gap-1.5 justify-center mt-1">
-                <Text className="text-zinc-500 text-xs w-full text-center mb-1">
-                    Accepted file types:
-                </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginTop: 4 }}>
+              <Text style={{ fontSize: 12, color: colors.textMuted, width: '100%', textAlign: 'center', marginBottom: 4 }}>
+                Accepted file types:
+              </Text>
               {ACCEPTED_EXTENSIONS.map((ext) => (
-                <View key={ext} className="px-2 py-0.5 bg-zinc-700/60 rounded-md">
-                  <Text className="text-zinc-400 text-xs font-mono">{ext}</Text>
+                <View key={ext} style={{ paddingHorizontal: 8, paddingVertical: 2, backgroundColor: colors.borderLight, borderRadius: 6 }}>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary, fontFamily: 'monospace' }}>{ext}</Text>
                 </View>
               ))}
             </View>
 
-            <Text className="text-zinc-600 text-xs mt-1">Max file size: 50 MB</Text>
+            <Text style={{ fontSize: 12, color: colors.textFaint, marginTop: 4 }}>Max file size: 50 MB</Text>
           </View>
         </div>
       ) : (
@@ -163,14 +160,14 @@ export default function DropZone({
           }}
         >
           <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 48, paddingHorizontal: 24, gap: 12 }}>
-            <View style={{ width: 64, height: 64, borderRadius: 16, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 64, height: 64, borderRadius: 16, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 32 }}>📂</Text>
             </View>
             <View style={{ alignItems: 'center', gap: 4 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827', textAlign: 'center' }}>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, textAlign: 'center' }}>
                 Tap to browse files
               </Text>
-              <Text style={{ fontSize: 13, color: '#6b7280', textAlign: 'center' }}>
+              <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center' }}>
                 CSV and XLSX files accepted
               </Text>
             </View>

@@ -21,6 +21,7 @@ import { createUser, getUserByNetid } from "@/api/users";
 import { createTeam, addStudentToTeam, clearSemester } from "@/api/teams";
 import { UserRole, UserSummary } from "@/utils/auth";
 import * as ImagePicker from "expo-image-picker";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const ACCEPTED_TYPES = new Set([
   "text/csv",
@@ -49,6 +50,7 @@ interface Props {
 }
 
 export default function UploadScreen({ userRole }: Props): React.JSX.Element {
+  const { colors } = useTheme();
   const isInstructor = userRole === 'Instructor';
 
   // ── CSV upload state ──────────────────────────────────────────────────────
@@ -323,7 +325,7 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <View className="flex-1 bg-gray-100">
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
 
       {/* ── Manual Team Creation Modal ── */}
       <Modal
@@ -332,14 +334,14 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
         animationType="fade"
         onRequestClose={() => { if (!creating) setShowCreateModal(false); }}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: 20 }}>
-          <View style={{ backgroundColor: 'white', borderRadius: 16, maxHeight: '90%', overflow: 'hidden' }}>
+        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, maxHeight: '90%', overflow: 'hidden' }}>
             {/* Modal header */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' }}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>Create Team Manually</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>Create Team Manually</Text>
               {!creating && (
                 <TouchableOpacity onPress={() => setShowCreateModal(false)}>
-                  <Ionicons name="close" size={22} color="#6b7280" />
+                  <Ionicons name="close" size={22} color={colors.textMuted} />
                 </TouchableOpacity>
               )}
             </View>
@@ -347,46 +349,46 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
             <ScrollView keyboardShouldPersistTaps="always" contentContainerStyle={{ padding: 20, gap: 16 }}>
               {/* Team name */}
               <View>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Team Name *</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>Team Name *</Text>
                 <TextInput
                   value={teamName}
                   onChangeText={setTeamName}
                   placeholder="e.g. Team A1"
-                  placeholderTextColor="#9ca3af"
-                  style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#111827', backgroundColor: '#f9fafb' }}
+                  placeholderTextColor={colors.textFaint}
+                  style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg }}
                 />
               </View>
 
               {/* Section */}
               <View>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Section Number *</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>Section Number *</Text>
                 <TextInput
                   value={teamSection}
                   onChangeText={setTeamSection}
                   placeholder="e.g. 1"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={colors.textFaint}
                   keyboardType="numeric"
-                  style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: '#111827', backgroundColor: '#f9fafb' }}
+                  style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg }}
                 />
               </View>
 
               {/* TA selector */}
               <View>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Assign TA (optional)</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>Assign TA (optional)</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                   <TouchableOpacity
                     onPress={() => setSelectedTaNetid('')}
-                    style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: !selectedTaNetid ? '#b91c1c' : '#f3f4f6' }}
+                    style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: !selectedTaNetid ? colors.primary : colors.borderLight }}
                   >
-                    <Text style={{ fontSize: 12, color: !selectedTaNetid ? 'white' : '#374151', fontWeight: '500' }}>None</Text>
+                    <Text style={{ fontSize: 12, color: !selectedTaNetid ? colors.textInverse : colors.textSecondary, fontWeight: '500' }}>None</Text>
                   </TouchableOpacity>
                   {taList.map(ta => (
                     <TouchableOpacity
                       key={ta.netid}
                       onPress={() => setSelectedTaNetid(ta.netid ?? '')}
-                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: selectedTaNetid === ta.netid ? '#b91c1c' : '#f3f4f6' }}
+                      style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: selectedTaNetid === ta.netid ? colors.primary : colors.borderLight }}
                     >
-                      <Text style={{ fontSize: 12, color: selectedTaNetid === ta.netid ? 'white' : '#374151', fontWeight: '500' }}>
+                      <Text style={{ fontSize: 12, color: selectedTaNetid === ta.netid ? colors.textInverse : colors.textSecondary, fontWeight: '500' }}>
                         {ta.name ?? ta.netid}
                       </Text>
                     </TouchableOpacity>
@@ -397,23 +399,23 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
               {/* Students */}
               <View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>Students</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary }}>Students</Text>
                   <TouchableOpacity
                     onPress={addRow}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: '#f3f4f6', borderRadius: 8 }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: colors.borderLight, borderRadius: 8 }}
                   >
-                    <Ionicons name="add" size={14} color="#374151" />
-                    <Text style={{ fontSize: 12, color: '#374151', fontWeight: '500' }}>Add Student</Text>
+                    <Ionicons name="add" size={14} color={colors.textSecondary} />
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, fontWeight: '500' }}>Add Student</Text>
                   </TouchableOpacity>
                 </View>
 
                 {studentRows.map((row, idx) => (
-                  <View key={row.key} style={{ marginBottom: 10, padding: 12, backgroundColor: '#f9fafb', borderRadius: 10, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                  <View key={row.key} style={{ marginBottom: 10, padding: 12, backgroundColor: colors.inputBg, borderRadius: 10, borderWidth: 1, borderColor: colors.border }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <Text style={{ fontSize: 11, color: '#9ca3af', fontWeight: '600' }}>Student {idx + 1}</Text>
+                      <Text style={{ fontSize: 11, color: colors.textFaint, fontWeight: '600' }}>Student {idx + 1}</Text>
                       {studentRows.length > 1 && (
                         <TouchableOpacity onPress={() => removeRow(row.key)}>
-                          <Ionicons name="close-circle" size={16} color="#9ca3af" />
+                          <Ionicons name="close-circle" size={16} color={colors.textFaint} />
                         </TouchableOpacity>
                       )}
                     </View>
@@ -422,36 +424,36 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
                         value={row.firstName}
                         onChangeText={v => updateRow(row.key, 'firstName', v)}
                         placeholder="First name"
-                        placeholderTextColor="#9ca3af"
-                        style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: '#111827', backgroundColor: 'white' }}
+                        placeholderTextColor={colors.textFaint}
+                        style={{ flex: 1, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: colors.text, backgroundColor: colors.surface }}
                       />
                       <TextInput
                         value={row.lastName}
                         onChangeText={v => updateRow(row.key, 'lastName', v)}
                         placeholder="Last name"
-                        placeholderTextColor="#9ca3af"
-                        style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: '#111827', backgroundColor: 'white' }}
+                        placeholderTextColor={colors.textFaint}
+                        style={{ flex: 1, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: colors.text, backgroundColor: colors.surface }}
                       />
                     </View>
                     <TextInput
                       value={row.netid}
                       onChangeText={v => updateRow(row.key, 'netid', v)}
                       placeholder="NetID (e.g. jdoe)"
-                      placeholderTextColor="#9ca3af"
+                      placeholderTextColor={colors.textFaint}
                       autoCapitalize="none"
-                      style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: '#111827', backgroundColor: 'white' }}
+                      style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: colors.text, backgroundColor: colors.surface }}
                     />
                   </View>
                 ))}
-                <Text style={{ fontSize: 11, color: '#9ca3af' }}>
+                <Text style={{ fontSize: 11, color: colors.textFaint }}>
                   Rows with any empty field are skipped. If a NetID already exists the student is added without re-creating.
                 </Text>
               </View>
 
               {/* Result banner */}
               {createResult && (
-                <View style={{ padding: 12, borderRadius: 10, backgroundColor: createResult.ok ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', borderWidth: 1, borderColor: createResult.ok ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)' }}>
-                  <Text style={{ fontSize: 13, color: createResult.ok ? '#059669' : '#dc2626', fontWeight: '600' }}>
+                <View style={{ padding: 12, borderRadius: 10, backgroundColor: createResult.ok ? colors.statusGoodBg : colors.criticalBg, borderWidth: 1, borderColor: createResult.ok ? colors.statusGoodBar : colors.criticalBorder }}>
+                  <Text style={{ fontSize: 13, color: createResult.ok ? colors.statusGoodText : colors.criticalBorder, fontWeight: '600' }}>
                     {createResult.ok ? '✓ ' : '✗ '}{createResult.message}
                   </Text>
                 </View>
@@ -462,13 +464,13 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
                 onPress={handleCreateTeam}
                 disabled={creating || !teamName.trim() || !teamSection.trim()}
                 style={{
-                  backgroundColor: (creating || !teamName.trim() || !teamSection.trim()) ? '#e5e7eb' : '#b91c1c',
+                  backgroundColor: (creating || !teamName.trim() || !teamSection.trim()) ? colors.border : colors.primary,
                   borderRadius: 10, paddingVertical: 14, alignItems: 'center',
                 }}
               >
                 {creating
-                  ? <ActivityIndicator color="white" />
-                  : <Text style={{ color: (!teamName.trim() || !teamSection.trim()) ? '#9ca3af' : 'white', fontWeight: '700', fontSize: 14 }}>
+                  ? <ActivityIndicator color={colors.textInverse} />
+                  : <Text style={{ color: (!teamName.trim() || !teamSection.trim()) ? colors.textFaint : colors.textInverse, fontWeight: '700', fontSize: 14 }}>
                       Create Team
                     </Text>
                 }
@@ -481,14 +483,14 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
       </Modal>
 
       <ScrollView
-        className="flex-1"
-        contentContainerClassName="px-6 py-10"
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 40 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View className="mb-8">
-          <Text className="text-base text-xl font-bold mb-2">Upload Teams</Text>
-          <Text className="text-zinc-500 text-sm mt-1.5">
+        <View style={{ marginBottom: 32 }}>
+          <Text style={{ fontSize: 21, fontWeight: '700', color: colors.text, marginBottom: 8 }}>Upload Teams</Text>
+          <Text style={{ color: colors.textMuted, fontSize: 14, marginTop: 6 }}>
             Drag and drop or browse to attach your documents.
           </Text>
         </View>
@@ -496,44 +498,44 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
         {/* Manual team creation button */}
         <TouchableOpacity
           onPress={openCreateModal}
-          style={{ marginBottom: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: 'white', borderRadius: 12, borderWidth: 1.5, borderColor: '#b91c1c', paddingVertical: 14 }}
+          style={{ marginBottom: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1.5, borderColor: colors.primary, paddingVertical: 14 }}
         >
-          <Ionicons name="people-circle-outline" size={18} color="#b91c1c" />
-          <Text style={{ color: '#b91c1c', fontWeight: '700', fontSize: 14 }}>Create Team Manually</Text>
+          <Ionicons name="people-circle-outline" size={18} color={colors.primary} />
+          <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14 }}>Create Team Manually</Text>
         </TouchableOpacity>
 
         {/* File upload section header with format tooltip */}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827', flex: 1 }}>Upload Team File</Text>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, flex: 1 }}>Upload Team File</Text>
           <TouchableOpacity
             onPress={() => setShowFormatTip(true)}
-            style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#e0e7ff', alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}
             accessibilityLabel="Show expected file format"
           >
-            <Ionicons name="information-circle-outline" size={20} color="#4f46e5" />
+            <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
           </TouchableOpacity>
         </View>
 
         {/* Format tooltip modal */}
         <Modal visible={showFormatTip} transparent animationType="fade" onRequestClose={() => setShowFormatTip(false)}>
-          <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 24 }} activeOpacity={1} onPress={() => setShowFormatTip(false)}>
-            <TouchableOpacity activeOpacity={1} style={{ backgroundColor: 'white', borderRadius: 14, padding: 20, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
+          <TouchableOpacity style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 24 }} activeOpacity={1} onPress={() => setShowFormatTip(false)}>
+            <TouchableOpacity activeOpacity={1} style={{ backgroundColor: colors.surface, borderRadius: 14, padding: 20, shadowColor: colors.shadow, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 8 }}>
-                <Ionicons name="document-text-outline" size={18} color="#4f46e5" />
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827', flex: 1 }}>Expected File Format</Text>
+                <Ionicons name="document-text-outline" size={18} color={colors.primary} />
+                <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, flex: 1 }}>Expected File Format</Text>
                 <TouchableOpacity onPress={() => setShowFormatTip(false)}>
-                  <Ionicons name="close" size={20} color="#9ca3af" />
+                  <Ionicons name="close" size={20} color={colors.textFaint} />
                 </TouchableOpacity>
               </View>
-              <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 6 }}>
+              <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 6 }}>
                 Accepted formats:{' '}
-                <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.csv</Text> or{' '}
-                <Text style={{ fontFamily: 'monospace', color: '#374151' }}>.xlsx</Text>
+                <Text style={{ fontFamily: 'monospace', color: colors.textSecondary }}>.csv</Text> or{' '}
+                <Text style={{ fontFamily: 'monospace', color: colors.textSecondary }}>.xlsx</Text>
               </Text>
-              <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 10 }}>
+              <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 10 }}>
                 Header row followed by one student per row with exactly 4 columns:
               </Text>
-              <View style={{ backgroundColor: '#f3f4f6', borderRadius: 8, padding: 12, gap: 6 }}>
+              <View style={{ backgroundColor: colors.borderLight, borderRadius: 8, padding: 12, gap: 6 }}>
                 {[
                   ['Column 1', 'First name'],
                   ['Column 2', 'Last name'],
@@ -541,12 +543,12 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
                   ['Column 4', 'Team name'],
                 ].map(([col, label]) => (
                   <View key={col} style={{ flexDirection: 'row', gap: 10 }}>
-                    <Text style={{ fontSize: 12, fontFamily: 'monospace', color: '#6b7280', width: 72 }}>{col}</Text>
-                    <Text style={{ fontSize: 12, color: '#374151' }}>{label}</Text>
+                    <Text style={{ fontSize: 12, fontFamily: 'monospace', color: colors.textMuted, width: 72 }}>{col}</Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>{label}</Text>
                   </View>
                 ))}
               </View>
-              <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 10 }}>
+              <Text style={{ fontSize: 12, color: colors.textFaint, marginTop: 10 }}>
                 Example: <Text style={{ fontFamily: 'monospace' }}>John,Doe,jdoe,Team A1</Text>
               </Text>
             </TouchableOpacity>
@@ -562,18 +564,18 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
 
         {/* File List */}
         {files.length > 0 && (
-          <View className="mt-6">
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-zinc-400 text-xs font-bold tracking-widest uppercase">Uploaded Files</Text>
-              <View className="flex-row gap-2">
+          <View style={{ marginTop: 24 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={{ color: colors.textFaint, fontSize: 11, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase' }}>Uploaded Files</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
                 {validCount > 0 && (
-                  <View className="bg-emerald-500/15 px-2 py-0.5 rounded-full">
-                    <Text className="text-emerald-400 text-xs font-semibold">{validCount} valid</Text>
+                  <View style={{ backgroundColor: colors.statusGoodBg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 }}>
+                    <Text style={{ color: colors.statusGoodText, fontSize: 11, fontWeight: '600' }}>{validCount} valid</Text>
                   </View>
                 )}
                 {invalidCount > 0 && (
-                  <View className="bg-rose-500/15 px-2 py-0.5 rounded-full">
-                    <Text className="text-rose-400 text-xs font-semibold">{invalidCount} invalid</Text>
+                  <View style={{ backgroundColor: colors.criticalBg, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 20 }}>
+                    <Text style={{ color: colors.criticalBorder, fontSize: 11, fontWeight: '600' }}>{invalidCount} invalid</Text>
                   </View>
                 )}
               </View>
@@ -584,9 +586,9 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
             ))}
 
             {invalidCount > 0 && (
-              <View className="flex-row items-start gap-2.5 mt-2 bg-rose-500/10 border border-rose-500/20 rounded-xl px-4 py-3">
-                <Text className="text-rose-400 text-base mt-0.5">⚠️</Text>
-                <Text className="text-rose-300 text-xs leading-5 flex-1">
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 8, backgroundColor: colors.criticalBg, borderWidth: 1, borderColor: colors.criticalBorder, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12 }}>
+                <Text style={{ fontSize: 14, marginTop: 2 }}>⚠️</Text>
+                <Text style={{ color: colors.criticalText, fontSize: 11, lineHeight: 20, flex: 1 }}>
                   {invalidCount} file{invalidCount > 1 ? "s have" : " has"} an unsupported format. Only CSV and XLSX files are accepted.
                 </Text>
               </View>
@@ -602,14 +604,14 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
                 key={r.name}
                 style={{
                   flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-                  backgroundColor: r.ok ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                  backgroundColor: r.ok ? colors.statusGoodBg : colors.criticalBg,
                   borderRadius: 10, padding: 12,
                 }}
               >
                 <Text style={{ fontSize: 14 }}>{r.ok ? '✅' : '❌'}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: r.ok ? '#059669' : '#DC2626' }}>{r.name}</Text>
-                  <Text style={{ fontSize: 12, color: r.ok ? '#065f46' : '#991b1b', marginTop: 2 }}>{r.message}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: r.ok ? colors.statusGoodText : colors.criticalBorder }}>{r.name}</Text>
+                  <Text style={{ fontSize: 12, color: r.ok ? colors.statusGoodText : colors.criticalText, marginTop: 2 }}>{r.message}</Text>
                 </View>
               </View>
             ))}
@@ -619,16 +621,17 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
         {/* Upload CTA */}
         {files.length > 0 && (
           <TouchableOpacity
-            className={`mt-6 rounded-2xl py-4 items-center ${
-              invalidCount === 0 && validCount > 0 && !uploading ? "bg-yellow-400" : "bg-zinc-700"
-            }`}
+            style={{
+              marginTop: 24, borderRadius: 16, paddingVertical: 16, alignItems: 'center',
+              backgroundColor: invalidCount === 0 && validCount > 0 && !uploading ? colors.gold : colors.borderMedium,
+            }}
             disabled={invalidCount > 0 || validCount === 0 || uploading}
             onPress={handleUpload}
           >
             {uploading ? (
-              <ActivityIndicator color="#18181b" />
+              <ActivityIndicator color={colors.text} />
             ) : (
-              <Text className={`text-sm font-bold tracking-wide ${invalidCount === 0 && validCount > 0 ? "text-zinc-900" : "text-zinc-500"}`}>
+              <Text style={{ fontSize: 13, fontWeight: '700', letterSpacing: 0.5, color: invalidCount === 0 && validCount > 0 ? colors.text : colors.textMuted }}>
                 {invalidCount > 0 ? "RESOLVE ERRORS TO CONTINUE" : `UPLOAD ${validCount} FILE${validCount !== 1 ? "S" : ""}`}
               </Text>
             )}
@@ -636,12 +639,12 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
         )}
 
         {/* Avatar Bulk Upload */}
-        <View style={{ marginTop: 32, backgroundColor: 'white', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
-          <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 }}>Upload Avatars</Text>
-          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>
+        <View style={{ marginTop: 32, backgroundColor: colors.surface, borderRadius: 16, padding: 20, shadowColor: colors.shadow, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 4 }}>Upload Avatars</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 4 }}>
             {"Name images after the student's netid (e.g. "}<Text style={{ fontFamily: 'monospace' }}>jdoe.jpg</Text>{"). Images are stored locally on this device."}
           </Text>
-          <Text style={{ fontSize: 11, color: '#9ca3af', marginBottom: 14 }}>
+          <Text style={{ fontSize: 11, color: colors.textMuted, marginBottom: 14 }}>
             Full name files also work — spaces are stripped and lowercased (e.g.{' '}
             <Text style={{ fontFamily: 'monospace' }}>john doe.png</Text> → key <Text style={{ fontFamily: 'monospace' }}>johndoe</Text>).
           </Text>
@@ -649,8 +652,8 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
           {Platform.OS === 'web' ? (
             <View style={{ flexDirection: 'column', gap: 8 }}>
               <View style={{ position: 'relative' }}>
-                <View style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: '#F1BE48', opacity: avatarUploading ? 0.6 : 1 }}>
-                  {avatarUploading ? <ActivityIndicator color="#111827" /> : <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>Choose Files</Text>}
+                <View style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: colors.gold, opacity: avatarUploading ? 0.6 : 1 }}>
+                  {avatarUploading ? <ActivityIndicator color={colors.text} /> : <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>Choose Files</Text>}
                 </View>
                 {!avatarUploading && (
                   <input type="file" accept="image/*" multiple
@@ -659,8 +662,8 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
                 )}
               </View>
               <View style={{ position: 'relative' }}>
-                <View style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb', opacity: avatarUploading ? 0.6 : 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>Choose Folder</Text>
+                <View style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: colors.borderLight, borderWidth: 1, borderColor: colors.borderMedium, opacity: avatarUploading ? 0.6 : 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>Choose Folder</Text>
                 </View>
                 {!avatarUploading && (
                   <input type="file" accept="image/*" multiple
@@ -674,9 +677,9 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
             <TouchableOpacity
               onPress={handleAvatarPickerMobile}
               disabled={avatarUploading}
-              style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: '#F1BE48', opacity: avatarUploading ? 0.6 : 1 }}
+              style={{ alignItems: 'center', paddingVertical: 11, borderRadius: 10, backgroundColor: colors.gold, opacity: avatarUploading ? 0.6 : 1 }}
             >
-              {avatarUploading ? <ActivityIndicator color="#111827" /> : <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>Choose Photos</Text>}
+              {avatarUploading ? <ActivityIndicator color={colors.text} /> : <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>Choose Photos</Text>}
             </TouchableOpacity>
           )}
 
@@ -684,17 +687,17 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
             <View style={{ marginTop: 14, gap: 6 }}>
               {avatarResults.map((r) => {
                 const warn = r.unchanged;
-                const bg = warn ? 'rgba(234,179,8,0.08)' : r.ok ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)';
-                const nameColor = warn ? '#92400e' : r.ok ? '#059669' : '#DC2626';
+                const bg = warn ? colors.warningBg : r.ok ? colors.statusGoodBg : colors.criticalBg;
+                const nameColor = warn ? colors.warningText : r.ok ? colors.statusGoodText : colors.criticalBorder;
                 const icon = warn ? '⚠️' : r.ok ? '✅' : '❌';
                 return (
                   <View key={r.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: bg, borderRadius: 8, padding: 10 }}>
                     <Text style={{ fontSize: 13 }}>{icon}</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 12, fontWeight: '600', color: nameColor }}>{r.name}</Text>
-                      {r.unchanged && <Text style={{ fontSize: 11, color: '#92400e' }}>No changes — avatar for <Text style={{ fontFamily: 'monospace' }}>{r.key}</Text> is already identical</Text>}
-                      {r.ok && !r.unchanged && <Text style={{ fontSize: 11, color: '#6b7280' }}>Saved as avatar for <Text style={{ fontFamily: 'monospace' }}>{r.key}</Text></Text>}
-                      {!r.ok && <Text style={{ fontSize: 11, color: '#991b1b' }}>Failed to process image</Text>}
+                      {r.unchanged && <Text style={{ fontSize: 11, color: colors.warningText }}>No changes — avatar for <Text style={{ fontFamily: 'monospace' }}>{r.key}</Text> is already identical</Text>}
+                      {r.ok && !r.unchanged && <Text style={{ fontSize: 11, color: colors.textMuted }}>Saved as avatar for <Text style={{ fontFamily: 'monospace' }}>{r.key}</Text></Text>}
+                      {!r.ok && <Text style={{ fontSize: 11, color: colors.criticalText }}>Failed to process image</Text>}
                     </View>
                   </View>
                 );
@@ -705,45 +708,45 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
 
         {/* ── Danger Zone (Instructor only) ── */}
         {isInstructor && (
-          <View style={{ marginTop: 40, marginBottom: 20, borderWidth: 2, borderColor: '#dc2626', borderRadius: 16, overflow: 'hidden' }}>
+          <View style={{ marginTop: 40, marginBottom: 20, borderWidth: 2, borderColor: colors.criticalBorder, borderRadius: 16, overflow: 'hidden' }}>
             {/* Header bar */}
-            <View style={{ backgroundColor: '#dc2626', paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Ionicons name="warning" size={22} color="white" />
-              <Text style={{ color: 'white', fontWeight: '800', fontSize: 17, letterSpacing: 1 }}>DANGER ZONE</Text>
+            <View style={{ backgroundColor: colors.criticalBorder, paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Ionicons name="warning" size={22} color={colors.textInverse} />
+              <Text style={{ color: colors.textInverse, fontWeight: '800', fontSize: 17, letterSpacing: 1 }}>DANGER ZONE</Text>
             </View>
 
-            <View style={{ padding: 20, backgroundColor: 'white' }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 6 }}>Clear Semester</Text>
-              <Text style={{ fontSize: 13, color: '#6b7280', lineHeight: 20, marginBottom: 4 }}>
+            <View style={{ padding: 20, backgroundColor: colors.surface }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 }}>Clear Semester</Text>
+              <Text style={{ fontSize: 13, color: colors.textMuted, lineHeight: 20, marginBottom: 4 }}>
                 Permanently deletes{' '}
-                <Text style={{ fontWeight: '700', color: '#dc2626' }}>all teams</Text>
+                <Text style={{ fontWeight: '700', color: colors.criticalBorder }}>all teams</Text>
                 {' '}and{' '}
-                <Text style={{ fontWeight: '700', color: '#dc2626' }}>all students assigned to those teams</Text>.
+                <Text style={{ fontWeight: '700', color: colors.criticalBorder }}>all students assigned to those teams</Text>.
                 Staff accounts (TAs, HTAs, Instructors) are not affected.
               </Text>
-              <Text style={{ fontSize: 12, color: '#9ca3af', marginBottom: 20 }}>
+              <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 20 }}>
                 Students who are not currently assigned to any team will also not be deleted. This action cannot be undone.
               </Text>
 
               {clearSuccess && (
-                <View style={{ backgroundColor: 'rgba(16,185,129,0.1)', borderRadius: 8, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)' }}>
-                  <Text style={{ color: '#059669', fontWeight: '600', fontSize: 13 }}>✓ Semester cleared successfully. All team and student data has been removed.</Text>
+                <View style={{ backgroundColor: colors.statusGoodBg, borderRadius: 8, padding: 12, marginBottom: 16, borderWidth: 1, borderColor: colors.statusGoodBar }}>
+                  <Text style={{ color: colors.statusGoodText, fontWeight: '600', fontSize: 13 }}>✓ Semester cleared successfully. All team and student data has been removed.</Text>
                 </View>
               )}
 
               {!showClearConfirm ? (
                 <TouchableOpacity
                   onPress={() => setShowClearConfirm(true)}
-                  style={{ backgroundColor: '#dc2626', borderRadius: 10, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                  style={{ backgroundColor: colors.criticalBorder, borderRadius: 10, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
                 >
-                  <Ionicons name="trash-outline" size={16} color="white" />
-                  <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>Clear Semester Data</Text>
+                  <Ionicons name="trash-outline" size={16} color={colors.textInverse} />
+                  <Text style={{ color: colors.textInverse, fontWeight: '700', fontSize: 14 }}>Clear Semester Data</Text>
                 </TouchableOpacity>
               ) : (
                 <View style={{ gap: 12 }}>
-                  <View style={{ backgroundColor: '#fef2f2', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#fca5a5' }}>
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#dc2626', marginBottom: 6 }}>⚠️ Are you absolutely sure?</Text>
-                    <Text style={{ fontSize: 13, color: '#7f1d1d', lineHeight: 18 }}>
+                  <View style={{ backgroundColor: colors.criticalBg, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.criticalBorder }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: colors.criticalBorder, marginBottom: 6 }}>⚠️ Are you absolutely sure?</Text>
+                    <Text style={{ fontSize: 13, color: colors.criticalText, lineHeight: 18 }}>
                       This will permanently delete all teams and their students. Type{' '}
                       <Text style={{ fontFamily: 'monospace', fontWeight: '800' }}>CLEAR SEMESTER</Text>
                       {' '}exactly to proceed.
@@ -754,13 +757,13 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
                     value={clearText}
                     onChangeText={setClearText}
                     placeholder="Type CLEAR SEMESTER"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={colors.textFaint}
                     autoCapitalize="characters"
                     style={{
                       borderWidth: 2,
-                      borderColor: clearText === 'CLEAR SEMESTER' ? '#dc2626' : '#d1d5db',
+                      borderColor: clearText === 'CLEAR SEMESTER' ? colors.criticalBorder : colors.inputBorder,
                       borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12,
-                      fontSize: 15, color: '#111827', backgroundColor: '#f9fafb',
+                      fontSize: 15, color: colors.text, backgroundColor: colors.inputBg,
                       fontFamily: 'monospace',
                     }}
                   />
@@ -768,22 +771,22 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
                   <View style={{ flexDirection: 'row', gap: 10 }}>
                     <TouchableOpacity
                       onPress={() => { setShowClearConfirm(false); setClearText(''); }}
-                      style={{ flex: 1, backgroundColor: '#f3f4f6', borderRadius: 10, paddingVertical: 13, alignItems: 'center' }}
+                      style={{ flex: 1, backgroundColor: colors.borderLight, borderRadius: 10, paddingVertical: 13, alignItems: 'center' }}
                     >
-                      <Text style={{ color: '#374151', fontWeight: '600', fontSize: 14 }}>Cancel</Text>
+                      <Text style={{ color: colors.textSecondary, fontWeight: '600', fontSize: 14 }}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={handleClearSemester}
                       disabled={clearText !== 'CLEAR SEMESTER' || clearing}
                       style={{
                         flex: 1,
-                        backgroundColor: clearText === 'CLEAR SEMESTER' ? '#dc2626' : '#e5e7eb',
+                        backgroundColor: clearText === 'CLEAR SEMESTER' ? colors.criticalBorder : colors.border,
                         borderRadius: 10, paddingVertical: 13, alignItems: 'center',
                       }}
                     >
                       {clearing
-                        ? <ActivityIndicator color="white" size="small" />
-                        : <Text style={{ color: clearText === 'CLEAR SEMESTER' ? 'white' : '#9ca3af', fontWeight: '700', fontSize: 14 }}>
+                        ? <ActivityIndicator color={colors.textInverse} size="small" />
+                        : <Text style={{ color: clearText === 'CLEAR SEMESTER' ? colors.textInverse : colors.textFaint, fontWeight: '700', fontSize: 14 }}>
                             Delete Everything
                           </Text>
                       }

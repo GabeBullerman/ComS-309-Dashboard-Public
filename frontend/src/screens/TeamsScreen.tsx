@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
 import {
   View,
   Text,
@@ -18,7 +19,6 @@ import { getTeams, TeamApiResponse } from '../api/teams';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../../App';
-import { Picker } from '@react-native-picker/picker';
 import { getWeeklyPerformanceForStudent } from '../api/weeklyPerformance';
 import { getDemoPerformanceForStudent } from '../api/demoPerformance';
 
@@ -40,6 +40,7 @@ function CycleChip<T extends string>({
   options: T[];
   onChange: (v: T) => void;
 }) {
+  const { colors } = useTheme();
   const idx = options.indexOf(value);
   const next = () => onChange(options[(idx + 1) % options.length]);
   const isActive = value !== options[0];
@@ -49,7 +50,7 @@ function CycleChip<T extends string>({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: isActive ? '#b91c1c' : '#f3f4f6',
+        backgroundColor: isActive ? colors.statusPoorText : colors.borderLight,
         borderRadius: 20,
         paddingHorizontal: 10,
         paddingVertical: 5,
@@ -57,16 +58,17 @@ function CycleChip<T extends string>({
       }}
       activeOpacity={0.7}
     >
-      <Text style={{ fontSize: 12, color: isActive ? '#fff' : '#374151', fontWeight: '500' }}>
+      <Text style={{ fontSize: 12, color: isActive ? colors.textInverse : colors.textSecondary, fontWeight: '500' }}>
         {label}: {value}
       </Text>
-      <Ionicons name="chevron-down" size={11} color={isActive ? '#fff' : '#6B7280'} />
+      <Ionicons name="chevron-down" size={11} color={isActive ? colors.textInverse : colors.textMuted} />
     </TouchableOpacity>
   );
 }
 
 export default function ClassTeamsScreen({ userRole }: Props) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { colors, isDark } = useTheme();
   const { width } = useWindowDimensions();
   const numColumns = width < 640 ? 1 : width < 960 ? 2 : width < 1280 ? 3 : 4;
   const isMobile = width < 640;
@@ -257,24 +259,24 @@ export default function ClassTeamsScreen({ userRole }: Props) {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
-        <ActivityIndicator size="large" color="#C8102E" />
-        <Text style={{ color: '#6B7280', marginTop: 12 }}>Loading teams...</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ color: colors.textMuted, marginTop: 12 }}>Loading teams...</Text>
       </View>
     );
   }
 
   if (errorMessage) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 18, fontWeight: '600', color: '#DC2626' }}>Unable to load teams</Text>
-        <Text style={{ color: '#6B7280', marginTop: 8, textAlign: 'center' }}>{errorMessage}</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, paddingHorizontal: 24 }}>
+        <Text style={{ fontSize: 18, fontWeight: '600', color: colors.criticalBorder }}>Unable to load teams</Text>
+        <Text style={{ color: colors.textMuted, marginTop: 8, textAlign: 'center' }}>{errorMessage}</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flex: 1, paddingHorizontal: isMobile ? 12 : 24, paddingTop: isMobile ? 12 : 24 }}>
         {/* Title row — stats sit on the same line for HTA/Instructor, stacked on mobile */}
         <View style={{
@@ -284,16 +286,16 @@ export default function ClassTeamsScreen({ userRole }: Props) {
           marginBottom: 14,
           gap: 10,
         }}>
-          <Text style={{ fontSize: isMobile ? 24 : 32, fontWeight: '800', color: '#111827' }}>
+          <Text style={{ fontSize: isMobile ? 24 : 32, fontWeight: '800', color: colors.text }}>
             Class Teams
           </Text>
 
           {canFilterSemester && teams.length > 0 && (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {[
-                { label: 'Good',     value: teamStats.good,     icon: 'checkmark-circle-outline' as const, color: '#15803d', bg: '#f0fdf4', border: '#86efac' },
-                { label: 'Moderate', value: teamStats.moderate, icon: 'remove-circle-outline' as const,    color: '#92400e', bg: '#fefce8', border: '#fde047' },
-                { label: 'Poor',     value: teamStats.poor,     icon: 'alert-circle-outline' as const,     color: '#b91c1c', bg: '#fef2f2', border: '#fca5a5' },
+                { label: 'Good',     value: teamStats.good,     icon: 'checkmark-circle-outline' as const, color: colors.statusGoodText,     bg: colors.statusGoodBg,     border: colors.statusGoodBar },
+                { label: 'Moderate', value: teamStats.moderate, icon: 'remove-circle-outline' as const,    color: colors.statusModerateText, bg: colors.statusModerateBg, border: colors.statusModerateBar },
+                { label: 'Poor',     value: teamStats.poor,     icon: 'alert-circle-outline' as const,     color: colors.statusPoorText,     bg: colors.statusPoorBg,     border: colors.statusPoorBar },
               ].map(({ label, value, icon, color, bg, border }) => (
                 <View key={label} style={{ backgroundColor: bg, borderRadius: 10, borderWidth: 1, borderColor: border, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Ionicons name={icon} size={16} color={color} />
@@ -306,9 +308,9 @@ export default function ClassTeamsScreen({ userRole }: Props) {
         </View>
 
         {isStudentView && !hasGitlabToken && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 }}>
-            <Ionicons name="information-circle-outline" size={18} color="#92400e" />
-            <Text style={{ flex: 1, fontSize: 13, color: '#92400e', lineHeight: 18 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.warningBg, borderWidth: 1, borderColor: colors.warningBorder, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12 }}>
+            <Ionicons name="information-circle-outline" size={18} color={colors.warningText} />
+            <Text style={{ flex: 1, fontSize: 13, color: colors.warningText, lineHeight: 18 }}>
               Add your GitLab token in the <Text style={{ fontWeight: '700' }}>Profile</Text> tab to see your contribution stats and compliance data.
             </Text>
           </View>
@@ -317,14 +319,14 @@ export default function ClassTeamsScreen({ userRole }: Props) {
         {!isStudentView && (
           <>
             {/* Search */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 10, paddingVertical: 8, marginBottom: 8 }}>
-              <Ionicons name="search" size={16} color="#9CA3AF" style={{ marginRight: 6 }} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.inputBg, borderRadius: 8, borderWidth: 1, borderColor: colors.inputBorder, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 8 }}>
+              <Ionicons name="search" size={16} color={colors.textMuted} style={{ marginRight: 6 }} />
               <TextInput
                 placeholder={searchPlaceholder}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                style={{ flex: 1, fontSize: 14, color: '#1e293b' }}
-                placeholderTextColor="#9CA3AF"
+                style={{ flex: 1, fontSize: 14, color: colors.text }}
+                placeholderTextColor={colors.textFaint}
               />
             </View>
 
@@ -358,54 +360,39 @@ export default function ClassTeamsScreen({ userRole }: Props) {
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
                 {/* Status */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>Status</Text>
-                  <View style={{ backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8, overflow: 'hidden', width: 130 }}>
-                    <Picker
-                      selectedValue={statusFilter}
-                      onValueChange={(value: string) => setStatusFilter(value as StatusFilter)}
-                      dropdownIconColor="#000"
-                      style={{ height: 36, borderWidth: 0 }}
-                    >
-                      {(['All', 'Poor', 'Moderate', 'Good'] as StatusFilter[]).map((status) => (
-                        <Picker.Item key={status} label={status} value={status} />
-                      ))}
-                    </Picker>
-                  </View>
+                  <Text style={{ fontSize: 13, color: colors.textMuted, fontWeight: '500' }}>Status</Text>
+                  {React.createElement('select', {
+                    value: statusFilter,
+                    onChange: (e: any) => setStatusFilter(e.target.value as StatusFilter),
+                    style: { height: 36, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingLeft: 8, paddingRight: 8, fontSize: 13, color: colors.text, backgroundColor: colors.inputBg, colorScheme: isDark ? 'dark' : 'light', cursor: 'pointer', width: 130 } as any,
+                  }, (['All', 'Poor', 'Moderate', 'Good'] as StatusFilter[]).map(s =>
+                    React.createElement('option', { key: s, value: s }, s)
+                  ))}
                 </View>
 
                 {canFilterSection && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>Section</Text>
-                    <View style={{ backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8, overflow: 'hidden', width: 110 }}>
-                      <Picker
-                        selectedValue={sectionFilter}
-                        onValueChange={(value: string) => setSectionFilter(value)}
-                        dropdownIconColor="#000"
-                        style={{ height: 36, borderWidth: 0 }}
-                      >
-                        {sectionOptions.map((section) => (
-                          <Picker.Item key={section} label={section} value={section} />
-                        ))}
-                      </Picker>
-                    </View>
+                    <Text style={{ fontSize: 13, color: colors.textMuted, fontWeight: '500' }}>Section</Text>
+                    {React.createElement('select', {
+                      value: sectionFilter,
+                      onChange: (e: any) => setSectionFilter(e.target.value),
+                      style: { height: 36, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingLeft: 8, paddingRight: 8, fontSize: 13, color: colors.text, backgroundColor: colors.inputBg, colorScheme: isDark ? 'dark' : 'light', cursor: 'pointer', width: 110 } as any,
+                    }, sectionOptions.map(s =>
+                      React.createElement('option', { key: s, value: s }, s)
+                    ))}
                   </View>
                 )}
 
                 {canFilterSemester && (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>Semester</Text>
-                    <View style={{ backgroundColor: '#fff', borderColor: '#D1D5DB', borderWidth: 1, borderRadius: 8, overflow: 'hidden', width: 150 }}>
-                      <Picker
-                        selectedValue={semesterFilter}
-                        onValueChange={(value: string) => setSemesterFilter(value as SemesterFilter)}
-                        dropdownIconColor="#000"
-                        style={{ height: 36, borderWidth: 0 }}
-                      >
-                        {(['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map((semester) => (
-                          <Picker.Item key={semester} label={semester} value={semester} />
-                        ))}
-                      </Picker>
-                    </View>
+                    <Text style={{ fontSize: 13, color: colors.textMuted, fontWeight: '500' }}>Semester</Text>
+                    {React.createElement('select', {
+                      value: semesterFilter,
+                      onChange: (e: any) => setSemesterFilter(e.target.value as SemesterFilter),
+                      style: { height: 36, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingLeft: 8, paddingRight: 8, fontSize: 13, color: colors.text, backgroundColor: colors.inputBg, colorScheme: isDark ? 'dark' : 'light', cursor: 'pointer', width: 150 } as any,
+                    }, (['All', 'Spring 2026', 'Fall 2025'] as SemesterFilter[]).map(s =>
+                      React.createElement('option', { key: s, value: s }, s)
+                    ))}
                   </View>
                 )}
               </View>
@@ -415,7 +402,7 @@ export default function ClassTeamsScreen({ userRole }: Props) {
 
         {/* Stats row */}
         <View style={{ marginBottom: 10 }}>
-          <Text style={{ fontSize: 13, color: '#6B7280' }}>
+          <Text style={{ fontSize: 13, color: colors.textMuted }}>
             Showing {filteredTeams.length} of {teams.length} team{teams.length !== 1 ? 's' : ''}
           </Text>
         </View>

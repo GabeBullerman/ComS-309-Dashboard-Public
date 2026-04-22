@@ -3,6 +3,7 @@ import { View, Image, Text, TouchableOpacity, Alert, ViewStyle, Platform } from 
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../contexts/ThemeContext';
 
 function storageKey(userId: string) {
   return `profile_avatar_${userId}`;
@@ -60,6 +61,7 @@ interface Props {
 }
 
 export default function ProfileAvatar({ userId, initials, size, canEdit = false, style }: Props) {
+  const { colors } = useTheme();
   const [uri, setUri] = useState<string | null>(memCache[userId] ?? null);
   const [hovered, setHovered] = useState(false);
 
@@ -111,13 +113,13 @@ export default function ProfileAvatar({ userId, initials, size, canEdit = false,
 
   return (
     <View
-      style={[{ width: size, height: size, borderRadius: radius, overflow: 'hidden', backgroundColor: '#F1BE48', alignItems: 'center', justifyContent: 'center' }, style]}
+      style={[{ width: size, height: size, borderRadius: radius, overflow: 'hidden', backgroundColor: colors.avatarBg, alignItems: 'center', justifyContent: 'center' }, style]}
       {...(hoverProps as any)}
     >
       {uri ? (
         <Image source={{ uri }} style={{ width: size, height: size }} resizeMode="cover" />
       ) : (
-        <Text style={{ fontSize: size * 0.33, fontWeight: '700', color: '#374151' }}>
+        <Text style={{ fontSize: size * 0.33, fontWeight: '700', color: '#000000' }}>
           {initials}
         </Text>
       )}

@@ -12,6 +12,7 @@ import {
   Modal,
   Pressable,
 } from "react-native";
+import { useTheme } from '../contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from "App";
 import MemberAttendance from "@/components/MemberAttendance";
@@ -31,6 +32,7 @@ import {
 type TeamMemberDetailProps = NativeStackScreenProps<RootStackParamList, 'TeamMemberDetail'>;
 
 export default function TeamProgressScreen({ navigation, route }: TeamMemberDetailProps) {
+  const { colors } = useTheme();
   const { member, teamId, teamName } = route.params;
   const [authorNetid, setAuthorNetid] = useState<string | undefined>(undefined);
   const [isStudent, setIsStudent] = useState(false);
@@ -88,20 +90,20 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#F3F4F6', paddingTop: statusBarHeight + (isMobile ? 12 : 24) }}
+      style={{ flex: 1, backgroundColor: colors.background, paddingTop: statusBarHeight + (isMobile ? 12 : 24) }}
       contentContainerStyle={{ paddingBottom: 40 }}
     >
       {/* Header */}
       <View style={{ paddingHorizontal: pad, marginBottom: 4 }}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6 }}>
-          <Ionicons name="arrow-back" size={22} color="#111827" />
-          <Text style={{ fontSize: 14, color: '#111827', fontWeight: '500' }}>{teamName ?? 'Team'}</Text>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+          <Text style={{ fontSize: 14, color: colors.text, fontWeight: '500' }}>{teamName ?? 'Team'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Avatar + name */}
       <View style={{ alignItems: 'center', paddingVertical: isMobile ? 12 : 16 }}>
-        <Text style={{ fontSize: isMobile ? 22 : 28, fontWeight: '700', color: '#111827', marginBottom: 12 }}>
+        <Text style={{ fontSize: isMobile ? 22 : 28, fontWeight: '700', color: colors.text, marginBottom: 12 }}>
           {member.name}
         </Text>
         <MemberAvatar
@@ -118,29 +120,29 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
           <View style={{ marginTop: 12 }}>
             {isFlagged ? (
               <View style={{ alignItems: 'center', gap: 6 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fee2e2', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
-                  <Ionicons name="alert-circle" size={14} color="#dc2626" />
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#b91c1c' }}>Manually flagged at-risk</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.criticalBg, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 }}>
+                  <Ionicons name="alert-circle" size={14} color={colors.criticalBorder} />
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.criticalText }}>Manually flagged at-risk</Text>
                 </View>
-                <Text style={{ fontSize: 11, color: '#6b7280', textAlign: 'center', maxWidth: 260 }} numberOfLines={2}>
+                <Text style={{ fontSize: 11, color: colors.textMuted, textAlign: 'center', maxWidth: 260 }} numberOfLines={2}>
                   {overrides[0]?.reason}
                 </Text>
                 <TouchableOpacity
                   onPress={handleUnflag}
                   disabled={flagSaving}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#f9fafb', opacity: flagSaving ? 0.6 : 1 }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, opacity: flagSaving ? 0.6 : 1 }}
                 >
-                  {flagSaving ? <ActivityIndicator size="small" color="#6b7280" /> : <Ionicons name="close-circle-outline" size={14} color="#6b7280" />}
-                  <Text style={{ fontSize: 12, color: '#6b7280', fontWeight: '500' }}>Remove flag</Text>
+                  {flagSaving ? <ActivityIndicator size="small" color={colors.textMuted} /> : <Ionicons name="close-circle-outline" size={14} color={colors.textMuted} />}
+                  <Text style={{ fontSize: 12, color: colors.textMuted, fontWeight: '500' }}>Remove flag</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <TouchableOpacity
                 onPress={() => setFlagModalVisible(true)}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: '#fca5a5', backgroundColor: '#fff1f2' }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1, borderColor: colors.score0Bg, backgroundColor: colors.criticalBg }}
               >
-                <Ionicons name="flag-outline" size={14} color="#dc2626" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#dc2626' }}>Flag as at-risk</Text>
+                <Ionicons name="flag-outline" size={14} color={colors.criticalBorder} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.criticalBorder }}>Flag as at-risk</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -149,30 +151,30 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
 
       {/* Flag reason modal */}
       <Modal visible={flagModalVisible} transparent animationType="fade" onRequestClose={() => setFlagModalVisible(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }} onPress={() => setFlagModalVisible(false)}>
-          <Pressable style={{ backgroundColor: 'white', borderRadius: 12, padding: 20, width: Math.min(360, width - 40), gap: 12 }} onPress={e => e.stopPropagation()}>
-            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>Flag {member.name} as at-risk</Text>
-            <Text style={{ fontSize: 13, color: '#6b7280' }}>Provide a reason — this will appear on the at-risk students screen.</Text>
+        <Pressable style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center' }} onPress={() => setFlagModalVisible(false)}>
+          <Pressable style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 20, width: Math.min(360, width - 40), gap: 12 }} onPress={e => e.stopPropagation()}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>Flag {member.name} as at-risk</Text>
+            <Text style={{ fontSize: 13, color: colors.textMuted }}>Provide a reason — this will appear on the at-risk students screen.</Text>
             <TextInput
               value={flagReason}
               onChangeText={setFlagReason}
               placeholder="e.g. Missed multiple team meetings, not contributing..."
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.textFaint}
               multiline
               numberOfLines={3}
-              style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, padding: 10, fontSize: 13, color: '#111827', minHeight: 72, textAlignVertical: 'top' }}
+              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 10, fontSize: 13, color: colors.text, minHeight: 72, textAlignVertical: 'top' }}
             />
             <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }}>
-              <TouchableOpacity onPress={() => { setFlagModalVisible(false); setFlagReason(''); }} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb' }}>
-                <Text style={{ fontSize: 13, color: '#374151' }}>Cancel</Text>
+              <TouchableOpacity onPress={() => { setFlagModalVisible(false); setFlagReason(''); }} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
+                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleFlag}
                 disabled={!flagReason.trim() || flagSaving}
-                style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: flagReason.trim() ? '#dc2626' : '#fca5a5', flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: flagReason.trim() ? colors.criticalBorder : colors.score0Bg, flexDirection: 'row', alignItems: 'center', gap: 6 }}
               >
-                {flagSaving && <ActivityIndicator size="small" color="white" />}
-                <Text style={{ fontSize: 13, fontWeight: '600', color: 'white' }}>Flag student</Text>
+                {flagSaving && <ActivityIndicator size="small" color={colors.textInverse} />}
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textInverse }}>Flag student</Text>
               </TouchableOpacity>
             </View>
           </Pressable>
