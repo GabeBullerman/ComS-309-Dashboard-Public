@@ -6,17 +6,21 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.ss.usermodel.BorderStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.apache.poi.xssf.usermodel.XSSFCreationHelper;
+import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFHyperlink;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -93,21 +97,43 @@ public class ExportService {
     XSSFCellStyle yellow;
     XSSFCellStyle green;
     XSSFCellStyle gray;
+    XSSFCellStyle link;
 
     // Puts all teams currently in the database into a .xlsx
     @Transactional
     public XSSFWorkbook exportXLSX() throws IOException{
         XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFCreationHelper helper = workbook.getCreationHelper();
+        loadStyles(workbook);
+
         XSSFSheet studentSheet = workbook.createSheet("Students");
+        // Header row
+        int rowNum = 0;
+        XSSFRow studentHeaderRow = studentSheet.createRow(rowNum);
+        for(int i = 0; i < studentHeader.length; i++){
+            studentHeaderRow.createCell(i).setCellValue(studentHeader[i]);
+        }
+        rowNum++;
+
         List<TeamRequest> teams = teamService.getAllTeams();
-
-        loadColors(workbook);
-
         for(TeamRequest team : teams){
             XSSFSheet teamSheet = createTeamSheet(workbook, team);   
             List<UserRequest> students = team.students(); 
             for(UserRequest student : students){
                 // Add the student to the studentSheet
+                XSSFRow studentRow = studentSheet.createRow(rowNum);
+                String[] name = student.name().split(" ", 2);
+                studentRow.createCell(STUDENT_NAME_INDEX_START).setCellValue(name[0]);
+                studentRow.createCell(STUDENT_NAME_INDEX_END).setCellValue(name[1]);
+                studentRow.createCell(STUDENT_NETID_INDEX).setCellValue(student.netid());
+                studentRow.createCell(STUDENT_TEAM_NAME_INDEX).setCellValue(team.name());
+
+                // Add links to the team sheet
+                XSSFHyperlink hyperlink = helper.createHyperlink(HyperlinkType.DOCUMENT);
+                hyperlink.setAddress("\'" + team.name() + "\'!A1");
+                studentRow.getCell(STUDENT_TEAM_NAME_INDEX).setHyperlink(hyperlink);
+                studentRow.getCell(STUDENT_TEAM_NAME_INDEX).setCellStyle(link);
+                rowNum++;
             }
         }
 
@@ -166,7 +192,8 @@ public class ExportService {
             rowNum++;
         }
 
-        // Weekly performance
+        // TODO: The first week is decided by earliest WeeklyPerformance in the team, not when the semester starts.
+        // Weekly performance section
         // Get the performances of all students
         Map<Long, List<WeeklyPerformanceRequest>> performanceMap = new HashMap<>();
         LocalDate earliest = null;
@@ -204,9 +231,7 @@ public class ExportService {
             rowNum += 3;
 
             // Fill identifying information
-            String[] name = student.name().split(" ", 2);
-            codePerformanceRow.createCell(0).setCellValue(name[0]); // First name
-            codePerformanceRow.createCell(1).setCellValue(name[1]); // Last name
+            codePerformanceRow.createCell(0).setCellValue(student.name()); // Name
             codePerformanceRow.createCell(2).setCellValue("Code");
 
             teamworkPerformanceRow.createCell(0).setCellValue(student.netid()); // Netid
@@ -269,7 +294,7 @@ public class ExportService {
     private String[] getStudentData(UserRequest student){
         String[] data = new String[TEAM_FEATURES];
 
-        // Index out of bound error: index 1 for length 1
+        // Split into first and last name
         String[] name = student.name().split(" ", 2);
         String netid = student.netid();
         data[0] = name[0];
@@ -312,7 +337,7 @@ public class ExportService {
         return data;
     }
 
-    private void loadColors(XSSFWorkbook workbook){
+    private void loadStyles(XSSFWorkbook workbook){
         // Set cell colors
         red = workbook.createCellStyle();
         red.setFillForegroundColor(IndexedColors.RED.getIndex());
@@ -345,5 +370,11 @@ public class ExportService {
         gray.setBorderBottom(BorderStyle.THIN);
         gray.setBorderLeft(BorderStyle.THIN);
         gray.setBorderRight(BorderStyle.THIN);
+
+        link = workbook.createCellStyle();
+        XSSFFont linkFont = workbook.createFont();
+        linkFont.setUnderline(Font.U_SINGLE);
+        linkFont.setColor(IndexedColors.BLUE.getIndex());
+        link.setFont(linkFont);
     }
 }
