@@ -1,5 +1,5 @@
 import "nativewind/global.css";
-import { Platform, View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from "react-native";
+import { Platform, View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
