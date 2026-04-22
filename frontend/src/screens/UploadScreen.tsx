@@ -310,7 +310,17 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!response.ok) throw new Error(`Server returned ${response.status}`);
-      const blob = await response.blob();
+
+      const ab = await response.arrayBuffer();
+      const bytes = new Uint8Array(ab);
+
+      // xlsx is a zip — must start with PK (0x50 0x4B)
+      if (bytes.length < 4 || bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
+        const preview = new TextDecoder().decode(bytes.slice(0, 500));
+        throw new Error(`Server did not return a valid xlsx file (${ab.byteLength} bytes). Content: ${preview}`);
+      }
+
+      const blob = new Blob([ab], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
