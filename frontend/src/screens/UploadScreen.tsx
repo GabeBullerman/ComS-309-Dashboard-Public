@@ -82,7 +82,7 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
         const formData = new FormData();
         formData.append('file', f as unknown as File);
         try {
-          await axiosInstance.post('/api/import', formData, {
+          await axiosInstance.post('/api/file/import', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
           });
           return { name: f.name, ok: true, message: 'Uploaded successfully' };
