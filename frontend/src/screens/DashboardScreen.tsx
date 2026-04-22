@@ -1,11 +1,11 @@
 import { View, Text, TouchableOpacity, Image, Dimensions, StatusBar, Platform } from "react-native";
+import { useTheme } from '../contexts/ThemeContext';
 import TeamsScreen from "../screens/TeamsScreen";
 import StaffManagerScreen from "../screens/TAManager";
 import TaskAssignmentScreen from "../screens/TaskAssignmentScreen";
 import AssignmentsScreen from "../screens/AssignmentsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import { useEffect, useState } from "react";
-import { getUserPermissions } from "../utils/auth";
 import { getCurrentUser } from "../api/users";
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
@@ -22,11 +22,11 @@ type Props = NativeStackScreenProps<RootStackParamList, 'DashboardScreen'>;
 const ACTIVE_SCREEN_KEY = 'dashboard_active_screen';
 
 export default function DashboardScreen({route}: Props) {
+  const { colors } = useTheme();
   const [activeScreen, setActiveScreen] = useState("Teams");
   const [displayName, setDisplayName] = useState("User");
   const [netid, setNetid] = useState("");
   const [chatUnread, setChatUnread] = useState(0);
-  const _permissions = getUserPermissions(route.params.userRole);
   const screenWidth = Dimensions.get("window").width;
   const isMobile = screenWidth < 768;
   const role = route.params.userRole;
@@ -145,8 +145,8 @@ export default function DashboardScreen({route}: Props) {
               {item.label}
             </Text>
             {!!item.badge && item.badge > 0 && (
-              <View style={{ marginLeft: 'auto', backgroundColor: '#dc2626', borderRadius: 10, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
-                <Text style={{ color: 'white', fontSize: 11, fontWeight: '700' }}>
+              <View style={{ marginLeft: 'auto', backgroundColor: colors.criticalBorder, borderRadius: 10, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+                <Text style={{ color: colors.textInverse, fontSize: 11, fontWeight: '700' }}>
                   {item.badge > 99 ? '99+' : item.badge}
                 </Text>
               </View>
@@ -189,10 +189,9 @@ export default function DashboardScreen({route}: Props) {
 
   if (isMobile) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
-        {/* Push content below Android status bar */}
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
         {Platform.OS === 'android' && (
-          <View style={{ height: StatusBar.currentHeight ?? 0, backgroundColor: '#b91c1c' }} />
+          <View style={{ height: StatusBar.currentHeight ?? 0, backgroundColor: colors.navBg }} />
         )}
 
         {/* Screen content — padded so it doesn't hide behind the fixed tab bar */}
@@ -200,14 +199,14 @@ export default function DashboardScreen({route}: Props) {
           {renderScreen()}
         </View>
 
-        {/* Bottom tab bar — absolutely pinned to the bottom */}
+        {/* Bottom tab bar */}
         <View style={{
           position: 'absolute',
           bottom: 0,
           left: 0,
           right: 0,
           flexDirection: 'row',
-          backgroundColor: '#b91c1c',
+          backgroundColor: colors.navBg,
           paddingTop: 6,
           paddingBottom: Platform.OS === 'android' ? 8 : 20,
           borderTopWidth: 1.5,
@@ -226,11 +225,11 @@ export default function DashboardScreen({route}: Props) {
                   <Ionicons
                     name={item.icon as any}
                     size={22}
-                    color={isActive ? '#F1BE48' : 'rgba(255,255,255,0.65)'}
+                    color={isActive ? colors.navActive : 'rgba(255,255,255,0.65)'}
                   />
                 </View>
                 <Text style={{
-                  color: isActive ? '#F1BE48' : 'rgba(255,255,255,0.65)',
+                  color: isActive ? colors.navActive : 'rgba(255,255,255,0.65)',
                   fontSize: 10,
                   marginTop: 2,
                   fontWeight: isActive ? '600' : '400',
@@ -247,12 +246,12 @@ export default function DashboardScreen({route}: Props) {
 
   // ── Desktop layout: sidebar + content ────────────────────────────────────
   return (
-    <View className="flex-1 bg-gray-100">
-      <View className="flex-1 flex-row">
-        <View className="w-60 bg-red-700 p-5">
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={{ flex: 1, flexDirection: 'row' }}>
+        <View style={{ width: 240, backgroundColor: colors.navBg, padding: 20, borderRightWidth: 3, borderRightColor: colors.gold }}>
           {renderSidebarContent()}
         </View>
-        <View className="flex-1">
+        <View style={{ flex: 1 }}>
           {renderScreen()}
         </View>
       </View>
