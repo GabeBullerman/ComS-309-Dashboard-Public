@@ -168,15 +168,15 @@ public class ExportService {
                     int skip = (i - TEAM_DEMO_INDEX_START) % 3;
                     if(skip == 0){}
                     // Poor
-                    else if(studentData[i] == "0"){
+                    else if(studentData[i].equals("0")){
                         row.createCell(i).setCellStyle(red);
                     }
                     // Ok
-                    else if(studentData[i] == "1"){
+                    else if(studentData[i].equals("1")){
                         row.createCell(i).setCellStyle(yellow);
                     }
                     // Great
-                    else if(studentData[i] == "2"){
+                    else if(studentData[i].equals("2")){
                         row.createCell(i).setCellStyle(green);
                     }
                     // Unassigned
@@ -326,10 +326,12 @@ public class ExportService {
                 // Code
                 if(j == 0){
                     data[index] = demo.codeScore().toString();
+                    //System.out.println("Code score: " + data[index] + " at index " + index);
                 }
                 // Teamwork
                 else{
                     data[index] = demo.teamworkScore().toString();
+                    //System.out.println("Teamwork score: " + data[index] + " at index " + index);
                 }
             }
         }
