@@ -18,8 +18,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../App';
 import { useTheme } from '../contexts/ThemeContext';
 import { TeamMember } from '../types/Teams';
-import { getTeam, updateTeamInfo } from '../api/teams';
-import { setUserProjectRole, getCurrentUser } from '../api/users';
+import { getTeam, updateTeamInfo, addStudentToTeam, removeStudentFromTeam, getTeams } from '../api/teams';
+import { setUserProjectRole, getCurrentUser, getUsersByRole, getUserByNetid } from '../api/users';
+import { UserSummary } from '../utils/auth';
 import MemberComments from '../components/Comments';
 import MemberAvatar from '../components/MemberAvatar';
 import WeeklyPerformance from '../components/WeeklyPerformance';
@@ -117,6 +118,20 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     return () => { cancelled = true; };
   }, [activeTab, gitlab, glToken, complianceWeekOffset, memberRoles]);
 
+  // Local member list — reflects add/remove after mount
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(team.members);
+
+  // Add-member modal state
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [addMemberSearch, setAddMemberSearch] = useState('');
+  const [allStudents, setAllStudents] = useState<UserSummary[]>([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+  const [netidLookupResult, setNetidLookupResult] = useState<UserSummary | null>(null);
+  const [addingId, setAddingId] = useState<number | null>(null);
+  const [removingId, setRemovingId] = useState<number | null>(null);
+  // Tracks members removed this session so they stay findable in the add modal
+  const removedMembersRef = useRef<TeamMember[]>([]);
+
   // Bulk attendance state
   const today = new Date().toISOString().split('T')[0];
   const datePickerRef = useRef<any>(null);
@@ -130,7 +145,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
   const handleBulkAttendance = async (statusMap?: Record<string, AttendanceStatus>) => {
     if (!bulkDate.match(/^\d{4}-\d{2}-\d{2}$/)) return;
-    const members = team.members.filter(m => m.netid);
+    const members = teamMembers.filter(m => m.netid);
     if (members.length === 0) return;
     setBulkSaving(true);
     setBulkDone('');
@@ -299,6 +314,158 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     }
   };
 
+  const toInitials = (name?: string) => {
+    if (!name) return 'NA';
+    return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || 'NA';
+  };
+
+  const openAddMemberModal = async () => {
+    setShowAddMemberModal(true);
+    setStudentsLoading(true);
+    try {
+      // Fetch all students by role (works across all TAs) and all teams in parallel.
+      // getUsersByRole('Student') is the authoritative source — it returns every student
+      // account including those not currently on any team.
+      // getTeams() supplements with team-member data (id fields) for students who may
+      // not appear via the role endpoint.
+      const [roleResult, teamsResult] = await Promise.allSettled([
+        getUsersByRole('Student'),
+        getTeams(),
+      ]);
+
+      const studentMap = new Map<string, UserSummary>();
+
+      // Seed from teams first (gives us id + netid + name for all team-assigned students)
+      if (teamsResult.status === 'fulfilled') {
+        for (const t of teamsResult.value) {
+          for (const s of t.students ?? []) {
+            if (s.netid && !studentMap.has(s.netid)) {
+              studentMap.set(s.netid, { id: s.id, name: s.name, netid: s.netid });
+            }
+          }
+        }
+      }
+
+      // Overlay with role-endpoint results — this adds unassigned students and any
+      // students on teams the current user's role can't see via getTeams().
+      if (roleResult.status === 'fulfilled') {
+        for (const s of roleResult.value) {
+          if (!s.netid) continue;
+          if (!studentMap.has(s.netid)) {
+            studentMap.set(s.netid, s);
+          } else {
+            // Prefer role-endpoint data (more complete) but keep id from teams if missing
+            const existing = studentMap.get(s.netid)!;
+            studentMap.set(s.netid, { ...s, id: s.id ?? existing.id });
+          }
+        }
+      }
+
+      // Also include members removed from this team this session —
+      // they are no longer in any team list but can be re-added.
+      for (const m of removedMembersRef.current) {
+        if (m.netid && !studentMap.has(m.netid)) {
+          studentMap.set(m.netid, { id: m.id, name: m.name, netid: m.netid });
+        }
+      }
+
+      setAllStudents([...studentMap.values()].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')));
+    } catch {
+      Alert.alert('Error', 'Failed to load students.');
+    } finally {
+      setStudentsLoading(false);
+    }
+  };
+
+  // When the search looks like a netid (no spaces, ≥3 chars), debounce-lookup by netid.
+  // This surfaces students who aren't on any team (invisible to getTeams) and not in
+  // the role endpoint, like gbulle after being removed from all teams.
+  useEffect(() => {
+    if (!showAddMemberModal) return;
+    const q = addMemberSearch.trim().toLowerCase();
+    if (!q || q.includes(' ') || q.length < 3) {
+      setNetidLookupResult(null);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      const found = await getUserByNetid(q);
+      if (found && found.netid) {
+        setNetidLookupResult(found);
+        // Also merge into allStudents so they persist after the search is cleared
+        setAllStudents(prev => {
+          const exists = prev.some(s => s.netid === found.netid);
+          if (exists) return prev;
+          return [...prev, found].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+        });
+      } else {
+        setNetidLookupResult(null);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [addMemberSearch, showAddMemberModal]);
+
+  const handleAddMember = async (student: UserSummary) => {
+    if (!team.id || !student.id) return;
+    setAddingId(student.id);
+    try {
+      await addStudentToTeam(team.id, student.id);
+      const newMember: TeamMember = {
+        id: student.id,
+        name: student.name || student.netid || 'Unknown',
+        netid: student.netid,
+        initials: toInitials(student.name || student.netid),
+        color: '',
+        photo: '',
+        demoResults: [],
+      };
+      setTeamMembers((prev) => [...prev, newMember]);
+    } catch {
+      Alert.alert('Error', 'Failed to add student to team.');
+    } finally {
+      setAddingId(null);
+    }
+  };
+
+  const handleRemoveMember = async (member: TeamMember) => {
+    if (!team.id || !member.id) return;
+    const doRemove = async () => {
+      setRemovingId(member.id!);
+      try {
+        await removeStudentFromTeam(team.id!, member.id!);
+        setTeamMembers((prev) => prev.filter((m) => m.id !== member.id));
+        removedMembersRef.current = [...removedMembersRef.current, member];
+      } catch {
+        Alert.alert('Error', 'Failed to remove member from team.');
+      } finally {
+        setRemovingId(null);
+      }
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Remove ${member.name} from this team?`)) doRemove();
+    } else {
+      Alert.alert('Remove Member', `Remove ${member.name} from this team?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove', style: 'destructive', onPress: doRemove },
+      ]);
+    }
+  };
+
+  const availableStudents = (() => {
+    const onTeamIds = new Set(teamMembers.map((m) => m.id).filter(Boolean));
+    const onTeamNetids = new Set(teamMembers.map((m) => m.netid).filter(Boolean));
+    const q = addMemberSearch.toLowerCase();
+    // Merge netidLookupResult if not already in allStudents
+    const pool = [...allStudents];
+    if (netidLookupResult?.netid && !pool.some(s => s.netid === netidLookupResult.netid)) {
+      pool.push(netidLookupResult);
+    }
+    return pool.filter((s) => {
+      if ((s.id && onTeamIds.has(s.id)) || (s.netid && onTeamNetids.has(s.netid))) return false;
+      if (!q) return true;
+      return s.name?.toLowerCase().includes(q) || s.netid?.toLowerCase().includes(q);
+    });
+  })();
+
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'contributions', label: 'Contributions' },
     { key: 'Push frequency', label: 'Push Frequency' },
@@ -373,51 +540,78 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       )}
 
       {/* Team Members */}
-      {/* Member tiles — wrapping row on mobile, horizontal scroll on desktop */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: pad, gap: 12 }}>
-        {team.members.map((m) => {
-          const INNER = isMobile ? 64 : 200;
-          const RADIUS = isMobile ? 20 : 35;
-          const memberKey = m.netid || m.name;
-          const role = memberRoles[memberKey];
-          return (
-            <TouchableOpacity
-              key={memberKey}
-              onPress={() => navigation.navigate('TeamMemberDetail', { member: m, gitlabUrl: gitlab || undefined, teamId: team.id, teamName: teamName })}
-              style={{ alignItems: 'center', width: isMobile ? 80 : 152, marginHorizontal: isMobile ? 0 : INNER / 4 }}
-            >
-              {/* Role badge — above photo, always same position */}
-              {canEditRepo ? (
-                <TouchableOpacity
-                  ref={(ref) => { if (ref) badgeRefs.current[memberKey] = ref; }}
-                  onPress={(e) => { e.stopPropagation(); handleBadgePress(memberKey); }}
-                  style={{ backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
-                >
-                  <Text style={{ color: colors.textInverse, fontSize: 11, fontWeight: '500' }}>{role ?? 'Set Role'}</Text>
-                  <Ionicons name="chevron-down" size={10} color={colors.textInverse} style={{ marginLeft: 3 }} />
-                </TouchableOpacity>
-              ) : role ? (
-                <View style={{ backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, marginBottom: 6 }}>
-                  <Text style={{ color: colors.textInverse, fontSize: 11, fontWeight: '500' }}>{role}</Text>
+      {(() => {
+        const INNER = isMobile ? 64 : 200;
+        const RADIUS = isMobile ? 20 : 35;
+        const tileW = isMobile ? 80 : 152;
+        const tileHMargin = isMobile ? 0 : INNER / 4;
+        return (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: pad, gap: 12 }}>
+            {teamMembers.map((m) => {
+              const memberKey = m.netid || m.name;
+              const role = memberRoles[memberKey];
+              return (
+                <View key={memberKey} style={{ alignItems: 'center', width: tileW, marginHorizontal: tileHMargin }}>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('TeamMemberDetail', { member: m, gitlabUrl: gitlab || undefined, teamId: team.id, teamName: teamName })}
+                    style={{ alignItems: 'center', width: tileW }}
+                  >
+                    {canEditRepo ? (
+                      <TouchableOpacity
+                        ref={(ref) => { if (ref) badgeRefs.current[memberKey] = ref; }}
+                        onPress={(e) => { e.stopPropagation(); handleBadgePress(memberKey); }}
+                        style={{ backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
+                      >
+                        <Text style={{ color: colors.textInverse, fontSize: 11, fontWeight: '500' }}>{role ?? 'Set Role'}</Text>
+                        <Ionicons name="chevron-down" size={10} color={colors.textInverse} style={{ marginLeft: 3 }} />
+                      </TouchableOpacity>
+                    ) : role ? (
+                      <View style={{ backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, marginBottom: 6 }}>
+                        <Text style={{ color: colors.textInverse, fontSize: 11, fontWeight: '500' }}>{role}</Text>
+                      </View>
+                    ) : (
+                      <View style={{ height: isMobile ? 22 : 24, marginBottom: 6 }} />
+                    )}
+                    <MemberAvatar
+                      memberId={m.netid || m.name}
+                      initials={m.initials}
+                      size={INNER}
+                      borderRadius={RADIUS - 4}
+                      bordered
+                    />
+                    <Text style={{ marginTop: 6, fontSize: isMobile ? 11 : 14, textAlign: 'center', lineHeight: isMobile ? 16 : 22, color: colors.text }} numberOfLines={2}>
+                      {m.name}
+                    </Text>
+                  </TouchableOpacity>
+                  {canEditRepo && (
+                    <TouchableOpacity
+                      onPress={() => handleRemoveMember(m)}
+                      disabled={removingId === m.id}
+                      style={{ position: 'absolute', top: isMobile ? 22 : 26, right: 0, width: 20, height: 20, borderRadius: 10, backgroundColor: removingId === m.id ? colors.border : colors.criticalBorder, alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      {removingId === m.id
+                        ? <ActivityIndicator size="small" color="white" />
+                        : <Ionicons name="close" size={11} color="white" />}
+                    </TouchableOpacity>
+                  )}
                 </View>
-              ) : (
+              );
+            })}
+            {canEditRepo && (
+              <TouchableOpacity
+                onPress={openAddMemberModal}
+                style={{ alignItems: 'center', width: tileW, marginHorizontal: tileHMargin }}
+              >
                 <View style={{ height: isMobile ? 22 : 24, marginBottom: 6 }} />
-              )}
-              <MemberAvatar
-                memberId={m.netid || m.name}
-                initials={m.initials}
-                size={INNER}
-                
-                borderRadius={RADIUS - 4}
-                bordered
-              />
-              <Text style={{ marginTop: 6, fontSize: isMobile ? 11 : 14, textAlign: 'center', lineHeight: isMobile ? 16 : 22 }} numberOfLines={2}>
-                {m.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+                <View style={{ width: INNER, height: INNER, borderRadius: RADIUS - 4, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.border }}>
+                  <Ionicons name="person-add-outline" size={isMobile ? 22 : 44} color={colors.textMuted} />
+                </View>
+                <Text style={{ marginTop: 6, fontSize: isMobile ? 11 : 14, textAlign: 'center', color: colors.textMuted }}>Add</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        );
+      })()}
 
     <View style={{ backgroundColor: colors.surface, borderRadius: 12, marginHorizontal: pad, marginVertical: 12, overflow: 'hidden', shadowColor: colors.shadow, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
 
@@ -605,14 +799,14 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       </View>
       {/* Weekly Performance */}
       <View style={{ marginHorizontal: pad, marginBottom: 12 }}>
-        <WeeklyPerformance members={team.members} readOnly={userRole === 'Student'} />
+        <WeeklyPerformance members={teamMembers} readOnly={userRole === 'Student'} />
       </View>
 
       {/* Bulk Attendance — staff only */}
       {userRole !== 'Student' && (
         <View style={{ marginHorizontal: pad, marginBottom: 12, backgroundColor: colors.surface, borderRadius: 12, padding: 16, shadowColor: colors.shadow, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 2 }}>Bulk Attendance</Text>
-          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>Mark all {team.members.length} team members at once</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>Mark all {teamMembers.length} team members at once</Text>
 
           {/* Date + Type row */}
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -670,7 +864,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
               ]).map(({ s, label, color, bg, border }) => (
                 <TouchableOpacity
                   key={s}
-                  onPress={() => setBulkStatus(Object.fromEntries(team.members.filter(m => m.netid).map(m => [m.netid!, s])))}
+                  onPress={() => setBulkStatus(Object.fromEntries(teamMembers.filter(m => m.netid).map(m => [m.netid!, s])))}
                   style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: bg, borderWidth: 1, borderColor: border }}
                 >
                   <Text style={{ fontSize: 11, fontWeight: '600', color }}>{label}</Text>
@@ -680,7 +874,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
             {/* Per-member rows */}
             <View style={{ gap: 6 }}>
-              {team.members.filter(m => m.netid).map(m => {
+              {teamMembers.filter(m => m.netid).map(m => {
                 const current = bulkStatus[m.netid!] ?? 'PRESENT';
                 return (
                   <View key={m.netid} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -736,6 +930,74 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       )}
 
       <MemberComments teamId={team.id} authorNetid={authorNetid} isStudent={userRole === 'Student'} />
+
+      {/* Add Member Modal */}
+      <Modal
+        visible={showAddMemberModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setShowAddMemberModal(false); setAddMemberSearch(''); setNetidLookupResult(null); }}
+      >
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, backgroundColor: colors.overlay }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, width: '100%', maxWidth: 480, maxHeight: '80%' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>Add Member</Text>
+              <TouchableOpacity onPress={() => { setShowAddMemberModal(false); setAddMemberSearch(''); setNetidLookupResult(null); }}>
+                <Ionicons name="close" size={22} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.inputBg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: colors.inputBorder }}>
+                <Ionicons name="search-outline" size={15} color={colors.textMuted} style={{ marginRight: 6 }} />
+                <TextInput
+                  value={addMemberSearch}
+                  onChangeText={setAddMemberSearch}
+                  placeholder="Search by name or NetID..."
+                  placeholderTextColor={colors.textFaint}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={{ flex: 1, fontSize: 14, color: colors.text }}
+                />
+              </View>
+            </View>
+
+            {studentsLoading ? (
+              <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 32 }} />
+            ) : (
+              <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, gap: 6 }}>
+                {availableStudents.length === 0 ? (
+                  <Text style={{ textAlign: 'center', color: colors.textFaint, paddingVertical: 24, fontSize: 14 }}>
+                    {addMemberSearch
+                      ? addMemberSearch.trim().length >= 3 && !addMemberSearch.includes(' ')
+                        ? 'No students found. Looking up NetID...'
+                        : 'No students match your search.'
+                      : 'No unassigned students available.'}
+                  </Text>
+                ) : (
+                  availableStudents.map((s) => (
+                    <View key={s.netid ?? s.id} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: colors.border }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{s.name ?? '—'}</Text>
+                        <Text style={{ fontSize: 12, color: colors.textMuted }}>{s.netid}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => handleAddMember(s)}
+                        disabled={addingId === s.id}
+                        style={{ backgroundColor: addingId === s.id ? colors.border : colors.primary, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8 }}
+                      >
+                        {addingId === s.id
+                          ? <ActivityIndicator size="small" color={colors.textInverse} />
+                          : <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textInverse }}>Add</Text>}
+                      </TouchableOpacity>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Edit Team Info Modal */}
       <Modal
@@ -825,7 +1087,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                   <TouchableOpacity
                     key={r}
                     onPress={() => {
-                      const member = team.members.find((m) => (m.netid || m.name) === openRoleKey);
+                      const member = teamMembers.find((m) => (m.netid || m.name) === openRoleKey);
                       if (member) handleRoleSelect(member, r);
                     }}
                     style={{ paddingHorizontal: 12, paddingVertical: 10 }}
@@ -837,7 +1099,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
               {memberRoles[openRoleKey] && (
                 <TouchableOpacity
                   onPress={() => {
-                    const member = team.members.find((m) => (m.netid || m.name) === openRoleKey);
+                    const member = teamMembers.find((m) => (m.netid || m.name) === openRoleKey);
                     if (member) handleRoleSelect(member, null);
                   }}
                   style={{ paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border }}

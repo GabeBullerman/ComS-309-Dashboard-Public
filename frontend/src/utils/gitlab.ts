@@ -50,6 +50,38 @@ async function gitlabFetch<T>(url: string, token: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/**
+ * Fetches all pages of a GitLab list endpoint (up to maxPages × 100 items).
+ * For commit lists, pass dedupeKey='id' to deduplicate by SHA across branches.
+ */
+async function gitlabFetchAllPages<T>(
+  url: string,
+  token: string,
+  maxPages = 5,
+  dedupeKey?: keyof T
+): Promise<T[]> {
+  const all: T[] = [];
+  const seen = new Set<unknown>();
+  for (let page = 1; page <= maxPages; page++) {
+    const sep = url.includes('?') ? '&' : '?';
+    const res = await fetch(`${url}${sep}page=${page}`, { headers: { 'PRIVATE-TOKEN': token } });
+    if (!res.ok) throw new Error(`GitLab API error ${res.status}`);
+    const data: T[] = await res.json();
+    if (!Array.isArray(data) || data.length === 0) break;
+    for (const item of data) {
+      if (dedupeKey) {
+        const key = item[dedupeKey];
+        if (seen.has(key)) continue;
+        seen.add(key);
+      }
+      all.push(item);
+    }
+    const nextPage = res.headers.get('x-next-page');
+    if (!nextPage || nextPage.trim() === '') break;
+  }
+  return all;
+}
+
 export interface GitLabContributor {
   name: string;
   email: string;
@@ -64,7 +96,8 @@ export interface GitLabCommit {
   title: string;
   author_name: string;
   author_email: string;
-  created_at: string; // ISO 8601
+  authored_date: string; // when the author wrote the commit (use this for bucketing)
+  created_at: string;   // committer date — equals committed_date; may be the push date
 }
 
 export interface GitLabMember {
@@ -99,10 +132,10 @@ export async function fetchRecentCommits(
   const path = extractProjectPath(gitlabUrl);
   if (!path) throw new Error('Invalid GitLab URL');
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-  // all=true fetches all branches; GitLab deduplicates by commit ID so merged commits count once
-  return gitlabFetch<GitLabCommit[]>(
+  // all=true fetches all branches; dedupe by SHA in case ISU GitLab returns duplicates
+  return gitlabFetchAllPages<GitLabCommit>(
     `${GITLAB_BASE}/projects/${path}/repository/commits?per_page=100&since=${since}&all=true`,
-    token
+    token, 5, 'id'
   );
 }
 
@@ -215,16 +248,17 @@ export async function fetchAllCommitsSince(
 ): Promise<GitLabCommit[]> {
   const path = extractProjectPath(gitlabUrl);
   if (!path) throw new Error('Invalid GitLab URL');
-  return gitlabFetch<GitLabCommit[]>(
+  return gitlabFetchAllPages<GitLabCommit>(
     `${GITLAB_BASE}/projects/${path}/repository/commits?since=${encodeURIComponent(since)}&per_page=100&all=true`,
-    token
+    token, 5, 'id'
   );
 }
 
 /**
  * Filters a commit list to only those belonging to a specific team member.
- * Uses the same logic as TeamDetail: email contains netid (primary),
- * then name-part fuzzy match (fallback).
+ * Primary: author_email contains the netid (most reliable on ISU GitLab).
+ * Fallback: author_name contains the longest name part only (e.g. "bullerman"
+ * not "gabe"), which avoids false-positives from common first names.
  */
 export function filterCommitsByMember(
   commits: GitLabCommit[],
@@ -233,11 +267,13 @@ export function filterCommitsByMember(
 ): GitLabCommit[] {
   const netid = memberNetid.trim().toLowerCase();
   const nameParts = memberName.toLowerCase().split(/\s+/).filter((p) => p.length > 2);
+  // Use only the longest part as the fallback name key (last name is typically most unique)
+  const longestPart = nameParts.sort((a, b) => b.length - a.length)[0];
 
   return commits.filter((c) => {
-    if (c.author_email.toLowerCase().includes(netid)) return true;
-    const authorLower = c.author_name.toLowerCase();
-    return nameParts.some((part) => authorLower.includes(part));
+    if (netid && c.author_email.toLowerCase().includes(netid)) return true;
+    if (!longestPart) return false;
+    return c.author_name.toLowerCase().includes(longestPart);
   });
 }
 
@@ -458,21 +494,22 @@ export function getWeekBounds(offsetWeeks = 0): { start: Date; end: Date; label:
   return { start: sunday, end: saturday, label: `${fmt(sunday)} – ${fmt(saturday)}` };
 }
 
-/** Groups commits into weekly buckets (most recent first) */
+/** Groups commits into weekly buckets, newest first (This week at top). */
 export function groupCommitsByWeek(
   commits: GitLabCommit[],
   weeks = 6
 ): { label: string; count: number }[] {
   const now = Date.now();
-  const buckets = Array.from({ length: weeks }, (_, i) => {
+  // i=0 → "This week" (most recent), i=N-1 → oldest — newest at top of chart
+  return Array.from({ length: weeks }, (_, i) => {
     const start = new Date(now - (i + 1) * 7 * 24 * 60 * 60 * 1000);
-    const end = new Date(now - i * 7 * 24 * 60 * 60 * 1000);
+    const end   = new Date(now - i       * 7 * 24 * 60 * 60 * 1000);
     const label = i === 0 ? 'This week' : `${i + 1}w ago`;
+    // authored_date = when the work was written; created_at = committer/push date
     const count = commits.filter((c) => {
-      const t = new Date(c.created_at).getTime();
+      const t = new Date(c.authored_date || c.created_at).getTime();
       return t >= start.getTime() && t < end.getTime();
     }).length;
     return { label, count };
   });
-  return buckets; // oldest first
 }

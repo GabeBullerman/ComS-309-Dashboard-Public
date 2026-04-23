@@ -373,8 +373,8 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
         animationType="fade"
         onRequestClose={() => { if (!creating) setShowCreateModal(false); }}
       >
-        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 20 }}>
-          <View style={{ backgroundColor: colors.surface, borderRadius: 16, maxHeight: '90%', overflow: 'hidden' }}>
+        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 20, alignItems: 'center' }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, maxHeight: '90%', overflow: 'hidden', width: '100%', maxWidth: 480 }}>
             {/* Modal header */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>Create Team Manually</Text>
