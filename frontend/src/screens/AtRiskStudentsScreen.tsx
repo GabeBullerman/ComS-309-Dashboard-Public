@@ -14,6 +14,7 @@ import { getDemoPerformanceForStudent, DemoPerformanceRecord } from '../api/demo
 import { getWeeklyPerformanceForStudent, WeeklyPerformanceRecord } from '../api/weeklyPerformance';
 import { AtRiskStudentCard, AtRiskFlag } from '@/components/AtRiskStudentCard';
 import { getAllAtRiskOverrides, AtRiskOverride } from '../api/atRiskOverrides';
+import { useTheme } from '../contexts/ThemeContext';
 
 // ── At-Risk Algorithm ─────────────────────────────────────────────────────────
 
@@ -84,6 +85,7 @@ const copyViaDom = (text: string) => {
 
 export default function AtRiskStudentsScreen({ userRole }: Props) {
   const _navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const numColumns = width < 640 ? 1 : width < 960 ? 2 : width < 1280 ? 3 : 4;
   const isMobile = width < 640;
@@ -267,18 +269,18 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
-        <ActivityIndicator size="large" color="#C8102E" />
-        <Text style={{ color: '#6b7280', marginTop: 12 }}>Analyzing student data...</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ color: colors.textMuted, marginTop: 12 }}>Analyzing student data...</Text>
       </View>
     );
   }
 
   if (errorMessage) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', paddingHorizontal: 24 }}>
-        <Text style={{ fontSize: 16, fontWeight: '600', color: '#dc2626' }}>Unable to load students</Text>
-        <Text style={{ color: '#6b7280', marginTop: 8, textAlign: 'center' }}>{errorMessage}</Text>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, paddingHorizontal: 24 }}>
+        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.criticalBorder }}>Unable to load students</Text>
+        <Text style={{ color: colors.textMuted, marginTop: 8, textAlign: 'center' }}>{errorMessage}</Text>
       </View>
     );
   }
@@ -289,10 +291,10 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
     : [...filtered, ...Array(numColumns - remainder).fill(null)];
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flex: 1, paddingHorizontal: isMobile ? 12 : 24, paddingTop: isMobile ? 12 : 24, paddingBottom: selectedNetids.size > 0 ? 90 : 0 }}>
 
-        <Text style={{ fontSize: isMobile ? 22 : 28, fontWeight: '700', color: '#111827', marginBottom: 10 }}>
+        <Text style={{ fontSize: isMobile ? 22 : 28, fontWeight: '700', color: colors.text, marginBottom: 10 }}>
           At-Risk Students
         </Text>
 
@@ -300,15 +302,15 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
         {atRiskStudents.length > 0 && (
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             {criticalCount > 0 && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fee2e2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
-                <Ionicons name="alert-circle" size={13} color="#dc2626" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#b91c1c' }}>{criticalCount} Critical</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.criticalBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
+                <Ionicons name="alert-circle" size={13} color={colors.criticalBorder} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.criticalText }}>{criticalCount} Critical</Text>
               </View>
             )}
             {warningCount > 0 && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fefce8', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
-                <Ionicons name="warning" size={13} color="#d97706" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#92400e' }}>{warningCount} Warning</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.warningBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 }}>
+                <Ionicons name="warning" size={13} color={colors.warningIcon} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.warningText }}>{warningCount} Warning</Text>
               </View>
             )}
           </View>
@@ -318,77 +320,77 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
         {atRiskStudents.length > 0 && (
           <View style={{ gap: 6, marginBottom: 12 }}>
             <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Text style={{ fontSize: 12, color: '#9ca3af' }}>By severity:</Text>
+              <Text style={{ fontSize: 12, color: colors.textFaint }}>By severity:</Text>
               {criticalCount > 0 && (
                 <TouchableOpacity
                   onPress={() => setSelectedNetids(new Set(atRiskStudents.filter(s => s.flags.some(f => f.severity === 'critical')).map(s => s.netid)))}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fee2e2', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#fca5a5' }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.criticalBg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: colors.criticalBorder }}
                 >
-                  <Ionicons name="alert-circle" size={12} color="#b91c1c" />
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#b91c1c' }}>All Critical</Text>
+                  <Ionicons name="alert-circle" size={12} color={colors.criticalText} />
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.criticalText }}>All Critical</Text>
                 </TouchableOpacity>
               )}
               {warningCount > 0 && (
                 <TouchableOpacity
                   onPress={() => setSelectedNetids(new Set(atRiskStudents.filter(s => !s.flags.some(f => f.severity === 'critical')).map(s => s.netid)))}
-                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#fefce8', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#fde68a' }}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.warningBg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: colors.warningBorder }}
                 >
-                  <Ionicons name="warning" size={12} color="#d97706" />
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#92400e' }}>All Warning</Text>
+                  <Ionicons name="warning" size={12} color={colors.warningIcon} />
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.warningText }}>All Warning</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
                 onPress={() => setSelectedNetids(new Set(filtered.map(s => s.netid)))}
-                style={{ backgroundColor: '#f3f4f6', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb' }}
+                style={{ backgroundColor: colors.borderLight, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}
               >
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>All</Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary }}>All</Text>
               </TouchableOpacity>
               {selectedNetids.size > 0 && (
                 <TouchableOpacity onPress={() => setSelectedNetids(new Set())}>
-                  <Text style={{ fontSize: 12, color: '#6b7280' }}>Clear</Text>
+                  <Text style={{ fontSize: 12, color: colors.textMuted }}>Clear</Text>
                 </TouchableOpacity>
               )}
             </View>
             <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Text style={{ fontSize: 12, color: '#9ca3af' }}>By type:</Text>
+              <Text style={{ fontSize: 12, color: colors.textFaint }}>By type:</Text>
               <TouchableOpacity
                 onPress={() => setSelectedNetids(new Set(atRiskStudents.filter(s => s.flags.some(f => f.category === 'attendance')).map(s => s.netid)))}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#eff6ff', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#bfdbfe' }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.score2Bg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: colors.score2Border }}
               >
-                <Ionicons name="calendar-outline" size={12} color="#2563eb" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#1d4ed8' }}>Attendance</Text>
+                <Ionicons name="calendar-outline" size={12} color={colors.score2Text} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.score2Text }}>Attendance</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setSelectedNetids(new Set(atRiskStudents.filter(s => s.flags.some(f => f.category === 'performance')).map(s => s.netid)))}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#f5f3ff', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#ddd6fe' }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.ungradedBg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: colors.ungradedBorder }}
               >
-                <Ionicons name="bar-chart-outline" size={12} color="#7c3aed" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: '#6d28d9' }}>Performance</Text>
+                <Ionicons name="bar-chart-outline" size={12} color={colors.ungradedText} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.ungradedText }}>Performance</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
 
         {/* Search */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', paddingHorizontal: 10, paddingVertical: 8, marginBottom: 12 }}>
-          <Ionicons name="search" size={16} color="#9ca3af" style={{ marginRight: 6 }} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.inputBg, borderRadius: 8, borderWidth: 1, borderColor: colors.inputBorder, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 12 }}>
+          <Ionicons name="search" size={16} color={colors.textFaint} style={{ marginRight: 6 }} />
           <TextInput
             placeholder="Search by student, team, TA, or section..."
             value={searchQuery}
             onChangeText={setSearchQuery}
-            style={{ flex: 1, fontSize: 14, color: '#1e293b' }}
-            placeholderTextColor="#9ca3af"
+            style={{ flex: 1, fontSize: 14, color: colors.text }}
+            placeholderTextColor={colors.textFaint}
           />
         </View>
 
         {/* Empty state */}
         {filtered.length === 0 && (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="checkmark-circle-outline" size={48} color="#86efac" />
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#374151', marginTop: 12 }}>
+            <Ionicons name="checkmark-circle-outline" size={48} color={colors.statusGoodBar} />
+            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textSecondary, marginTop: 12 }}>
               {atRiskStudents.length === 0 ? 'No at-risk students' : 'No results match your search'}
             </Text>
-            <Text style={{ fontSize: 13, color: '#9ca3af', marginTop: 4 }}>
+            <Text style={{ fontSize: 13, color: colors.textFaint, marginTop: 4 }}>
               {atRiskStudents.length === 0 ? 'All students are within acceptable thresholds.' : 'Try a different search term.'}
             </Text>
           </View>
@@ -412,7 +414,7 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
                 <View style={{ flex: 1, position: 'relative' }}>
                   {/* Selection border overlay */}
                   {selectedNetids.has(item.netid) && (
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 14, borderWidth: 2.5, borderColor: '#2563eb', zIndex: 2 }} pointerEvents="none" />
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 14, borderWidth: 2.5, borderColor: colors.primary, zIndex: 2 }} pointerEvents="none" />
                   )}
                   {/* Selection checkbox */}
                   <TouchableOpacity
@@ -420,13 +422,13 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
                     style={{
                       position: 'absolute', top: 10, right: 10, zIndex: 3,
                       width: 22, height: 22, borderRadius: 11,
-                      backgroundColor: selectedNetids.has(item.netid) ? '#2563eb' : 'rgba(255,255,255,0.95)',
-                      borderWidth: 2, borderColor: selectedNetids.has(item.netid) ? '#2563eb' : '#d1d5db',
+                      backgroundColor: selectedNetids.has(item.netid) ? colors.primary : colors.surface,
+                      borderWidth: 2, borderColor: selectedNetids.has(item.netid) ? colors.primary : colors.border,
                       alignItems: 'center', justifyContent: 'center',
-                      shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
+                      shadowColor: colors.shadow, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2,
                     }}
                   >
-                    {selectedNetids.has(item.netid) && <Ionicons name="checkmark" size={12} color="white" />}
+                    {selectedNetids.has(item.netid) && <Ionicons name="checkmark" size={12} color={colors.textInverse} />}
                   </TouchableOpacity>
                   <AtRiskStudentCard
                     netid={item.netid}
@@ -447,11 +449,11 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
       {selectedNetids.size > 0 && (
         <View style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
-          backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#e5e7eb',
+          backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
           padding: 14, paddingBottom: 20,
-          shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 8,
+          shadowColor: colors.shadow, shadowOpacity: 0.1, shadowRadius: 8, elevation: 8,
         }}>
-          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 6 }}>
+          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 6 }}>
             {selectedNetids.size} student{selectedNetids.size !== 1 ? 's' : ''} selected
             {(() => {
               const sel = atRiskStudents.filter(s => selectedNetids.has(s.netid));
@@ -462,10 +464,10 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
             })()} — open email, then paste BCC list below
           </Text>
           {/* Copyable BCC list */}
-          <View style={{ backgroundColor: '#f3f4f6', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 10 }}>
-            <Text style={{ fontSize: 10, color: '#9ca3af', marginBottom: 2 }}>BCC</Text>
+          <View style={{ backgroundColor: colors.borderLight, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 10 }}>
+            <Text style={{ fontSize: 10, color: colors.textFaint, marginBottom: 2 }}>BCC</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
-              <Text selectable style={{ fontSize: 12, color: '#374151', fontFamily: 'monospace' }}>
+              <Text selectable style={{ fontSize: 12, color: colors.textSecondary, fontFamily: 'monospace' }}>
                 {[...selectedNetids].map(n => `${n}@iastate.edu`).join('; ')}
               </Text>
               <TouchableOpacity
@@ -481,26 +483,26 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
                   setBccCopied(true);
                   setTimeout(() => setBccCopied(false), 2000);
                 }}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: bccCopied ? '#dcfce7' : '#e5e7eb' }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, backgroundColor: bccCopied ? colors.statusGoodBg : colors.border }}
               >
-                <Ionicons name={bccCopied ? 'checkmark' : 'clipboard-outline'} size={12} color={bccCopied ? '#16a34a' : '#6b7280'} />
-                <Text style={{ fontSize: 11, color: bccCopied ? '#16a34a' : '#6b7280', fontWeight: '500' }}>{bccCopied ? 'Copied!' : 'Copy'}</Text>
+                <Ionicons name={bccCopied ? 'checkmark' : 'clipboard-outline'} size={12} color={bccCopied ? colors.statusGoodText : colors.textMuted} />
+                <Text style={{ fontSize: 11, color: bccCopied ? colors.statusGoodText : colors.textMuted, fontWeight: '500' }}>{bccCopied ? 'Copied!' : 'Copy'}</Text>
               </TouchableOpacity>
             </View>
           </View>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity
               onPress={() => setSelectedNetids(new Set())}
-              style={{ paddingVertical: 9, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#f9fafb' }}
+              style={{ paddingVertical: 9, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background }}
             >
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>Clear</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary }}>Clear</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={openSelectedEmail}
-              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 8, backgroundColor: '#b91c1c' }}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 8, backgroundColor: colors.primary }}
             >
-              <Ionicons name="mail-outline" size={14} color="white" />
-              <Text style={{ fontSize: 13, fontWeight: '700', color: 'white' }}>
+              <Ionicons name="mail-outline" size={14} color={colors.textInverse} />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textInverse }}>
                 Open Email Client ({selectedNetids.size})
               </Text>
             </TouchableOpacity>

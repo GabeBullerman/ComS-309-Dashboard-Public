@@ -1,5 +1,5 @@
 import "nativewind/global.css";
-import { Platform, View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from "react-native";
+import { Platform, View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,7 @@ import { setForceLogoutHandler, apiBaseUrl } from './src/api/client';
 import type { UserRole } from './src/utils/auth';
 import { Team, TeamMember } from "@/data/teams";
 import TeamMemberDetail from "@/screens/TeamMemberDetail";
+import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 
 if (Platform.OS === "web") {
   import("./nativewind/output.css"); // Use the built file
@@ -39,46 +40,35 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 type ConnStatus = 'checking' | 'online' | 'offline';
 
 function NoConnectionScreen({ onRetry, checking }: { onRetry: () => void; checking: boolean }) {
+  const { colors } = useTheme();
   return (
-    <View style={conn.container}>
-      <View style={conn.card}>
-        <View style={conn.iconWrap}>
-          <Ionicons name="wifi-outline" size={48} color="#94a3b8" />
+    <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 32, width: '100%', maxWidth: 400, alignItems: 'center', shadowColor: colors.shadow, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}>
+        <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <Ionicons name="wifi-outline" size={48} color={colors.textFaint} />
         </View>
-        <Text style={conn.title}>Cannot Reach Server</Text>
-        <Text style={conn.body}>
+        <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 12, textAlign: 'center' }}>Cannot Reach Server</Text>
+        <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 8 }}>
           The dashboard server is only accessible on the{' '}
-          <Text style={conn.bold}>ISU campus network</Text> or via the{' '}
-          <Text style={conn.bold}>Iowa State VPN</Text>.
+          <Text style={{ fontWeight: '700', color: colors.text }}>ISU campus network</Text> or via the{' '}
+          <Text style={{ fontWeight: '700', color: colors.text }}>Iowa State VPN</Text>.
         </Text>
-        <Text style={conn.sub}>
+        <Text style={{ fontSize: 13, color: colors.textFaint, textAlign: 'center', marginBottom: 28 }}>
           Connect to the VPN, then tap Retry.
         </Text>
-        <TouchableOpacity style={conn.button} onPress={onRetry} disabled={checking}>
+        <TouchableOpacity style={{ backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 13, paddingHorizontal: 40, marginBottom: 16, minWidth: 140, alignItems: 'center' }} onPress={onRetry} disabled={checking}>
           {checking
-            ? <ActivityIndicator color="white" />
-            : <Text style={conn.buttonText}>Retry</Text>}
+            ? <ActivityIndicator color={colors.textInverse} />
+            : <Text style={{ color: colors.textInverse, fontWeight: '700', fontSize: 15 }}>Retry</Text>}
         </TouchableOpacity>
-        <Text style={conn.hint}>VPN: vpn.iastate.edu</Text>
+        <Text style={{ fontSize: 12, color: colors.borderMedium }}>VPN: vpn.iastate.edu</Text>
       </View>
     </View>
   );
 }
 
-const conn = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f7fa', alignItems: 'center', justifyContent: 'center', padding: 24 },
-  card: { backgroundColor: 'white', borderRadius: 16, padding: 32, width: '100%', maxWidth: 400, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 },
-  iconWrap: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  title: { fontSize: 20, fontWeight: '700', color: '#1e293b', marginBottom: 12, textAlign: 'center' },
-  body: { fontSize: 14, color: '#475569', textAlign: 'center', lineHeight: 22, marginBottom: 8 },
-  bold: { fontWeight: '700', color: '#1e293b' },
-  sub: { fontSize: 13, color: '#94a3b8', textAlign: 'center', marginBottom: 28 },
-  button: { backgroundColor: '#C8102E', borderRadius: 10, paddingVertical: 13, paddingHorizontal: 40, marginBottom: 16, minWidth: 140, alignItems: 'center' },
-  buttonText: { color: 'white', fontWeight: '700', fontSize: 15 },
-  hint: { fontSize: 12, color: '#cbd5e1' },
-});
-
-export default function App() {
+function AppInner() {
+  const { colors } = useTheme();
   const [fontsLoaded] = useFonts({ ...Ionicons.font });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('Student');
@@ -158,8 +148,8 @@ export default function App() {
 
   if (!fontsLoaded || connStatus === 'checking') {
     return (
-      <View style={{ flex: 1, backgroundColor: '#f5f7fa', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color="#C8102E" />
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -175,13 +165,13 @@ export default function App() {
           onPress={() => (window as any).electronAPI?.installUpdate()}
           style={{
             position: 'absolute', top: 0, left: 0, right: 0, zIndex: 9999,
-            backgroundColor: '#16a34a',
+            backgroundColor: colors.updateBanner,
             flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
             paddingVertical: 10, paddingHorizontal: 16, gap: 10,
           }}
         >
-          <Ionicons name="arrow-up-circle-outline" size={18} color="white" />
-          <Text style={{ color: 'white', fontWeight: '700', fontSize: 13 }}>
+          <Ionicons name="arrow-up-circle-outline" size={18} color={colors.textInverse} />
+          <Text style={{ color: colors.textInverse, fontWeight: '700', fontSize: 13 }}>
             Update ready — click to restart and install
           </Text>
         </TouchableOpacity>
@@ -209,5 +199,13 @@ export default function App() {
       </Stack.Navigator>
     </NavigationContainer>
     </View>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppInner />
+    </ThemeProvider>
   );
 }

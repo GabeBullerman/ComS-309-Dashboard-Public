@@ -16,6 +16,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../App';
+import { useTheme } from '../contexts/ThemeContext';
 import { TeamMember } from '../types/Teams';
 import { getTeam, updateTeamInfo } from '../api/teams';
 import { setUserProjectRole, getCurrentUser } from '../api/users';
@@ -54,6 +55,7 @@ const PROJECT_ROLES: ProjectRole[] = ['Frontend', 'Backend'];
 
 export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps) {
   const { team, userRole } = route.params;
+  const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const [authorNetid, setAuthorNetid] = useState<string | undefined>(undefined);
@@ -308,26 +310,26 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#F3F4F6', paddingTop: statusBarHeight + (isMobile ? 12 : 24) }}
+      style={{ flex: 1, backgroundColor: colors.background, paddingTop: statusBarHeight + (isMobile ? 12 : 24) }}
       contentContainerStyle={{ paddingBottom: 40 }}
     >
       {/* Header */}
       <View style={{ paddingHorizontal: pad, marginBottom: 4 }}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6 }}>
-          <Ionicons name="arrow-back" size={22} color="#111827" />
-          <Text style={{ fontSize: 14, color: '#111827', fontWeight: '500' }}>All Teams</Text>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+          <Text style={{ fontSize: 14, color: colors.text, fontWeight: '500' }}>All Teams</Text>
         </TouchableOpacity>
       </View>
 
       {/* Team name — centered, large */}
-      <Text style={{ fontSize: isMobile ? 22 : 28, fontWeight: '700', color: '#111827', textAlign: 'center', paddingHorizontal: pad, marginTop: 8, marginBottom: 4 }}>
+      <Text style={{ fontSize: isMobile ? 22 : 28, fontWeight: '700', color: colors.text, textAlign: 'center', paddingHorizontal: pad, marginTop: 8, marginBottom: 4 }}>
         {teamName}
       </Text>
 
       {/* Unified action bar — below team name, above members */}
       {(gitlab || discord || canEditRepo) && (
         <View style={{ paddingHorizontal: pad, paddingTop: 8, paddingBottom: 4 }}>
-          <View style={{ flexDirection: 'row', borderRadius: 8, overflow: 'hidden', backgroundColor: '#C8102E' }}>
+          <View style={{ flexDirection: 'row', borderRadius: 8, overflow: 'hidden', backgroundColor: colors.primary }}>
             <TouchableOpacity
               onPress={() => discord
                 ? Linking.openURL(discord).catch(() => Alert.alert('Error', 'Could not open Discord link'))
@@ -336,8 +338,8 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
               style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, paddingHorizontal: 8, opacity: !discord && !canEditRepo ? 0.4 : 1 }}
               disabled={!discord && !canEditRepo}
             >
-              <Ionicons name="logo-discord" size={16} color="white" />
-              <Text style={{ marginLeft: 7, color: 'white', fontWeight: '600', fontSize: 13 }}>
+              <Ionicons name="logo-discord" size={16} color={colors.textInverse} />
+              <Text style={{ marginLeft: 7, color: colors.textInverse, fontWeight: '600', fontSize: 13 }}>
                 {discord ? 'Discord' : 'Add Discord'}
               </Text>
             </TouchableOpacity>
@@ -350,7 +352,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
               disabled={!gitlab && !canEditRepo}
             >
               <Text style={{ fontSize: 15 }}>🦊</Text>
-              <Text style={{ marginLeft: 7, color: 'white', fontWeight: '600', fontSize: 13 }}>
+              <Text style={{ marginLeft: 7, color: colors.textInverse, fontWeight: '600', fontSize: 13 }}>
                 {gitlab ? 'View Repo' : 'Add Repo'}
               </Text>
             </TouchableOpacity>
@@ -362,7 +364,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                   onPress={handleEditPress}
                   style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 13, paddingHorizontal: 16 }}
                 >
-                  <Ionicons name="pencil-outline" size={16} color="white" />
+                  <Ionicons name="pencil-outline" size={16} color={colors.textInverse} />
                 </TouchableOpacity>
               </>
             )}
@@ -389,14 +391,14 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                 <TouchableOpacity
                   ref={(ref) => { if (ref) badgeRefs.current[memberKey] = ref; }}
                   onPress={(e) => { e.stopPropagation(); handleBadgePress(memberKey); }}
-                  style={{ backgroundColor: '#C8102E', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
+                  style={{ backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
                 >
-                  <Text style={{ color: 'white', fontSize: 11, fontWeight: '500' }}>{role ?? 'Set Role'}</Text>
-                  <Ionicons name="chevron-down" size={10} color="white" style={{ marginLeft: 3 }} />
+                  <Text style={{ color: colors.textInverse, fontSize: 11, fontWeight: '500' }}>{role ?? 'Set Role'}</Text>
+                  <Ionicons name="chevron-down" size={10} color={colors.textInverse} style={{ marginLeft: 3 }} />
                 </TouchableOpacity>
               ) : role ? (
-                <View style={{ backgroundColor: '#C8102E', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, marginBottom: 6 }}>
-                  <Text style={{ color: 'white', fontSize: 11, fontWeight: '500' }}>{role}</Text>
+                <View style={{ backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, marginBottom: 6 }}>
+                  <Text style={{ color: colors.textInverse, fontSize: 11, fontWeight: '500' }}>{role}</Text>
                 </View>
               ) : (
                 <View style={{ height: isMobile ? 22 : 24, marginBottom: 6 }} />
@@ -417,12 +419,12 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         })}
       </View>
 
-    <View style={{ backgroundColor: 'white', borderRadius: 12, marginHorizontal: pad, marginVertical: 12, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
+    <View style={{ backgroundColor: colors.surface, borderRadius: 12, marginHorizontal: pad, marginVertical: 12, overflow: 'hidden', shadowColor: colors.shadow, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
 
     {/* Team Results Header */}
-    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
-      <Ionicons name="logo-gitlab" size={18} color="#be123c" />
-      <Text style={{ fontSize: 16, fontWeight: '600', marginLeft: 8, color: '#111827' }}>GitLab Analysis</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+      <Ionicons name="logo-gitlab" size={18} color={colors.primary} />
+      <Text style={{ fontSize: 16, fontWeight: '600', marginLeft: 8, color: colors.text }}>GitLab Analysis</Text>
     </View>
 
       {/* Tab Panel */}
@@ -432,9 +434,9 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
             <TouchableOpacity
               key={key}
               onPress={() => setActiveTab(key)}
-              style={{ paddingVertical: 8, paddingHorizontal: isMobile ? 10 : 16, borderRadius: 8, backgroundColor: activeTab === key ? '#F1BE48' : '#E5E7EB' }}
+              style={{ paddingVertical: 8, paddingHorizontal: isMobile ? 10 : 16, borderRadius: 8, backgroundColor: activeTab === key ? colors.gold : colors.borderLight }}
             >
-              <Text style={{ color: activeTab === key ? '#111827' : '#374151', fontWeight: activeTab === key ? '700' : '400', fontSize: isMobile ? 12 : 14 }}>
+              <Text style={{ color: activeTab === key ? '#111827' : colors.textSecondary, fontWeight: activeTab === key ? '700' : '400', fontSize: isMobile ? 12 : 14 }}>
                 {label}
               </Text>
             </TouchableOpacity>
@@ -443,32 +445,32 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
         {/* Token prompt — only shown when no token is set */}
         {!glToken && gitlab && (
-          <View style={{ backgroundColor: '#FEF9C3', borderRadius: 8, padding: 12, marginBottom: 12 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: '#92400E', marginBottom: 6 }}>
+          <View style={{ backgroundColor: colors.warningBg, borderRadius: 8, padding: 12, marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.warningText, marginBottom: 6 }}>
               GitLab personal access token required
             </Text>
-            <Text style={{ fontSize: 12, color: '#78350F', marginBottom: 8 }}>Generate one at git.las.iastate.edu → Settings → Access Tokens (scope: read_api), then add it in your Profile.</Text>
+            <Text style={{ fontSize: 12, color: colors.warningText, marginBottom: 8 }}>Generate one at git.las.iastate.edu → Settings → Access Tokens (scope: read_api), then add it in your Profile.</Text>
           </View>
         )}
 
-        <View style={{ padding: 16, backgroundColor: '#F3F4F6', borderRadius: 8, minHeight: 160, marginBottom: 16 }}>
+        <View style={{ padding: 16, backgroundColor: colors.background, borderRadius: 8, minHeight: 160, marginBottom: 16 }}>
           {activeTab === 'contributions' && (() => {
-            if (!gitlab) return <Text style={{ color: '#9ca3af', fontSize: 13 }}>No GitLab repo linked.</Text>;
-            if (!glToken) return <Text style={{ color: '#9ca3af', fontSize: 13 }}>Enter your GitLab token above to load contributions.</Text>;
-            if (glLoading) return <ActivityIndicator color="#C8102E" />;
-            if (glError) return <Text style={{ color: '#DC2626', fontSize: 13 }}>{glError}</Text>;
-            if (contributors.length === 0) return <Text style={{ color: '#9ca3af', fontSize: 13 }}>No contributions found.</Text>;
+            if (!gitlab) return <Text style={{ color: colors.textFaint, fontSize: 13 }}>No GitLab repo linked.</Text>;
+            if (!glToken) return <Text style={{ color: colors.textFaint, fontSize: 13 }}>Enter your GitLab token above to load contributions.</Text>;
+            if (glLoading) return <ActivityIndicator color={colors.primary} />;
+            if (glError) return <Text style={{ color: colors.criticalBorder, fontSize: 13 }}>{glError}</Text>;
+            if (contributors.length === 0) return <Text style={{ color: colors.textFaint, fontSize: 13 }}>No contributions found.</Text>;
             const max = Math.max(...contributors.map((c) => c.commits));
             return (
               <View style={{ gap: 10 }}>
                 {contributors.map((c) => (
                   <View key={c.email}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>{c.name}</Text>
-                      <Text style={{ fontSize: 12, color: '#6B7280' }}>{c.commits} commits</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary }}>{c.name}</Text>
+                      <Text style={{ fontSize: 12, color: colors.textMuted }}>{c.commits} commits</Text>
                     </View>
-                    <View style={{ height: 6, backgroundColor: '#E5E7EB', borderRadius: 3 }}>
-                      <View style={{ height: 6, width: `${Math.round((c.commits / max) * 100)}%`, backgroundColor: '#C8102E', borderRadius: 3 }} />
+                    <View style={{ height: 6, backgroundColor: colors.border, borderRadius: 3 }}>
+                      <View style={{ height: 6, width: `${Math.round((c.commits / max) * 100)}%`, backgroundColor: colors.primary, borderRadius: 3 }} />
                     </View>
                   </View>
                 ))}
@@ -477,79 +479,79 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           })()}
 
           {activeTab === 'compliance' && (() => {
-            if (!gitlab) return <Text style={{ color: '#9ca3af', fontSize: 13 }}>No GitLab repo linked.</Text>;
-            if (!glToken) return <Text style={{ color: '#9ca3af', fontSize: 13 }}>Enter your GitLab token in Profile to use compliance analysis.</Text>;
+            if (!gitlab) return <Text style={{ color: colors.textFaint, fontSize: 13 }}>No GitLab repo linked.</Text>;
+            if (!glToken) return <Text style={{ color: colors.textFaint, fontSize: 13 }}>Enter your GitLab token in Profile to use compliance analysis.</Text>;
             const { label } = getWeekBounds(complianceWeekOffset);
             return (
               <View>
                 {/* Week navigator */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <TouchableOpacity onPress={() => setComplianceWeekOffset(o => o - 1)} style={{ padding: 6 }}>
-                    <Ionicons name="chevron-back" size={16} color="#6b7280" />
+                    <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
                   </TouchableOpacity>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151' }}>{label}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary }}>{label}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <TouchableOpacity onPress={() => setShowComplianceInfo(v => !v)} style={{ padding: 4 }}>
-                      <Ionicons name="information-circle-outline" size={18} color="#6b7280" />
+                      <Ionicons name="information-circle-outline" size={18} color={colors.textMuted} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => setComplianceWeekOffset(o => Math.min(0, o + 1))}
                       disabled={complianceWeekOffset === 0}
                       style={{ padding: 6, opacity: complianceWeekOffset === 0 ? 0.3 : 1 }}
                     >
-                      <Ionicons name="chevron-forward" size={16} color="#6b7280" />
+                      <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                     </TouchableOpacity>
                   </View>
                 </View>
 
                 {/* Criteria info panel */}
                 {showComplianceInfo && (
-                  <View style={{ backgroundColor: '#f0f9ff', borderWidth: 1, borderColor: '#bae6fd', borderRadius: 8, padding: 12, marginBottom: 10 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#0369a1', marginBottom: 6 }}>Compliance Criteria</Text>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#0c4a6e', marginBottom: 2 }}>🔧 Backend</Text>
-                    <Text style={{ fontSize: 11, color: '#0c4a6e', marginBottom: 6 }}>Each commit must contain 2+ annotation tags in the message body (e.g. @author, @reviewer, @tested-by). Commits without sufficient annotations do not count toward compliance.</Text>
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#0c4a6e', marginBottom: 2 }}>🖥 Frontend</Text>
-                    <Text style={{ fontSize: 11, color: '#0c4a6e', marginBottom: 6 }}>Each commit must add 40+ qualifying lines (non-blank, non-comment lines in UI/style files). Whitespace-only or comment-only changes do not count.</Text>
-                    <Text style={{ fontSize: 11, color: '#6b7280' }}>Analysis covers all branches. Merged commits are counted once (deduplicated by commit ID).</Text>
+                  <View style={{ backgroundColor: colors.warningBg, borderWidth: 1, borderColor: colors.warningBorder, borderRadius: 8, padding: 12, marginBottom: 10 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: colors.warningText, marginBottom: 6 }}>Compliance Criteria</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.warningText, marginBottom: 2 }}>🔧 Backend</Text>
+                    <Text style={{ fontSize: 11, color: colors.warningText, marginBottom: 6 }}>Each commit must contain 2+ annotation tags in the message body (e.g. @author, @reviewer, @tested-by). Commits without sufficient annotations do not count toward compliance.</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.warningText, marginBottom: 2 }}>🖥 Frontend</Text>
+                    <Text style={{ fontSize: 11, color: colors.warningText, marginBottom: 6 }}>Each commit must add 40+ qualifying lines (non-blank, non-comment lines in UI/style files). Whitespace-only or comment-only changes do not count.</Text>
+                    <Text style={{ fontSize: 11, color: colors.textMuted }}>Analysis covers all branches. Merged commits are counted once (deduplicated by commit ID).</Text>
                   </View>
                 )}
 
                 {complianceLoading && (
                   <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-                    <ActivityIndicator color="#C8102E" />
-                    <Text style={{ color: '#9ca3af', fontSize: 12, marginTop: 8 }}>Fetching diffs — this may take a moment…</Text>
+                    <ActivityIndicator color={colors.primary} />
+                    <Text style={{ color: colors.textFaint, fontSize: 12, marginTop: 8 }}>Fetching diffs — this may take a moment…</Text>
                   </View>
                 )}
 
                 {complianceError && (
-                  <Text style={{ color: '#dc2626', fontSize: 13 }}>{complianceError}</Text>
+                  <Text style={{ color: colors.criticalBorder, fontSize: 13 }}>{complianceError}</Text>
                 )}
 
                 {!complianceLoading && !complianceError && complianceResults.length > 0 && (
                   <View style={{ gap: 8 }}>
                     {complianceResults.map((r) => {
                       const noRole = r.role === null;
-                      const borderColor = noRole ? '#e5e7eb' : r.passed ? '#86efac' : '#fca5a5';
+                      const borderColor = noRole ? colors.border : r.passed ? colors.statusGoodBar : colors.statusPoorBar;
                       const metricLabel = r.role === 'Backend'
                         ? `${r.metric} annotation${r.metric !== 1 ? 's' : ''} (need 2)`
                         : `${r.metric} qualifying addition${r.metric !== 1 ? 's' : ''} (need 40)`;
                       return (
-                        <View key={r.netid} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 8, borderWidth: 1, borderColor, padding: 10, gap: 10 }}>
+                        <View key={r.netid} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor, padding: 10, gap: 10 }}>
                           {/* Pass/fail icon */}
                           {noRole
-                            ? <Ionicons name="help-circle-outline" size={18} color="#9ca3af" />
-                            : <Ionicons name={r.passed ? 'checkmark-circle' : 'close-circle'} size={18} color={r.passed ? '#16a34a' : '#dc2626'} />
+                            ? <Ionicons name="help-circle-outline" size={18} color={colors.textFaint} />
+                            : <Ionicons name={r.passed ? 'checkmark-circle' : 'close-circle'} size={18} color={r.passed ? colors.statusGoodText : colors.criticalBorder} />
                           }
                           <View style={{ flex: 1 }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                              <Text style={{ fontSize: 13, fontWeight: '600', color: '#111827' }}>{r.name}</Text>
+                              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>{r.name}</Text>
                               {r.role && (
-                                <View style={{ backgroundColor: '#C8102E', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1 }}>
-                                  <Text style={{ fontSize: 10, fontWeight: '600', color: 'white' }}>{r.role}</Text>
+                                <View style={{ backgroundColor: colors.primary, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 1 }}>
+                                  <Text style={{ fontSize: 10, fontWeight: '600', color: colors.textInverse }}>{r.role}</Text>
                                 </View>
                               )}
                             </View>
-                            <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                            <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
                               {noRole
                                 ? 'No role assigned — set a role to enable compliance tracking'
                                 : r.commitCount === 0
@@ -559,7 +561,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                             </Text>
                           </View>
                           {!noRole && r.commitCount > 0 && (
-                            <Text style={{ fontSize: 11, color: '#9ca3af' }}>{r.commitCount} commit{r.commitCount !== 1 ? 's' : ''}</Text>
+                            <Text style={{ fontSize: 11, color: colors.textFaint }}>{r.commitCount} commit{r.commitCount !== 1 ? 's' : ''}</Text>
                           )}
                         </View>
                       );
@@ -568,7 +570,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                 )}
 
                 {!complianceLoading && !complianceError && complianceResults.length === 0 && (
-                  <Text style={{ color: '#9ca3af', fontSize: 13 }}>No results yet.</Text>
+                  <Text style={{ color: colors.textFaint, fontSize: 13 }}>No results yet.</Text>
                 )}
               </View>
             );
@@ -576,22 +578,22 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
 
           {activeTab === 'Push frequency' && (() => {
-            if (!gitlab) return <Text style={{ color: '#9ca3af', fontSize: 13 }}>No GitLab repo linked.</Text>;
-            if (!glToken) return <Text style={{ color: '#9ca3af', fontSize: 13 }}>Enter your GitLab token above to load push frequency.</Text>;
-            if (glLoading) return <ActivityIndicator color="#C8102E" />;
-            if (glError) return <Text style={{ color: '#DC2626', fontSize: 13 }}>{glError}</Text>;
-            if (weeklyCommits.length === 0) return <Text style={{ color: '#9ca3af', fontSize: 13 }}>No recent commits found.</Text>;
+            if (!gitlab) return <Text style={{ color: colors.textFaint, fontSize: 13 }}>No GitLab repo linked.</Text>;
+            if (!glToken) return <Text style={{ color: colors.textFaint, fontSize: 13 }}>Enter your GitLab token above to load push frequency.</Text>;
+            if (glLoading) return <ActivityIndicator color={colors.primary} />;
+            if (glError) return <Text style={{ color: colors.criticalBorder, fontSize: 13 }}>{glError}</Text>;
+            if (weeklyCommits.length === 0) return <Text style={{ color: colors.textFaint, fontSize: 13 }}>No recent commits found.</Text>;
             const max = Math.max(...weeklyCommits.map((w) => w.count), 1);
             return (
               <View style={{ gap: 10 }}>
                 {weeklyCommits.map((w) => (
                   <View key={w.label}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
-                      <Text style={{ fontSize: 13, color: '#374151' }}>{w.label}</Text>
-                      <Text style={{ fontSize: 12, color: '#6B7280' }}>{w.count} commit{w.count !== 1 ? 's' : ''}</Text>
+                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{w.label}</Text>
+                      <Text style={{ fontSize: 12, color: colors.textMuted }}>{w.count} commit{w.count !== 1 ? 's' : ''}</Text>
                     </View>
-                    <View style={{ height: 6, backgroundColor: '#E5E7EB', borderRadius: 3 }}>
-                      <View style={{ height: 6, width: `${Math.round((w.count / max) * 100)}%`, backgroundColor: '#F1BE48', borderRadius: 3 }} />
+                    <View style={{ height: 6, backgroundColor: colors.border, borderRadius: 3 }}>
+                      <View style={{ height: 6, width: `${Math.round((w.count / max) * 100)}%`, backgroundColor: colors.gold, borderRadius: 3 }} />
                     </View>
                   </View>
                 ))}
@@ -608,9 +610,9 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
       {/* Bulk Attendance — staff only */}
       {userRole !== 'Student' && (
-        <View style={{ marginHorizontal: pad, marginBottom: 12, backgroundColor: 'white', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 2 }}>Bulk Attendance</Text>
-          <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>Mark all {team.members.length} team members at once</Text>
+        <View style={{ marginHorizontal: pad, marginBottom: 12, backgroundColor: colors.surface, borderRadius: 12, padding: 16, shadowColor: colors.shadow, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 2 }}>Bulk Attendance</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>Mark all {team.members.length} team members at once</Text>
 
           {/* Date + Type row */}
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -618,10 +620,10 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
             {Platform.OS === 'web' ? (
               <TouchableOpacity
                 onPress={() => { (datePickerRef.current as any)?.showPicker?.() ?? (datePickerRef.current as any)?.click?.(); }}
-                style={{ flex: 1, minWidth: 120, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: '#f9fafb' }}
+                style={{ flex: 1, minWidth: 120, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: colors.inputBg }}
               >
-                <Ionicons name="calendar-outline" size={14} color="#6b7280" />
-                <Text style={{ fontSize: 13, color: '#111827' }}>{bulkDate}</Text>
+                <Ionicons name="calendar-outline" size={14} color={colors.textMuted} />
+                <Text style={{ fontSize: 13, color: colors.text }}>{bulkDate}</Text>
                 {/* Hidden native date input */}
                 <input
                   ref={datePickerRef}
@@ -636,8 +638,8 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                 value={bulkDate}
                 onChangeText={setBulkDate}
                 placeholder="YYYY-MM-DD"
-                placeholderTextColor="#9ca3af"
-                style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, fontSize: 13, color: '#111827', flex: 1, minWidth: 120 }}
+                placeholderTextColor={colors.textFaint}
+                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, fontSize: 13, color: colors.text, flex: 1, minWidth: 120 }}
               />
             )}
             <View style={{ flexDirection: 'row', gap: 4 }}>
@@ -645,9 +647,9 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                 <TouchableOpacity
                   key={t}
                   onPress={() => setBulkType(t)}
-                  style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, backgroundColor: bulkType === t ? '#b91c1c' : '#f3f4f6', borderWidth: 1, borderColor: bulkType === t ? '#b91c1c' : '#e5e7eb' }}
+                  style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, backgroundColor: bulkType === t ? colors.primary : colors.background, borderWidth: 1, borderColor: bulkType === t ? colors.primary : colors.border }}
                 >
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: bulkType === t ? 'white' : '#374151' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: bulkType === t ? colors.textInverse : colors.textSecondary }}>
                     {t === 'LECTURE' ? 'Class' : 'TA Meeting'}
                   </Text>
                 </TouchableOpacity>
@@ -659,12 +661,12 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           <View style={{ marginBottom: 12 }}>
             {/* Set-all row */}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 6, flexWrap: 'wrap' }}>
-              <Text style={{ fontSize: 12, color: '#6b7280', marginRight: 2 }}>Set all:</Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted, marginRight: 2 }}>Set all:</Text>
               {([
-                { s: 'PRESENT' as AttendanceStatus, label: 'Present', color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
-                { s: 'LATE'    as AttendanceStatus, label: 'Late',    color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
-                { s: 'ABSENT'  as AttendanceStatus, label: 'Absent',  color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
-                { s: 'EXCUSED' as AttendanceStatus, label: 'Excused', color: '#2563eb', bg: '#eff6ff', border: '#93c5fd' },
+                { s: 'PRESENT' as AttendanceStatus, label: 'Present', color: colors.statusGoodText,     bg: colors.statusGoodBg,     border: colors.statusGoodBar },
+                { s: 'LATE'    as AttendanceStatus, label: 'Late',    color: colors.statusModerateText, bg: colors.statusModerateBg, border: colors.statusModerateBar },
+                { s: 'ABSENT'  as AttendanceStatus, label: 'Absent',  color: colors.statusPoorText,     bg: colors.statusPoorBg,     border: colors.statusPoorBar },
+                { s: 'EXCUSED' as AttendanceStatus, label: 'Excused', color: colors.excusedText,        bg: colors.excusedBg,        border: colors.excusedBorder },
               ]).map(({ s, label, color, bg, border }) => (
                 <TouchableOpacity
                   key={s}
@@ -682,13 +684,13 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                 const current = bulkStatus[m.netid!] ?? 'PRESENT';
                 return (
                   <View key={m.netid} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={{ fontSize: 12, color: '#111827', width: 120 }} numberOfLines={1}>{m.name}</Text>
+                    <Text style={{ fontSize: 12, color: colors.text, width: 120 }} numberOfLines={1}>{m.name}</Text>
                     <View style={{ flexDirection: 'row', gap: 4, flex: 1 }}>
                       {([
-                        { s: 'PRESENT' as AttendanceStatus, label: 'Present', color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
-                        { s: 'LATE'    as AttendanceStatus, label: 'Late',    color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
-                        { s: 'ABSENT'  as AttendanceStatus, label: 'Absent',  color: '#dc2626', bg: '#fef2f2', border: '#fca5a5' },
-                        { s: 'EXCUSED' as AttendanceStatus, label: 'Excused', color: '#2563eb', bg: '#eff6ff', border: '#93c5fd' },
+                        { s: 'PRESENT' as AttendanceStatus, label: 'Present', color: colors.statusGoodText,     bg: colors.statusGoodBg,     border: colors.statusGoodBar },
+                        { s: 'LATE'    as AttendanceStatus, label: 'Late',    color: colors.statusModerateText, bg: colors.statusModerateBg, border: colors.statusModerateBar },
+                        { s: 'ABSENT'  as AttendanceStatus, label: 'Absent',  color: colors.statusPoorText,     bg: colors.statusPoorBg,     border: colors.statusPoorBar },
+                        { s: 'EXCUSED' as AttendanceStatus, label: 'Excused', color: colors.excusedText,        bg: colors.excusedBg,        border: colors.excusedBorder },
                       ]).map(({ s, label, color, bg, border }) => {
                         const active = current === s;
                         return (
@@ -697,12 +699,12 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                             onPress={() => setBulkStatus(prev => ({ ...prev, [m.netid!]: s }))}
                             style={{
                               flex: 1, alignItems: 'center', paddingVertical: 5, borderRadius: 6,
-                              backgroundColor: active ? bg : '#f9fafb',
+                              backgroundColor: active ? bg : colors.background,
                               borderWidth: 1,
-                              borderColor: active ? border : '#e5e7eb',
+                              borderColor: active ? border : colors.border,
                             }}
                           >
-                            <Text style={{ fontSize: 11, fontWeight: active ? '700' : '400', color: active ? color : '#9ca3af' }}>
+                            <Text style={{ fontSize: 11, fontWeight: active ? '700' : '400', color: active ? color : colors.textFaint }}>
                               {label}
                             </Text>
                           </TouchableOpacity>
@@ -719,14 +721,14 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
           <TouchableOpacity
             onPress={() => handleBulkAttendance()}
             disabled={bulkSaving}
-            style={{ alignItems: 'center', paddingVertical: 10, borderRadius: 8, backgroundColor: '#b91c1c', opacity: bulkSaving ? 0.6 : 1 }}
+            style={{ alignItems: 'center', paddingVertical: 10, borderRadius: 8, backgroundColor: colors.primary, opacity: bulkSaving ? 0.6 : 1 }}
           >
-            <Text style={{ fontSize: 13, fontWeight: '700', color: 'white' }}>Save Attendance</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textInverse }}>Save Attendance</Text>
           </TouchableOpacity>
 
-          {bulkSaving && <ActivityIndicator size="small" color="#6b7280" style={{ marginTop: 10, alignSelf: 'center' }} />}
+          {bulkSaving && <ActivityIndicator size="small" color={colors.textMuted} style={{ marginTop: 10, alignSelf: 'center' }} />}
           {!!bulkDone && (
-            <Text style={{ fontSize: 12, color: bulkDone.startsWith('Error') ? '#dc2626' : '#16a34a', marginTop: 8, textAlign: 'center' }}>
+            <Text style={{ fontSize: 12, color: bulkDone.startsWith('Error') ? colors.criticalBorder : colors.statusGoodText, marginTop: 8, textAlign: 'center' }}>
               {bulkDone}
             </Text>
           )}
@@ -742,51 +744,54 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View style={{ backgroundColor: 'white', borderRadius: 16, width: '100%', maxHeight: '85%' }}>
-            <View style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827' }}>Edit Team Info</Text>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, backgroundColor: colors.overlay }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, width: '100%', maxHeight: '85%' }}>
+            <View style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>Edit Team Info</Text>
             </View>
 
             <ScrollView style={{ paddingHorizontal: 24 }} contentContainerStyle={{ paddingVertical: 16 }}>
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 4 }}>Team Name</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 4 }}>Team Name</Text>
               <TextInput
                 value={editName}
                 onChangeText={setEditName}
                 placeholder="Team name"
+                placeholderTextColor={colors.textFaint}
                 autoCorrect={false}
-                style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 16, fontSize: 14, color: '#111827' }}
+                style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 16, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg }}
               />
 
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 4 }}>Repo URL</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 4 }}>Repo URL</Text>
               <TextInput
                 value={editUrl}
                 onChangeText={setEditUrl}
                 placeholder="https://gitlab.com/..."
+                placeholderTextColor={colors.textFaint}
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"
-                style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 16, fontSize: 14, color: '#111827' }}
+                style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 16, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg }}
               />
 
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 4 }}>Discord Channel URL</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 4 }}>Discord Channel URL</Text>
               <TextInput
                 value={editDiscord}
                 onChangeText={setEditDiscord}
                 placeholder="https://discord.com/channels/..."
+                placeholderTextColor={colors.textFaint}
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"
-                style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 16, fontSize: 14, color: '#111827' }}
+                style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 16, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg }}
               />
             </ScrollView>
 
-            <View style={{ paddingHorizontal: 24, paddingVertical: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6', flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: 8, backgroundColor: '#E5E7EB' }}>
-                <Text style={{ color: '#374151', fontWeight: '600' }}>Cancel</Text>
+            <View style={{ paddingHorizontal: 24, paddingVertical: 16, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: 8, backgroundColor: colors.borderLight }}>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleSave} disabled={saving} style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: 8, backgroundColor: '#C8102E' }}>
-                {saving ? <ActivityIndicator size="small" color="white" /> : <Text style={{ color: 'white', fontWeight: '600' }}>Save</Text>}
+              <TouchableOpacity onPress={handleSave} disabled={saving} style={{ paddingHorizontal: 16, paddingVertical: 9, borderRadius: 8, backgroundColor: colors.primary }}>
+                {saving ? <ActivityIndicator size="small" color={colors.textInverse} /> : <Text style={{ color: colors.textInverse, fontWeight: '600' }}>Save</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -806,9 +811,9 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
               position: 'absolute',
               left: roleDropdownPos.pageX,
               top: roleDropdownPos.pageY,
-              backgroundColor: 'white',
+              backgroundColor: colors.surface,
               borderRadius: 8,
-              shadowColor: '#000',
+              shadowColor: colors.shadow,
               shadowOpacity: 0.15,
               shadowRadius: 6,
               elevation: 8,
@@ -825,7 +830,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                     }}
                     style={{ paddingHorizontal: 12, paddingVertical: 10 }}
                   >
-                    <Text style={{ fontSize: 13, color: currentRole === r ? '#C8102E' : '#374151', fontWeight: currentRole === r ? '600' : '400' }}>{r}</Text>
+                    <Text style={{ fontSize: 13, color: currentRole === r ? colors.primary : colors.textSecondary, fontWeight: currentRole === r ? '600' : '400' }}>{r}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -835,9 +840,9 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                     const member = team.members.find((m) => (m.netid || m.name) === openRoleKey);
                     if (member) handleRoleSelect(member, null);
                   }}
-                  style={{ paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb' }}
+                  style={{ paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border }}
                 >
-                  <Text style={{ fontSize: 13, color: '#9ca3af' }}>Clear</Text>
+                  <Text style={{ fontSize: 13, color: colors.textFaint }}>Clear</Text>
                 </TouchableOpacity>
               )}
             </View>

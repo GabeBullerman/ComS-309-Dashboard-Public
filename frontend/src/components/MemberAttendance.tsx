@@ -10,6 +10,7 @@ import {
   updateAttendance,
   deleteAttendance,
 } from "@/api/attendance";
+import { useTheme } from '../contexts/ThemeContext';
 
 type LocalStatus = "present" | "late" | "absent" | "excused" | null;
 type CalendarView = "all" | "class" | "ta_meeting";
@@ -58,6 +59,7 @@ interface Props {
 }
 
 export default function MemberAttendance({ netid, readOnly = false, style }: Props) {
+  const { colors } = useTheme();
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -205,37 +207,36 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
   const CELL_H = 36;
 
   return (
-    <View style={[{ backgroundColor: "white", borderRadius: 12, marginBottom: 8, overflow: "hidden", shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }, style]}>
+    <View style={[{ backgroundColor: colors.surface, borderRadius: 12, marginBottom: 8, overflow: "hidden", shadowColor: colors.shadow, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 }, style]}>
       {/* Header */}
-      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#E5E7EB" }}>
-        <Ionicons name="calendar-outline" size={16} color="#be123c" />
-        <Text style={{ fontSize: 15, fontWeight: "600", marginLeft: 8, color: "#111827", flex: 1 }}>Member Attendance</Text>
-        {saving && <ActivityIndicator size="small" color="#be123c" style={{ marginRight: 8 }} />}
-        {/* View dropdown */}
+      <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+        <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+        <Text style={{ fontSize: 15, fontWeight: "600", marginLeft: 8, color: colors.text, flex: 1 }}>Member Attendance</Text>
+        {saving && <ActivityIndicator size="small" color={colors.primary} style={{ marginRight: 8 }} />}
         <TouchableOpacity
           ref={menuRef}
           onPress={() => menuRef.current?.measure((_fx, _fy, w, h, px, py) => { setMenuPos({ x: px, y: py + h, w }); setMenuOpen(true); })}
-          style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: "#f3f4f6", borderWidth: 1, borderColor: "#e5e7eb" }}
+          style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.borderLight, borderWidth: 1, borderColor: colors.border }}
         >
-          <Text style={{ fontSize: 11, fontWeight: "600", color: "#374151" }}>{VIEW_LABELS[calendarView]}</Text>
-          <Ionicons name="chevron-down" size={10} color="#6b7280" />
+          <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textSecondary }}>{VIEW_LABELS[calendarView]}</Text>
+          <Ionicons name="chevron-down" size={10} color={colors.textMuted} />
         </TouchableOpacity>
       </View>
 
       {/* View dropdown menu */}
       <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
         <Pressable style={{ flex: 1 }} onPress={() => setMenuOpen(false)}>
-          <View style={{ position: "absolute", top: menuPos.y + 4, left: Math.max(4, menuPos.x + menuPos.w - 130), minWidth: 130, backgroundColor: "white", borderRadius: 8, borderWidth: 1, borderColor: "#e5e7eb", elevation: 8, shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 6, overflow: "hidden" }}>
+          <View style={{ position: "absolute", top: menuPos.y + 4, left: Math.max(4, menuPos.x + menuPos.w - 130), minWidth: 130, backgroundColor: colors.surface, borderRadius: 8, borderWidth: 1, borderColor: colors.border, elevation: 8, shadowColor: colors.shadow, shadowOpacity: 0.12, shadowRadius: 6, overflow: "hidden" }}>
             {(["all", "class", "ta_meeting"] as CalendarView[]).map((v) => (
               <TouchableOpacity
                 key={v}
                 onPress={() => { setCalendarView(v); setMenuOpen(false); }}
-                style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: v !== "ta_meeting" ? 1 : 0, borderBottomColor: "#f3f4f6", backgroundColor: calendarView === v ? "#fff1f2" : "white" }}
+                style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: v !== "ta_meeting" ? 1 : 0, borderBottomColor: colors.borderLight, backgroundColor: calendarView === v ? colors.statusPoorBg : colors.surface }}
               >
-                <Text style={{ fontSize: 13, color: calendarView === v ? "#b91c1c" : "#374151", fontWeight: calendarView === v ? "600" : "400" }}>
+                <Text style={{ fontSize: 13, color: calendarView === v ? colors.statusPoorText : colors.textSecondary, fontWeight: calendarView === v ? "600" : "400" }}>
                   {VIEW_LABELS[v]}
                 </Text>
-                {calendarView === v && <Ionicons name="checkmark" size={14} color="#b91c1c" />}
+                {calendarView === v && <Ionicons name="checkmark" size={14} color={colors.statusPoorText} />}
               </TouchableOpacity>
             ))}
           </View>
@@ -247,25 +248,25 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
             <TouchableOpacity onPress={prevMonth} style={{ padding: 4 }}>
-              <Ionicons name="chevron-back" size={14} color="#6b7280" />
+              <Ionicons name="chevron-back" size={14} color={colors.textMuted} />
             </TouchableOpacity>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: "#374151" }}>{monthLabel}</Text>
+            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.textSecondary }}>{monthLabel}</Text>
             <TouchableOpacity onPress={nextMonth} style={{ padding: 4 }}>
-              <Ionicons name="chevron-forward" size={14} color="#6b7280" />
+              <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
             </TouchableOpacity>
           </View>
 
           <View style={{ flexDirection: "row", marginBottom: 2 }}>
             {DAYS_OF_WEEK.map(d => (
               <View key={d} style={{ flex: 1, alignItems: "center" }}>
-                <Text style={{ fontSize: 10, color: "#9ca3af", fontWeight: "600" }}>{d}</Text>
+                <Text style={{ fontSize: 10, color: colors.textFaint, fontWeight: "600" }}>{d}</Text>
               </View>
             ))}
           </View>
 
           {loading ? (
             <View style={{ alignItems: "center", paddingVertical: 24 }}>
-              <ActivityIndicator color="#be123c" />
+              <ActivityIndicator color={colors.primary} />
             </View>
           ) : (
             <View style={{ gap: 2 }}>
@@ -284,15 +285,15 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
                           <View style={{
                             flex: 1, borderRadius: 4, alignItems: "center", justifyContent: "center",
                             borderWidth: (isSelected || isToday) ? 1 : 0,
-                            borderColor: isSelected ? "#be123c" : "#9ca3af",
+                            borderColor: isSelected ? colors.primary : colors.textFaint,
                             backgroundColor: "transparent",
                           }}>
-                            <Text style={{ fontSize: 11, color: isToday ? "#be123c" : "#374151", fontWeight: isToday ? "700" : "500", lineHeight: 14 }}>
+                            <Text style={{ fontSize: 11, color: isToday ? colors.primary : colors.textSecondary, fontWeight: isToday ? "700" : "500", lineHeight: 14 }}>
                               {day}
                             </Text>
                             <View style={{ flexDirection: "row", gap: 2, marginTop: 1 }}>
-                              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: lecture ? STATUS_CONFIG[lecture].color : "#e5e7eb" }} />
-                              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: meeting ? STATUS_CONFIG[meeting].color : "#e5e7eb" }} />
+                              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: lecture ? STATUS_CONFIG[lecture].color : colors.border }} />
+                              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: meeting ? STATUS_CONFIG[meeting].color : colors.border }} />
                             </View>
                           </View>
                         </TouchableOpacity>
@@ -307,12 +308,12 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
                           flex: 1, borderRadius: 4, alignItems: "center", justifyContent: "center",
                           backgroundColor: dotColor ?? "transparent",
                           borderWidth: (isSelected || isToday) ? 1 : 0,
-                          borderColor: isSelected ? "#be123c" : "#9ca3af",
+                          borderColor: isSelected ? colors.primary : colors.textFaint,
                         }}>
                           {isToday && (
-                            <Text style={{ fontSize: 6, color: dotColor ? "white" : "#be123c", fontWeight: "700", lineHeight: 8 }}>Today</Text>
+                            <Text style={{ fontSize: 6, color: dotColor ? colors.textInverse : colors.primary, fontWeight: "700", lineHeight: 8 }}>Today</Text>
                           )}
-                          <Text style={{ fontSize: 11, color: dotColor ? "white" : isToday ? "#be123c" : "#374151", fontWeight: isToday ? "700" : "500" }}>
+                          <Text style={{ fontSize: 11, color: dotColor ? colors.textInverse : isToday ? colors.primary : colors.textSecondary, fontWeight: isToday ? "700" : "500" }}>
                             {day}
                           </Text>
                         </View>
@@ -326,23 +327,22 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
         </View>
 
         {/* Divider */}
-        {!readOnly && <View style={{ width: 1, backgroundColor: "#E5E7EB", marginVertical: 2 }} />}
+        {!readOnly && <View style={{ width: 1, backgroundColor: colors.border, marginVertical: 2 }} />}
 
         {/* RIGHT: Controls */}
         {!readOnly && (
           <View style={{ width: 112, gap: 6 }}>
-            {/* In "all" mode: mini class/meeting toggle for editing */}
             {calendarView === "all" && (
-              <View style={{ flexDirection: "row", borderRadius: 8, borderWidth: 1, borderColor: "#E5E7EB", overflow: "hidden" }}>
+              <View style={{ flexDirection: "row", borderRadius: 8, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
                 {(["class", "ta_meeting"] as const).map((t, i) => {
                   const isActive = editType === t;
                   return (
                     <TouchableOpacity
                       key={t}
                       onPress={() => setEditType(t)}
-                      style={{ flex: 1, paddingVertical: 5, alignItems: "center", backgroundColor: isActive ? "#be123c" : "#F9FAFB", borderRightWidth: i === 0 ? 1 : 0, borderRightColor: "#E5E7EB" }}
+                      style={{ flex: 1, paddingVertical: 5, alignItems: "center", backgroundColor: isActive ? colors.primary : colors.background, borderRightWidth: i === 0 ? 1 : 0, borderRightColor: colors.border }}
                     >
-                      <Text style={{ fontSize: 9, fontWeight: "600", color: isActive ? "white" : "#6b7280" }} numberOfLines={1} adjustsFontSizeToFit>
+                      <Text style={{ fontSize: 9, fontWeight: "600", color: isActive ? colors.textInverse : colors.textMuted }} numberOfLines={1} adjustsFontSizeToFit>
                         {t === "class" ? "Class" : "Meeting"}
                       </Text>
                     </TouchableOpacity>
@@ -351,24 +351,22 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
               </View>
             )}
 
-            {/* Day status controls */}
             {selectedDay ? (
               <>
-                <Text style={{ fontSize: 11, fontWeight: "600", color: "#374151", textAlign: "center" }}>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textSecondary, textAlign: "center" }}>
                   {new Date(currentYear, currentMonth, selectedDay).toLocaleDateString("default", { month: "short", day: "numeric" })}
                 </Text>
-                {/* In "all" mode show both current statuses as context */}
                 {calendarView === "all" && (() => {
                   const { lecture, meeting } = getDayStatuses(selectedDay);
                   return (
                     <View style={{ gap: 2 }}>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: lecture ? STATUS_CONFIG[lecture].color : "#e5e7eb" }} />
-                        <Text style={{ fontSize: 9, color: "#9ca3af" }}>Class: {lecture ?? "—"}</Text>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: lecture ? STATUS_CONFIG[lecture].color : colors.border }} />
+                        <Text style={{ fontSize: 9, color: colors.textFaint }}>Class: {lecture ?? "—"}</Text>
                       </View>
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: meeting ? STATUS_CONFIG[meeting].color : "#e5e7eb" }} />
-                        <Text style={{ fontSize: 9, color: "#9ca3af" }}>Meeting: {meeting ?? "—"}</Text>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: meeting ? STATUS_CONFIG[meeting].color : colors.border }} />
+                        <Text style={{ fontSize: 9, color: colors.textFaint }}>Meeting: {meeting ?? "—"}</Text>
                       </View>
                     </View>
                   );
@@ -380,36 +378,36 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
                       key={key}
                       onPress={() => handleSetStatus(isActive ? null : key as LocalStatus)}
                       disabled={saving}
-                      style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 8, borderRadius: 8, borderWidth: 1, backgroundColor: isActive ? val.color : "#F9FAFB", borderColor: isActive ? val.color : "#E5E7EB", opacity: saving ? 0.6 : 1 }}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 8, borderRadius: 8, borderWidth: 1, backgroundColor: isActive ? val.color : colors.background, borderColor: isActive ? val.color : colors.border, opacity: saving ? 0.6 : 1 }}
                     >
-                      <Ionicons name={val.icon as any} size={12} color={isActive ? "#fff" : val.color} />
-                      <Text style={{ fontSize: 11, fontWeight: "600", color: isActive ? "white" : "#374151" }}>{val.label}</Text>
+                      <Ionicons name={val.icon as any} size={12} color={isActive ? colors.textInverse : val.color} />
+                      <Text style={{ fontSize: 11, fontWeight: "600", color: isActive ? colors.textInverse : colors.textSecondary }}>{val.label}</Text>
                     </TouchableOpacity>
                   );
                 })}
                 <TouchableOpacity
                   onPress={() => handleSetStatus(null)}
                   disabled={saving}
-                  style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 8, borderRadius: 8, borderWidth: 1, backgroundColor: "#F9FAFB", borderColor: "#E5E7EB", opacity: saving ? 0.6 : 1 }}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 7, paddingHorizontal: 8, borderRadius: 8, borderWidth: 1, backgroundColor: colors.background, borderColor: colors.border, opacity: saving ? 0.6 : 1 }}
                 >
-                  <Ionicons name="trash-outline" size={12} color="#9ca3af" />
-                  <Text style={{ fontSize: 11, fontWeight: "600", color: "#9ca3af" }}>Clear day</Text>
+                  <Ionicons name="trash-outline" size={12} color={colors.textFaint} />
+                  <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textFaint }}>Clear day</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <View style={{ alignItems: "center", marginTop: 12 }}>
-                <Ionicons name="finger-print-outline" size={22} color="#d1d5db" />
-                <Text style={{ color: "#d1d5db", textAlign: "center", marginTop: 4, fontSize: 9 }}>Tap a date to mark</Text>
+                <Ionicons name="finger-print-outline" size={22} color={colors.borderMedium} />
+                <Text style={{ color: colors.borderMedium, textAlign: "center", marginTop: 4, fontSize: 9 }}>Tap a date to mark</Text>
               </View>
             )}
 
             <TouchableOpacity
               onPress={clearAttendance}
               disabled={saving}
-              style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#F9FAFB", opacity: saving ? 0.6 : 1, marginTop: "auto" }}
+              style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, opacity: saving ? 0.6 : 1, marginTop: "auto" }}
             >
-              <Ionicons name="trash-outline" size={10} color="#9ca3af" />
-              <Text style={{ fontSize: 9, fontWeight: "600", color: "#9ca3af" }}>Clear calendar</Text>
+              <Ionicons name="trash-outline" size={10} color={colors.textFaint} />
+              <Text style={{ fontSize: 9, fontWeight: "600", color: colors.textFaint }}>Clear calendar</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -417,10 +415,10 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
 
       {/* Summary counts */}
       {calendarView === "all" ? (
-        <View style={{ borderTopWidth: 1, borderTopColor: "#F3F4F6", paddingVertical: 8, paddingHorizontal: 12, gap: 4 }}>
+        <View style={{ borderTopWidth: 1, borderTopColor: colors.borderLight, paddingVertical: 8, paddingHorizontal: 12, gap: 4 }}>
           {([["Class", lectureCounts], ["Meeting", meetingCounts]] as [string, Record<string, number>][]).map(([label, c]) => (
             <View key={label} style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={{ fontSize: 10, color: "#9ca3af", width: 46 }}>{label}</Text>
+              <Text style={{ fontSize: 10, color: colors.textFaint, width: 46 }}>{label}</Text>
               {Object.entries(STATUS_CONFIG).map(([key, val]) => (
                 <View key={key} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
                   <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: val.color }} />
@@ -431,11 +429,11 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
           ))}
         </View>
       ) : (
-        <View style={{ flexDirection: "row", justifyContent: "space-around", paddingVertical: 10, borderTopWidth: 1, borderTopColor: "#F3F4F6" }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-around", paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
           {Object.entries(STATUS_CONFIG).map(([key, val]) => (
             <View key={key} style={{ alignItems: "center" }}>
               <Text style={{ fontWeight: "700", fontSize: 16, color: val.color }}>{counts[key] ?? 0}</Text>
-              <Text style={{ fontSize: 12, color: "#9ca3af" }}>{val.label}</Text>
+              <Text style={{ fontSize: 12, color: colors.textFaint }}>{val.label}</Text>
             </View>
           ))}
         </View>

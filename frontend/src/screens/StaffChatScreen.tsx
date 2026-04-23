@@ -12,6 +12,8 @@ import {
 } from '../api/chat';
 import { getUsersByRole } from '../api/users';
 import { UserRole, UserSummary } from '../utils/auth';
+import { useTheme } from '../contexts/ThemeContext';
+import { ColorPalette } from '../constants/colors';
 
 const POLL_MS = 5000;
 const ROLES = ['everyone', 'TA', 'HTA', 'Instructor'];
@@ -59,16 +61,17 @@ function ColorAvatar({ name, size = 36 }: { name: string; size?: number }) {
   );
 }
 
-function MessageContent({ content, mentionedNetids, mentionedRoles, myNetid, staffMap }: {
+function MessageContent({ content, mentionedNetids, mentionedRoles, myNetid, staffMap, colors }: {
   content: string;
   mentionedNetids: string[];
   mentionedRoles: string[];
   myNetid: string;
   staffMap: Map<string, string>;
+  colors: ColorPalette;
 }) {
   const parts = content.split(/(@\w+)/g);
   return (
-    <Text style={{ fontSize: 14, color: '#111827', lineHeight: 20, flexWrap: 'wrap' }}>
+    <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20, flexWrap: 'wrap' }}>
       {parts.map((part, i) => {
         if (!part.startsWith('@')) return <Text key={i}>{part}</Text>;
         const handle = part.slice(1);
@@ -79,8 +82,8 @@ function MessageContent({ content, mentionedNetids, mentionedRoles, myNetid, sta
         if (isRole || isUser) {
           return (
             <Text key={i} style={{
-              backgroundColor: isMe ? '#fef3c7' : '#e0e7ff',
-              color: isMe ? '#92400e' : '#4338ca',
+              backgroundColor: isMe ? colors.warningBg : colors.ungradedBg,
+              color: isMe ? colors.warningText : colors.ungradedText,
               fontWeight: '600', borderRadius: 3,
             }}>
               @{displayName ?? handle}
@@ -101,6 +104,7 @@ interface Props {
 }
 
 export default function StaffChatScreen({ myNetid, myName: _myName, userRole, onUnreadChange }: Props) {
+  const { colors } = useTheme();
   const isInstructor = userRole === 'Instructor';
   const [activeChannel, setActiveChannel] = useState('general');
   const [channelMeta, setChannelMeta] = useState<Record<string, ChannelMeta>>({});
@@ -398,10 +402,10 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
   };
 
   return (
-    <View style={{ flex: 1, flexDirection: 'row', backgroundColor: '#f9fafb' }}>
+    <View style={{ flex: 1, flexDirection: 'row', backgroundColor: colors.background }}>
 
       {/* ── Channel sidebar ── */}
-      <View style={{ width: 180, backgroundColor: '#b91c1c', paddingTop: 16, borderLeftWidth: 2, borderLeftColor: '#111827' }}>
+      <View style={{ width: 180, backgroundColor: colors.navBg, paddingTop: 16, borderLeftWidth: 3, borderLeftColor: colors.gold }}>
         <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, paddingHorizontal: 12, marginBottom: 6 }}>
           CHANNELS
         </Text>
@@ -417,19 +421,19 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
                 flexDirection: 'row', alignItems: 'center', gap: 8,
                 paddingHorizontal: 12, paddingVertical: 8, marginHorizontal: 4,
                 borderRadius: 6, marginBottom: 2,
-                backgroundColor: isActive ? '#F1BE48' : 'transparent',
+                backgroundColor: isActive ? colors.gold : 'transparent',
               }}
             >
               <Ionicons
                 name={ch.icon}
-                size={15}
-                color={isActive ? '#7c2d12' : unread > 0 ? 'white' : 'rgba(255,255,255,0.55)'}
+                size={17}
+                color={isActive ? '#7c2d12' : unread > 0 ? 'white' : 'rgba(255,255,255,0.85)'}
               />
-              <Text style={{ fontSize: 13, color: isActive ? '#7c2d12' : unread > 0 ? 'white' : 'rgba(255,255,255,0.65)', fontWeight: isActive || unread > 0 ? '600' : '400', flex: 1 }} numberOfLines={1}>
+              <Text style={{ fontSize: 15, color: isActive ? '#7c2d12' : unread > 0 ? 'white' : 'rgba(255,255,255,0.9)', fontWeight: isActive || unread > 0 ? '700' : '500', flex: 1 }} numberOfLines={1}>
                 {label}
               </Text>
               {unread > 0 && !isActive && (
-                <View style={{ backgroundColor: '#F1BE48', borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+                <View style={{ backgroundColor: colors.gold, borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
                   <Text style={{ color: '#7c2d12', fontSize: 10, fontWeight: '700' }}>{unread > 99 ? '99+' : unread}</Text>
                 </View>
               )}
@@ -443,47 +447,47 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
 
         {/* Header */}
         {editingChannel ? (
-          <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', gap: 6 }}>
+          <View style={{ paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, gap: 6 }}>
             <TextInput
               value={editName}
               onChangeText={setEditName}
               placeholder={activeDisplayName}
-              placeholderTextColor="#9ca3af"
-              style={{ fontSize: 15, fontWeight: '700', color: '#111827', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f9fafb' }}
+              placeholderTextColor={colors.textFaint}
+              style={{ fontSize: 15, fontWeight: '700', color: colors.text, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: colors.inputBg }}
             />
             <TextInput
               value={editDesc}
               onChangeText={setEditDesc}
               placeholder="Add a description..."
-              placeholderTextColor="#9ca3af"
-              style={{ fontSize: 13, color: '#6b7280', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#f9fafb' }}
+              placeholderTextColor={colors.textFaint}
+              style={{ fontSize: 13, color: colors.textMuted, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: colors.inputBg }}
             />
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
                 onPress={handleSaveChannel}
                 disabled={savingChannel}
-                style={{ backgroundColor: '#b91c1c', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6 }}
+                style={{ backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6 }}
               >
                 {savingChannel
-                  ? <ActivityIndicator size="small" color="white" />
-                  : <Text style={{ color: 'white', fontWeight: '600', fontSize: 13 }}>Save</Text>
+                  ? <ActivityIndicator size="small" color={colors.textInverse} />
+                  : <Text style={{ color: colors.textInverse, fontWeight: '600', fontSize: 13 }}>Save</Text>
                 }
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setEditingChannel(false)}
-                style={{ backgroundColor: '#e5e7eb', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6 }}
+                style={{ backgroundColor: colors.borderLight, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 6 }}
               >
-                <Text style={{ color: '#374151', fontWeight: '600', fontSize: 13 }}>Cancel</Text>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600', fontSize: 13 }}>Cancel</Text>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
-          <View style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: 'white', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Ionicons name={activeChannelStatic.icon} size={18} color="#b91c1c" />
+          <View style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Ionicons name={activeChannelStatic.icon} size={18} color={colors.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: '#111827' }}>{activeDisplayName}</Text>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>{activeDisplayName}</Text>
               {activeDescription && (
-                <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 1 }}>{activeDescription}</Text>
+                <Text style={{ fontSize: 12, color: colors.textFaint, marginTop: 1 }}>{activeDescription}</Text>
               )}
             </View>
             {isInstructor && (
@@ -491,7 +495,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
                 onPress={() => { setEditName(activeDisplayName); setEditDesc(activeDescription ?? ''); setEditingChannel(true); }}
                 style={{ padding: 6 }}
               >
-                <Ionicons name="pencil-outline" size={16} color="#9ca3af" />
+                <Ionicons name="pencil-outline" size={16} color={colors.textFaint} />
               </TouchableOpacity>
             )}
           </View>
@@ -512,30 +516,30 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
             <TouchableOpacity
               onPress={loadMore}
               disabled={loadingMore}
-              style={{ alignSelf: 'center', marginBottom: 12, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: '#e5e7eb', borderRadius: 20 }}
+              style={{ alignSelf: 'center', marginBottom: 12, paddingHorizontal: 16, paddingVertical: 6, backgroundColor: colors.borderLight, borderRadius: 20 }}
             >
               {loadingMore
-                ? <ActivityIndicator size="small" color="#6b7280" />
-                : <Text style={{ fontSize: 12, color: '#6b7280' }}>Load older messages</Text>
+                ? <ActivityIndicator size="small" color={colors.textMuted} />
+                : <Text style={{ fontSize: 12, color: colors.textMuted }}>Load older messages</Text>
               }
             </TouchableOpacity>
           )}
 
           {loading ? (
-            <ActivityIndicator size="large" color="#b91c1c" style={{ marginTop: 60 }} />
+            <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 60 }} />
           ) : messages.length === 0 ? (
             <View style={{ alignItems: 'center', marginTop: 60 }}>
-              <Ionicons name="chatbubbles-outline" size={48} color="#d1d5db" />
-              <Text style={{ color: '#9ca3af', marginTop: 12, fontSize: 14 }}>No messages yet. Say hello!</Text>
+              <Ionicons name="chatbubbles-outline" size={48} color={colors.border} />
+              <Text style={{ color: colors.textFaint, marginTop: 12, fontSize: 14 }}>No messages yet. Say hello!</Text>
             </View>
           ) : (
             grouped.map((row, i) => {
               if (row.kind === 'date') {
                 return (
                   <View key={`date-${i}`} style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 12 }}>
-                    <View style={{ flex: 1, height: 1, backgroundColor: '#e5e7eb' }} />
-                    <Text style={{ fontSize: 11, color: '#9ca3af', marginHorizontal: 10 }}>{row.date}</Text>
-                    <View style={{ flex: 1, height: 1, backgroundColor: '#e5e7eb' }} />
+                    <View style={{ flex: 1, height: 1, backgroundColor: colors.separator }} />
+                    <Text style={{ fontSize: 11, color: colors.textMuted, marginHorizontal: 10 }}>{row.date}</Text>
+                    <View style={{ flex: 1, height: 1, backgroundColor: colors.separator }} />
                   </View>
                 );
               }
@@ -556,7 +560,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
                     paddingTop: showHeader ? 6 : 0,
                     paddingHorizontal: 4,
                     borderRadius: 6,
-                    backgroundColor: hoveredId === msg.id ? '#f3f4f6' : 'transparent',
+                    backgroundColor: hoveredId === msg.id ? colors.borderLight : 'transparent',
                   }}
                 >
                   <View style={{ width: 40, marginRight: 10, alignItems: 'center', paddingTop: showHeader ? 2 : 0 }}>
@@ -566,18 +570,18 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
                   <View style={{ flex: 1 }}>
                     {showHeader && (
                       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
-                        <Text style={{ fontWeight: '700', fontSize: 14, color: '#111827' }}>{displayName}</Text>
-                        <Text style={{ fontSize: 11, color: '#9ca3af' }}>{formatTime(msg.createdAt)}</Text>
-                        {msg.edited && <Text style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic' }}>(edited)</Text>}
+                        <Text style={{ fontWeight: '700', fontSize: 14, color: colors.text }}>{displayName}</Text>
+                        <Text style={{ fontSize: 11, color: colors.textFaint }}>{formatTime(msg.createdAt)}</Text>
+                        {msg.edited && <Text style={{ fontSize: 10, color: colors.textFaint, fontStyle: 'italic' }}>(edited)</Text>}
                       </View>
                     )}
 
                     {msg.replyTo && (
-                      <View style={{ borderLeftWidth: 3, borderLeftColor: '#F1BE48', backgroundColor: '#fffbeb', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 4 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#92400e', marginBottom: 1 }}>
+                      <View style={{ borderLeftWidth: 3, borderLeftColor: colors.gold, backgroundColor: colors.warningBg, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 4 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.warningText, marginBottom: 1 }}>
                           {msg.replyTo.senderName || msg.replyTo.senderNetid}
                         </Text>
-                        <Text style={{ fontSize: 12, color: '#6b7280' }} numberOfLines={2}>{msg.replyTo.content}</Text>
+                        <Text style={{ fontSize: 12, color: colors.textMuted }} numberOfLines={2}>{msg.replyTo.content}</Text>
                       </View>
                     )}
 
@@ -587,6 +591,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
                       mentionedRoles={msg.mentionedRoles}
                       myNetid={myNetid}
                       staffMap={staffMap}
+                      colors={colors}
                     />
                   </View>
 
@@ -594,23 +599,23 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
                     <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', paddingLeft: 8 }}>
                       <TouchableOpacity
                         onPress={() => { setReplyingTo(msg); setEditingMsg(null); inputRef.current?.focus(); }}
-                        style={{ padding: 6, backgroundColor: 'white', borderRadius: 6, borderWidth: 1, borderColor: '#e5e7eb' }}
+                        style={{ padding: 6, backgroundColor: colors.surface, borderRadius: 6, borderWidth: 1, borderColor: colors.border }}
                       >
-                        <Ionicons name="return-down-back-outline" size={15} color="#6b7280" />
+                        <Ionicons name="return-down-back-outline" size={15} color={colors.textMuted} />
                       </TouchableOpacity>
                       {isOwn && (
                         <>
                           <TouchableOpacity
                             onPress={() => startEdit(msg)}
-                            style={{ padding: 6, backgroundColor: 'white', borderRadius: 6, borderWidth: 1, borderColor: '#e5e7eb' }}
+                            style={{ padding: 6, backgroundColor: colors.surface, borderRadius: 6, borderWidth: 1, borderColor: colors.border }}
                           >
-                            <Ionicons name="pencil-outline" size={15} color="#6b7280" />
+                            <Ionicons name="pencil-outline" size={15} color={colors.textMuted} />
                           </TouchableOpacity>
                           <TouchableOpacity
                             onPress={() => handleDelete(msg)}
-                            style={{ padding: 6, backgroundColor: '#fef2f2', borderRadius: 6, borderWidth: 1, borderColor: '#fca5a5' }}
+                            style={{ padding: 6, backgroundColor: colors.criticalBg, borderRadius: 6, borderWidth: 1, borderColor: colors.criticalBorder }}
                           >
-                            <Ionicons name="trash-outline" size={15} color="#dc2626" />
+                            <Ionicons name="trash-outline" size={15} color={colors.criticalBorder} />
                           </TouchableOpacity>
                         </>
                       )}
@@ -625,7 +630,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
         {/* Typing indicator */}
         {typingUsers.length > 0 && (
           <View style={{ paddingHorizontal: 20, paddingVertical: 4, minHeight: 22 }}>
-            <Text style={{ fontSize: 12, color: '#6b7280', fontStyle: 'italic' }}>
+            <Text style={{ fontSize: 12, color: colors.textMuted, fontStyle: 'italic' }}>
               {typingUsers.length === 1
                 ? `${typingUsers[0]} is typing...`
                 : typingUsers.length === 2
@@ -637,25 +642,25 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
 
         {/* Mention autocomplete — scrollable */}
         {mentionSuggestions.length > 0 && (
-          <View style={{ backgroundColor: 'white', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 8, marginHorizontal: 12, marginBottom: 4, maxHeight: 220, elevation: 6, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 6 }}>
+          <View style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginHorizontal: 12, marginBottom: 4, maxHeight: 220, elevation: 6, shadowColor: colors.shadow, shadowOpacity: 0.12, shadowRadius: 6 }}>
             <ScrollView keyboardShouldPersistTaps="always" nestedScrollEnabled>
               {mentionSuggestions.map((s) => (
                 <TouchableOpacity
                   key={`${s.type}-${s.value}`}
                   onPress={() => insertMention(s.value)}
-                  style={{ paddingHorizontal: 14, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' }}
+                  style={{ paddingHorizontal: 14, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}
                 >
                   {s.type === 'role' ? (
-                    <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#e0e7ff', alignItems: 'center', justifyContent: 'center' }}>
-                      <Ionicons name="people" size={15} color="#4338ca" />
+                    <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="people" size={15} color={colors.primary} />
                     </View>
                   ) : (
                     <ColorAvatar name={s.displayName} size={30} />
                   )}
                   <View>
-                    <Text style={{ fontSize: 13, fontWeight: '700', color: '#111827' }}>{s.displayName}</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{s.displayName}</Text>
                     {s.type === 'netid' && s.displayName !== s.value && (
-                      <Text style={{ fontSize: 11, color: '#9ca3af' }}>@{s.value}</Text>
+                      <Text style={{ fontSize: 11, color: colors.textFaint }}>@{s.value}</Text>
                     )}
                   </View>
                 </TouchableOpacity>
@@ -666,29 +671,29 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
 
         {/* Reply / edit context bar */}
         {(replyingTo || editingMsg) && (
-          <View style={{ backgroundColor: '#fffbeb', borderTopWidth: 1, borderTopColor: '#F1BE48', paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name={editingMsg ? 'pencil' : 'return-down-back'} size={14} color="#92400e" />
-            <Text style={{ flex: 1, fontSize: 12, color: '#92400e' }} numberOfLines={1}>
+          <View style={{ backgroundColor: colors.warningBg, borderTopWidth: 1, borderTopColor: colors.gold, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name={editingMsg ? 'pencil' : 'return-down-back'} size={14} color={colors.warningText} />
+            <Text style={{ flex: 1, fontSize: 12, color: colors.warningText }} numberOfLines={1}>
               {editingMsg
                 ? `Editing: ${editingMsg.content}`
                 : `Replying to ${replyingTo!.senderName || replyingTo!.senderNetid}: ${replyingTo!.content}`}
             </Text>
             <TouchableOpacity onPress={() => { setReplyingTo(null); setEditingMsg(null); setInputText(''); }}>
-              <Ionicons name="close" size={18} color="#92400e" />
+              <Ionicons name="close" size={18} color={colors.warningText} />
             </TouchableOpacity>
           </View>
         )}
 
         {/* Emoji picker panel */}
         {showEmojiPicker && (
-          <View style={{ backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingBottom: 4 }}>
+          <View style={{ backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, paddingBottom: 4 }}>
             {/* Category tabs */}
-            <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingHorizontal: 8 }}>
+            <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.borderLight, paddingHorizontal: 8 }}>
               {EMOJI_CATEGORIES.map((cat, idx) => (
                 <TouchableOpacity
                   key={cat.label}
                   onPress={() => setEmojiCategory(idx)}
-                  style={{ paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 2, borderBottomColor: emojiCategory === idx ? '#b91c1c' : 'transparent' }}
+                  style={{ paddingHorizontal: 10, paddingVertical: 8, borderBottomWidth: 2, borderBottomColor: emojiCategory === idx ? colors.primary : 'transparent' }}
                 >
                   <Text style={{ fontSize: 18 }}>{cat.icon}</Text>
                 </TouchableOpacity>
@@ -707,28 +712,28 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
 
         {/* Read-only banner for non-Instructors in Announcements */}
         {activeChannel === 'announcements' && !isInstructor ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, backgroundColor: '#fffbeb', borderTopWidth: 1, borderTopColor: '#fde68a' }}>
-            <Ionicons name="megaphone-outline" size={16} color="#92400e" />
-            <Text style={{ fontSize: 13, color: '#92400e', fontWeight: '500' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, backgroundColor: colors.warningBg, borderTopWidth: 1, borderTopColor: colors.warningBorder }}>
+            <Ionicons name="megaphone-outline" size={16} color={colors.warningText} />
+            <Text style={{ fontSize: 13, color: colors.warningText, fontWeight: '500' }}>
               Only Instructors can post in Announcements.
             </Text>
           </View>
         ) : (
 
         /* Input bar */
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', padding: 12, backgroundColor: 'white', borderTopWidth: 1, borderTopColor: '#e5e7eb', gap: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', padding: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, gap: 8 }}>
           <TouchableOpacity
             onPress={() => setShowEmojiPicker(v => !v)}
-            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: showEmojiPicker ? '#e5e7eb' : 'transparent', alignItems: 'center', justifyContent: 'center', marginBottom: 2 }}
+            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: showEmojiPicker ? colors.borderLight : 'transparent', alignItems: 'center', justifyContent: 'center', marginBottom: 2 }}
           >
-            <Ionicons name="happy-outline" size={22} color={showEmojiPicker ? '#374151' : '#9ca3af'} />
+            <Ionicons name="happy-outline" size={22} color={showEmojiPicker ? colors.textSecondary : colors.textFaint} />
           </TouchableOpacity>
           <TextInput
             ref={inputRef}
             value={inputText}
             onChangeText={handleTextChange}
             placeholder={`Message ${activeDisplayName}... use @ to mention`}
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.textFaint}
             multiline
             onKeyPress={(e: any) => {
               if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
@@ -736,16 +741,16 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
                 handleSend();
               }
             }}
-            style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: '#111827', backgroundColor: '#f9fafb', maxHeight: 120, minHeight: 40 }}
+            style={{ flex: 1, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg, maxHeight: 120, minHeight: 40 }}
           />
           <TouchableOpacity
             onPress={handleSend}
             disabled={sending || !inputText.trim()}
-            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: inputText.trim() ? '#b91c1c' : '#e5e7eb', alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: inputText.trim() ? colors.primary : colors.border, alignItems: 'center', justifyContent: 'center' }}
           >
             {sending
-              ? <ActivityIndicator size="small" color="white" />
-              : <Ionicons name={editingMsg ? 'checkmark' : 'send'} size={16} color={inputText.trim() ? 'white' : '#9ca3af'} />
+              ? <ActivityIndicator size="small" color={colors.textInverse} />
+              : <Ionicons name={editingMsg ? 'checkmark' : 'send'} size={16} color={inputText.trim() ? colors.textInverse : colors.textFaint} />
             }
           </TouchableOpacity>
         </View>

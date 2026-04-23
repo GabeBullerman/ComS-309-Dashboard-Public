@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 import { normalizeRole, UserSummary } from '../utils/auth';
 import { getCurrentUser, getUserByNetid } from '../api/users';
 import { getTasksAssignedTo, updateTaskStatus, TaskApiResponse, TaskStatus } from '../api/tasks';
@@ -26,19 +27,21 @@ const today = () => new Date().toISOString().split('T')[0];
 
 const stripDate = (dueDate: string) => dueDate.split('T')[0];
 
-const getDateLabel = (dueDate?: string): { label: string; color: string } => {
-  if (!dueDate) return { label: 'No due date', color: '#9ca3af' };
+type DateLabelType = 'none' | 'overdue' | 'soon' | 'normal';
+const getDateLabel = (dueDate?: string): { label: string; type: DateLabelType } => {
+  if (!dueDate) return { label: 'No due date', type: 'none' };
   const dateOnly = stripDate(dueDate);
   const due = new Date(dateOnly);
   const now = new Date();
   now.setHours(0, 0, 0, 0);
-  if (due < now) return { label: `Overdue · ${dateOnly}`, color: '#DC2626' };
+  if (due < now) return { label: `Overdue · ${dateOnly}`, type: 'overdue' };
   const diff = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff <= 7) return { label: `Due in ${diff}d · ${dateOnly}`, color: '#D97706' };
-  return { label: `Due ${dateOnly}`, color: '#6B7280' };
+  if (diff <= 7) return { label: `Due in ${diff}d · ${dateOnly}`, type: 'soon' };
+  return { label: `Due ${dateOnly}`, type: 'normal' };
 };
 
 export default function AssignmentsScreen() {
+  const { colors } = useTheme();
   const [netid, setNetid] = useState<string | null>(null);
   const [, setRole] = useState<string>('Student');
   const [myTasks, setMyTasks] = useState<TaskApiResponse[]>([]);
@@ -87,11 +90,18 @@ export default function AssignmentsScreen() {
   const canUpdateStatus = true;
 
   const STATUS_STYLES: Record<TaskStatus, { bg: string; text: string; border: string; label: string }> = {
-    TODO:     { bg: '#f3f4f6', text: '#374151', border: '#e5e7eb', label: 'To Do' },
-    WIP:      { bg: '#fef9c3', text: '#92400e', border: '#fde047', label: 'In Progress' },
-    COMPLETE: { bg: '#dcfce7', text: '#166534', border: '#86efac', label: 'Complete' },
+    TODO:     { bg: colors.borderLight,      text: colors.textSecondary, border: colors.border,            label: 'To Do' },
+    WIP:      { bg: colors.statusModerateBg, text: colors.statusModerateText, border: colors.statusModerateBar, label: 'In Progress' },
+    COMPLETE: { bg: colors.statusGoodBg,     text: colors.statusGoodText,    border: colors.statusGoodBar,     label: 'Complete' },
   };
   const STATUS_CYCLE: TaskStatus[] = ['TODO', 'WIP', 'COMPLETE'];
+
+  const dateColor: Record<DateLabelType, string> = {
+    none: colors.textFaint,
+    overdue: colors.criticalBorder,
+    soon: colors.warningIcon,
+    normal: colors.textMuted,
+  };
 
   const handleUpdateStatus = async (taskId: number, status: TaskStatus) => {
     try {
@@ -101,23 +111,23 @@ export default function AssignmentsScreen() {
   };
 
   if (loading) return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <ActivityIndicator size="large" color="#C8102E" />
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+      <ActivityIndicator size="large" color={colors.primary} />
     </View>
   );
 
   if (error) return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ color: '#DC2626' }}>{error}</Text>
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+      <Text style={{ color: colors.criticalBorder }}>{error}</Text>
     </View>
   );
 
   const filterOptions: FilterKey[] = ['All', 'Upcoming', 'Overdue', 'No Date'];
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#f5f7fa', padding: 24 }}>
-      <Text style={{ fontSize: 26, fontWeight: '700', color: '#1e3a8a', marginBottom: 4 }}>Tasks</Text>
-      <Text style={{ color: '#64748b', marginBottom: 16 }}>{netid}</Text>
+    <View style={{ flex: 1, backgroundColor: colors.background, padding: 24 }}>
+      <Text style={{ fontSize: 26, fontWeight: '700', color: colors.text, marginBottom: 4 }}>Tasks</Text>
+      <Text style={{ color: colors.textMuted, marginBottom: 16 }}>{netid}</Text>
 
       {/* Filters */}
       <View style={{ flexDirection: 'row', marginBottom: 16, gap: 8 }}>
@@ -127,10 +137,10 @@ export default function AssignmentsScreen() {
             onPress={() => setFilter(opt)}
             style={{
               paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
-              backgroundColor: filter === opt ? '#1e3a8a' : '#e5e7eb',
+              backgroundColor: filter === opt ? colors.primary : colors.borderLight,
             }}
           >
-            <Text style={{ color: filter === opt ? 'white' : '#374151', fontSize: 13, fontWeight: '500' }}>
+            <Text style={{ color: filter === opt ? colors.textInverse : colors.textSecondary, fontSize: 13, fontWeight: '500' }}>
               {opt}
             </Text>
           </TouchableOpacity>
@@ -142,33 +152,34 @@ export default function AssignmentsScreen() {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={{ gap: 10, paddingBottom: 40 }}
         ListEmptyComponent={
-          <Text style={{ textAlign: 'center', color: '#94a3b8', marginTop: 40, fontSize: 15 }}>
+          <Text style={{ textAlign: 'center', color: colors.textFaint, marginTop: 40, fontSize: 15 }}>
             No tasks found.
           </Text>
         }
         renderItem={({ item }) => {
-          const { label, color } = getDateLabel(item.dueDate);
+          const { label, type } = getDateLabel(item.dueDate);
+          const color = dateColor[type];
           const status = (item.status ?? 'TODO') as TaskStatus;
           const s = STATUS_STYLES[status];
           const nextStatus = STATUS_CYCLE[(STATUS_CYCLE.indexOf(status) + 1) % STATUS_CYCLE.length];
           const todayStr = new Date().toISOString().split('T')[0];
           const dueStr = item.dueDate ? item.dueDate.split('T')[0] : null;
           const overdue = status !== 'COMPLETE' && !!dueStr && dueStr < todayStr;
-          const borderColor = overdue ? '#DC2626'
-            : status === 'COMPLETE' ? '#16a34a'
-            : status === 'WIP'      ? '#ca8a04'
-            : '#1f2937';
+          const borderColor = overdue ? colors.criticalBorder
+            : status === 'COMPLETE' ? colors.statusGoodBar
+            : status === 'WIP'      ? colors.statusModerateBar
+            : colors.border;
           return (
             <View style={{
-              backgroundColor: overdue ? '#fff5f5' : 'white', borderRadius: 10, padding: 16,
+              backgroundColor: overdue ? colors.statusPoorBg : colors.surface, borderRadius: 10, padding: 16,
               borderWidth: 2, borderColor,
-              shadowColor: overdue ? '#DC2626' : '#000',
+              shadowColor: overdue ? colors.criticalBorder : colors.shadow,
               shadowOpacity: overdue ? 0.3 : 0.06,
               shadowRadius: overdue ? 6 : 4,
               elevation: overdue ? 5 : 2,
             }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Text style={{ fontSize: 16, fontWeight: '600', color: '#0f172a', flex: 1, marginRight: 8 }}>
+                <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text, flex: 1, marginRight: 8 }}>
                   {item.title}
                 </Text>
                 {canUpdateStatus && (
@@ -181,7 +192,7 @@ export default function AssignmentsScreen() {
                 )}
               </View>
               {item.description ? (
-                <Text style={{ color: '#475569', fontSize: 13, marginTop: 4 }}>{item.description}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 4 }}>{item.description}</Text>
               ) : null}
               <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
                 <Ionicons name="calendar-outline" size={13} color={color} style={{ marginRight: 4 }} />
@@ -192,7 +203,7 @@ export default function AssignmentsScreen() {
                 const rl = assigner ? roleLabel(String(assigner.role)) : '';
                 const name = assigner?.name ?? item.assignedByNetid;
                 return (
-                  <Text style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>
+                  <Text style={{ color: colors.textFaint, fontSize: 12, marginTop: 4 }}>
                     From: {name}{rl ? ` (${rl})` : ''}
                   </Text>
                 );
