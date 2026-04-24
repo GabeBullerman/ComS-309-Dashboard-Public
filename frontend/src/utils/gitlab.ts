@@ -279,8 +279,8 @@ export async function fetchAllCommitsSince(
   const path = extractProjectPath(gitlabUrl);
   if (!path) throw new Error('Invalid GitLab URL');
   return gitlabFetchAllPages<GitLabCommit>(
-    `${GITLAB_BASE}/projects/${path}/repository/commits?since=${encodeURIComponent(since)}&per_page=100&all=true`,
-    token, 5, 'id'
+    `${GITLAB_BASE}/projects/${path}/repository/commits?since=${encodeURIComponent(since)}&per_page=100`,
+    token, 20
   );
 }
 
