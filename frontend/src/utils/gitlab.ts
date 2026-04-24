@@ -62,12 +62,22 @@ async function gitlabFetchAllPages<T>(
 ): Promise<T[]> {
   const all: T[] = [];
   const seen = new Set<unknown>();
+  console.log(`[GitLab] Starting paginated fetch: ${url} (maxPages=${maxPages})`);
   for (let page = 1; page <= maxPages; page++) {
     const sep = url.includes('?') ? '&' : '?';
-    const res = await fetch(`${url}${sep}page=${page}`, { headers: { 'PRIVATE-TOKEN': token } });
-    if (!res.ok) throw new Error(`GitLab API error ${res.status}`);
+    const pageUrl = `${url}${sep}page=${page}`;
+    const res = await fetch(pageUrl, { headers: { 'PRIVATE-TOKEN': token } });
+    console.log(`[GitLab] Page ${page} → status=${res.status}, x-next-page="${res.headers.get('x-next-page')}", x-total="${res.headers.get('x-total')}"`);
+    if (!res.ok) {
+      console.error(`[GitLab] Error on page ${page}: HTTP ${res.status}`);
+      throw new Error(`GitLab API error ${res.status}`);
+    }
     const data: T[] = await res.json();
-    if (!Array.isArray(data) || data.length === 0) break;
+    console.log(`[GitLab] Page ${page} returned ${Array.isArray(data) ? data.length : 'non-array'} items`);
+    if (!Array.isArray(data) || data.length === 0) {
+      console.log(`[GitLab] Empty/non-array response on page ${page}, stopping.`);
+      break;
+    }
     for (const item of data) {
       if (dedupeKey) {
         const key = item[dedupeKey];
@@ -76,11 +86,8 @@ async function gitlabFetchAllPages<T>(
       }
       all.push(item);
     }
-    // Stop early only if the header explicitly says there's no next page.
-    // Don't stop on a missing header — ISU GitLab omits x-next-page on some versions.
-    const nextPage = res.headers.get('x-next-page');
-    if (nextPage !== null && nextPage.trim() === '') break;
   }
+  console.log(`[GitLab] Fetch complete. Total unique items: ${all.length}`);
   return all;
 }
 
@@ -137,7 +144,7 @@ export async function fetchRecentCommits(
   // all=true fetches all branches; dedupe by SHA in case ISU GitLab returns duplicates
   return gitlabFetchAllPages<GitLabCommit>(
     `${GITLAB_BASE}/projects/${path}/repository/commits?per_page=100&since=${since}&all=true`,
-    token, 5, 'id'
+    token, 20, 'id'
   );
 }
 
