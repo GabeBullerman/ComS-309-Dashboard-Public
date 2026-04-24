@@ -409,6 +409,25 @@ export default function ClassStudentsScreen({ userRole }: Props) {
           keyExtractor={(item) => item.netid}
           contentContainerStyle={{ paddingBottom: 24, gap: 8 }}
           showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 8 }}>
+              <Ionicons name="people-outline" size={40} color={colors.borderMedium} />
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textSecondary, textAlign: 'center' }}>
+                {searchQuery || sectionFilter !== 'All' || taFilter !== 'All'
+                  ? 'No students match your search'
+                  : effectiveRole === 'TA'
+                  ? "You're not in charge of any students"
+                  : 'No students found'}
+              </Text>
+              <Text style={{ fontSize: 13, color: colors.textFaint, textAlign: 'center', maxWidth: 300 }}>
+                {searchQuery || sectionFilter !== 'All' || taFilter !== 'All'
+                  ? 'Try adjusting your search or filters.'
+                  : effectiveRole === 'TA'
+                  ? 'Contact your instructor to be assigned to a team.'
+                  : 'No student records are available yet.'}
+              </Text>
+            </View>
+          }
           renderItem={({ item }) => (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <View style={{ flex: 1 }}>

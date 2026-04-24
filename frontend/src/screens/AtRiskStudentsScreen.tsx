@@ -92,6 +92,7 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
   const effectiveRole = normalizeRole(String(userRole));
 
   const [atRiskStudents, setAtRiskStudents] = useState<AtRiskStudent[]>([]);
+  const [totalStudentCount, setTotalStudentCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -140,6 +141,8 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
             });
           }
         }
+
+        setTotalStudentCount(studentMap.size);
 
         const [results, overrides] = await Promise.all([
           Promise.all(
@@ -386,12 +389,30 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
         {/* Empty state */}
         {filtered.length === 0 && (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="checkmark-circle-outline" size={48} color={colors.statusGoodBar} />
-            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textSecondary, marginTop: 12 }}>
-              {atRiskStudents.length === 0 ? 'No at-risk students' : 'No results match your search'}
+            <Ionicons
+              name={effectiveRole === 'TA' && totalStudentCount === 0 ? 'person-outline' : 'checkmark-circle-outline'}
+              size={48}
+              color={effectiveRole === 'TA' && totalStudentCount === 0 ? colors.borderMedium : colors.statusGoodBar}
+            />
+            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textSecondary, marginTop: 12, textAlign: 'center' }}>
+              {searchQuery.trim()
+                ? 'No results match your search'
+                : effectiveRole === 'TA' && totalStudentCount === 0
+                ? "You're not in charge of any students"
+                : effectiveRole === 'TA'
+                ? "None of your students are at-risk"
+                : atRiskStudents.length === 0
+                ? 'No at-risk students'
+                : 'No results match your search'}
             </Text>
-            <Text style={{ fontSize: 13, color: colors.textFaint, marginTop: 4 }}>
-              {atRiskStudents.length === 0 ? 'All students are within acceptable thresholds.' : 'Try a different search term.'}
+            <Text style={{ fontSize: 13, color: colors.textFaint, marginTop: 4, textAlign: 'center', maxWidth: 300 }}>
+              {searchQuery.trim()
+                ? 'Try a different search term.'
+                : effectiveRole === 'TA' && totalStudentCount === 0
+                ? 'Contact your instructor to be assigned to a team.'
+                : effectiveRole === 'TA'
+                ? 'All of your students are within acceptable thresholds.'
+                : 'All students are within acceptable thresholds.'}
             </Text>
           </View>
         )}
