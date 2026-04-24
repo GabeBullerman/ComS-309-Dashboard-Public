@@ -64,7 +64,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({
           <Text style={{ flex: 1, paddingRight: 8, fontSize: 18, fontWeight: '700', color: colors.text }}>
             {name}
           </Text>
-          <View style={{ alignItems: 'flex-end', gap: 5 }}>
+          <View style={{ alignItems: 'flex-end', gap: 5, flexShrink: 1 }}>
             <View style={{ backgroundColor: bg, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 }}>
               <Text style={{ fontSize: 12, fontWeight: '600', color: text }}>{status}</Text>
             </View>
