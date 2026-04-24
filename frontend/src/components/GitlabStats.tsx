@@ -6,6 +6,7 @@ import {
   Linking,
   Modal,
   Pressable,
+  ScrollView,
   ViewStyle,
 } from "react-native";
 import {
@@ -83,6 +84,7 @@ function WeekDropdown({ weeks, selectedWeek, onSelect }: { weeks: WeekMeta[]; se
             top: dropdownPos.y + 4,
             left: dropdownPos.x,
             minWidth: Math.max(dropdownPos.width, 200),
+            maxHeight: 240,
             backgroundColor: colors.surface,
             borderRadius: 12,
             borderWidth: 1,
@@ -93,32 +95,34 @@ function WeekDropdown({ weeks, selectedWeek, onSelect }: { weeks: WeekMeta[]; se
             shadowRadius: 6,
             elevation: 6,
           }}>
-            {weeks.map((w, i) => {
-              const isActive = w.week === selectedWeek;
-              return (
-                <TouchableOpacity
-                  key={w.week}
-                  onPress={() => { onSelect(w.week); setOpen(false); }}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderBottomWidth: i < weeks.length - 1 ? 1 : 0,
-                    borderBottomColor: colors.borderLight,
-                    backgroundColor: isActive ? colors.statusPoorBg : colors.surface,
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: '700', marginRight: 12, color: isActive ? colors.chartMrOpened : colors.text }}>
-                    {w.week}
-                  </Text>
-                  <Text style={{ color: colors.textMuted, fontSize: 11 }}>{w.label}</Text>
-                  {isActive && <Text style={{ color: colors.chartMrOpened, fontSize: 12, marginLeft: 8 }}>✓</Text>}
-                </TouchableOpacity>
-              );
-            })}
+            <ScrollView bounces={false} showsVerticalScrollIndicator={true}>
+              {weeks.map((w, i) => {
+                const isActive = w.week === selectedWeek;
+                return (
+                  <TouchableOpacity
+                    key={w.week}
+                    onPress={() => { onSelect(w.week); setOpen(false); }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingHorizontal: 16,
+                      paddingVertical: 10,
+                      borderBottomWidth: i < weeks.length - 1 ? 1 : 0,
+                      borderBottomColor: colors.borderLight,
+                      backgroundColor: isActive ? colors.statusPoorBg : colors.surface,
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', marginRight: 12, color: isActive ? colors.chartMrOpened : colors.text }}>
+                      {w.week}
+                    </Text>
+                    <Text style={{ color: colors.textMuted, fontSize: 11 }}>{w.label}</Text>
+                    {isActive && <Text style={{ color: colors.chartMrOpened, fontSize: 12, marginLeft: 8 }}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
         </Pressable>
       </Modal>
