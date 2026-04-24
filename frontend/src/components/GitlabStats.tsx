@@ -269,7 +269,9 @@ export default function GitLabStatsPanel({ gitlabUrl, memberNetid, memberName, s
         : 16;
       const buckets: WeekBucket[] = buildWeekBuckets(numWeeks, semesterStart);
       setWeeks(buckets.map((b) => ({ week: b.week, label: b.label })));
-      setSelectedWeek(semesterStart ? 'W1' : `W${buckets.length}`);
+      const now = Date.now();
+      const currentBucket = buckets.slice().reverse().find(b => now >= b.start.getTime());
+      setSelectedWeek(currentBucket ? currentBucket.week : `W${buckets.length}`);
 
       const since = buckets[0].start.toISOString();
       const allCommits = await fetchAllCommitsSince(gitlabUrl, token, since).catch(() => []);
