@@ -601,7 +601,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                       <TouchableOpacity
                         onPress={() => handleRemoveMember(m)}
                         disabled={removingId === m.id}
-                        style={{ position: 'absolute', top: isMobile ? 22 : 26, right: 0, width: 20, height: 20, borderRadius: 10, backgroundColor: removingId === m.id ? colors.border : colors.criticalBorder, alignItems: 'center', justifyContent: 'center' }}
+                        style={{ position: 'absolute', top: isMobile ? 22 : 28, right: isMobile ? 0 : -((INNER - tileW) / 2) + 4, width: 20, height: 20, borderRadius: 10, backgroundColor: removingId === m.id ? colors.border : colors.criticalBorder, alignItems: 'center', justifyContent: 'center' }}
                       >
                         {removingId === m.id
                           ? <ActivityIndicator size="small" color="white" />
