@@ -57,7 +57,7 @@ async function gitlabFetch<T>(url: string, token: string): Promise<T> {
 async function gitlabFetchAllPages<T>(
   url: string,
   token: string,
-  maxPages = 5,
+  maxPages = 20,
   dedupeKey?: keyof T
 ): Promise<T[]> {
   const all: T[] = [];
@@ -76,8 +76,10 @@ async function gitlabFetchAllPages<T>(
       }
       all.push(item);
     }
+    // Stop early only if the header explicitly says there's no next page.
+    // Don't stop on a missing header — ISU GitLab omits x-next-page on some versions.
     const nextPage = res.headers.get('x-next-page');
-    if (!nextPage || nextPage.trim() === '') break;
+    if (nextPage !== null && nextPage.trim() === '') break;
   }
   return all;
 }

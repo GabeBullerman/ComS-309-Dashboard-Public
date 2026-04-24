@@ -208,16 +208,23 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     let cancelled = false;
     setGlLoading(true);
     setGlError(null);
+    const daysFetch = semesterStart
+      ? Math.ceil((Date.now() - semesterStart.getTime()) / 86_400_000) + 7
+      : 120;
+    const weeksElapsed = semesterStart
+      ? Math.min(Math.max(Math.ceil((Date.now() - semesterStart.getTime()) / (7 * 86_400_000)), 1), 16)
+      : 16;
+
     Promise.all([
       fetchContributors(gitlab, glToken),
-      fetchRecentCommits(gitlab, glToken, 120),
+      fetchRecentCommits(gitlab, glToken, daysFetch),
       fetchProjectMembers(gitlab, glToken),
     ])
       .then(([contribs, commits, glMembers]) => {
         if (cancelled) return;
         const matched = matchContributors(contribs, glMembers, team.members);
         setContributors(matched.length > 0 ? matched : contribs);
-        setWeeklyCommits(groupCommitsByWeek(commits as GitLabCommit[], 16, semesterStart));
+        setWeeklyCommits(groupCommitsByWeek(commits as GitLabCommit[], weeksElapsed, semesterStart));
 
         // Compute per-member week-over-week commit counts.
         // ISU GitLab username === netid, so author_email will contain the netid.

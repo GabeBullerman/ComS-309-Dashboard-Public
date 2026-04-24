@@ -260,7 +260,10 @@ export default function GitLabStatsPanel({ gitlabUrl, memberNetid, memberName, s
 
       const semesterDateStr = await getSemesterStartDate().catch(() => null);
       const semesterStart = semesterDateStr ? new Date(semesterDateStr) : undefined;
-      const buckets: WeekBucket[] = buildWeekBuckets(16, semesterStart);
+      const numWeeks = semesterStart
+        ? Math.min(Math.max(Math.ceil((Date.now() - semesterStart.getTime()) / (7 * 86_400_000)), 1), 16)
+        : 16;
+      const buckets: WeekBucket[] = buildWeekBuckets(numWeeks, semesterStart);
       setWeeks(buckets.map((b) => ({ week: b.week, label: b.label })));
       setSelectedWeek(semesterStart ? 'W1' : `W${buckets.length}`);
 
