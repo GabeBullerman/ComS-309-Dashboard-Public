@@ -17,6 +17,7 @@ import {
   fetchMemberMergeRequests,
   WeekBucket,
 } from "@/utils/gitlab";
+import { getSemesterStartDate } from "@/api/settings";
 import { useTheme } from '../contexts/ThemeContext';
 
 // ─── Data Types ───────────────────────────────────────────────────────────────
@@ -257,9 +258,11 @@ export default function GitLabStatsPanel({ gitlabUrl, memberNetid, memberName, s
       const token = await getGitLabToken();
       if (!token) return;
 
-      const buckets: WeekBucket[] = buildWeekBuckets(8);
+      const semesterDateStr = await getSemesterStartDate().catch(() => null);
+      const semesterStart = semesterDateStr ? new Date(semesterDateStr) : undefined;
+      const buckets: WeekBucket[] = buildWeekBuckets(16, semesterStart);
       setWeeks(buckets.map((b) => ({ week: b.week, label: b.label })));
-      setSelectedWeek(`W${buckets.length}`);
+      setSelectedWeek(semesterStart ? 'W1' : `W${buckets.length}`);
 
       const since = buckets[0].start.toISOString();
       const allCommits = await fetchAllCommitsSince(gitlabUrl, token, since).catch(() => []);

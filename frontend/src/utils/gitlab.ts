@@ -211,26 +211,47 @@ export interface WeekBucket {
 }
 
 /**
- * Builds numWeeks calendar-week buckets (Mon–Sun) going back from the current week.
- * W1 = oldest, W<numWeeks> = current week.
+ * Builds calendar-week buckets (Mon–Sun).
+ * If semesterStart is provided, buckets go forward from that date (W1 = semester start).
+ * Otherwise falls back to rolling numWeeks backward from the current week.
  */
-export function buildWeekBuckets(numWeeks = 8): WeekBucket[] {
+export function buildWeekBuckets(numWeeks = 8, semesterStart?: Date): WeekBucket[] {
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  if (semesterStart) {
+    // Snap semesterStart back to the nearest Monday
+    const dow = semesterStart.getDay();
+    const daysToMonday = dow === 0 ? 6 : dow - 1;
+    const firstMonday = new Date(semesterStart);
+    firstMonday.setHours(0, 0, 0, 0);
+    firstMonday.setDate(semesterStart.getDate() - daysToMonday);
+
+    return Array.from({ length: numWeeks }, (_, i) => {
+      const start = new Date(firstMonday);
+      start.setDate(firstMonday.getDate() + i * 7);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 7);
+      const sunday = new Date(start);
+      sunday.setDate(start.getDate() + 6);
+      return { week: `W${i + 1}`, label: `${fmt(start)} – ${fmt(sunday)}`, start, end };
+    });
+  }
+
+  // Rolling fallback: numWeeks back from today
   const now = new Date();
-  const dayOfWeek = now.getDay(); // 0=Sun
+  const dayOfWeek = now.getDay();
   const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   const thisMonday = new Date(now);
   thisMonday.setHours(0, 0, 0, 0);
   thisMonday.setDate(now.getDate() - daysToMonday);
 
-  const fmt = (d: Date) =>
-    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
   return Array.from({ length: numWeeks }, (_, i) => {
-    const weekIndex = numWeeks - 1 - i; // 0 = most recent
+    const weekIndex = numWeeks - 1 - i;
     const start = new Date(thisMonday);
     start.setDate(thisMonday.getDate() - weekIndex * 7);
     const end = new Date(start);
-    end.setDate(start.getDate() + 7); // exclusive
+    end.setDate(start.getDate() + 7);
     const sunday = new Date(start);
     sunday.setDate(start.getDate() + 6);
     return { week: `W${i + 1}`, label: `${fmt(start)} – ${fmt(sunday)}`, start, end };
@@ -494,18 +515,42 @@ export function getWeekBounds(offsetWeeks = 0): { start: Date; end: Date; label:
   return { start: sunday, end: saturday, label: `${fmt(sunday)} – ${fmt(saturday)}` };
 }
 
-/** Groups commits into weekly buckets, newest first (This week at top). */
+/**
+ * Groups commits into weekly buckets.
+ * If semesterStart is provided, buckets go forward from that date labelled "Week 1", "Week 2", etc.
+ * Otherwise falls back to rolling weeks backward from today labelled "This week", "2w ago", etc.
+ */
 export function groupCommitsByWeek(
   commits: GitLabCommit[],
-  weeks = 6
+  weeks = 6,
+  semesterStart?: Date
 ): { label: string; count: number }[] {
+  if (semesterStart) {
+    const dow = semesterStart.getDay();
+    const daysToMonday = dow === 0 ? 6 : dow - 1;
+    const firstMonday = new Date(semesterStart);
+    firstMonday.setHours(0, 0, 0, 0);
+    firstMonday.setDate(semesterStart.getDate() - daysToMonday);
+
+    return Array.from({ length: weeks }, (_, i) => {
+      const start = new Date(firstMonday);
+      start.setDate(firstMonday.getDate() + i * 7);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 7);
+      const count = commits.filter((c) => {
+        const t = new Date(c.authored_date || c.created_at).getTime();
+        return t >= start.getTime() && t < end.getTime();
+      }).length;
+      return { label: `Week ${i + 1}`, count };
+    });
+  }
+
+  // Rolling fallback
   const now = Date.now();
-  // i=0 → "This week" (most recent), i=N-1 → oldest — newest at top of chart
   return Array.from({ length: weeks }, (_, i) => {
     const start = new Date(now - (i + 1) * 7 * 24 * 60 * 60 * 1000);
     const end   = new Date(now - i       * 7 * 24 * 60 * 60 * 1000);
     const label = i === 0 ? 'This week' : `${i + 1}w ago`;
-    // authored_date = when the work was written; created_at = committer/push date
     const count = commits.filter((c) => {
       const t = new Date(c.authored_date || c.created_at).getTime();
       return t >= start.getTime() && t < end.getTime();

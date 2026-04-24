@@ -19,6 +19,7 @@ import { RootStackParamList } from '../../App';
 import { useTheme } from '../contexts/ThemeContext';
 import { TeamMember } from '../types/Teams';
 import { getTeam, updateTeamInfo, addStudentToTeam, removeStudentFromTeam, getTeams } from '../api/teams';
+import { getSemesterStartDate } from '../api/settings';
 import { setUserProjectRole, getCurrentUser, getUsersByRole, getUserByNetid } from '../api/users';
 import { UserSummary } from '../utils/auth';
 import MemberComments from '../components/Comments';
@@ -79,6 +80,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
 
 
   // GitLab API state
+  const [semesterStart, setSemesterStart] = useState<Date | undefined>(undefined);
   const [glToken, setGlToken] = useState<string | null>(null);
   const [contributors, setContributors] = useState<GitLabContributor[]>([]);
   const [weeklyCommits, setWeeklyCommits] = useState<{ label: string; count: number }[]>([]);
@@ -194,12 +196,13 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       .catch(() => {});
   }, [team.id]);
 
-  // Load stored GitLab token on mount
+  // Load stored GitLab token and semester start on mount
   useEffect(() => {
     getGitLabToken().then((t) => { if (t) setGlToken(t); });
+    getSemesterStartDate().then((d) => { if (d) setSemesterStart(new Date(d)); }).catch(() => {});
   }, []);
 
-  // Fetch GitLab data whenever token or gitlab URL changes
+  // Fetch GitLab data whenever token, gitlab URL, or semester start changes
   useEffect(() => {
     if (!gitlab || !glToken) return;
     let cancelled = false;
@@ -207,14 +210,14 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     setGlError(null);
     Promise.all([
       fetchContributors(gitlab, glToken),
-      fetchRecentCommits(gitlab, glToken, 42),
+      fetchRecentCommits(gitlab, glToken, 120),
       fetchProjectMembers(gitlab, glToken),
     ])
       .then(([contribs, commits, glMembers]) => {
         if (cancelled) return;
         const matched = matchContributors(contribs, glMembers, team.members);
         setContributors(matched.length > 0 ? matched : contribs);
-        setWeeklyCommits(groupCommitsByWeek(commits as GitLabCommit[], 6));
+        setWeeklyCommits(groupCommitsByWeek(commits as GitLabCommit[], 16, semesterStart));
 
         // Compute per-member week-over-week commit counts.
         // ISU GitLab username === netid, so author_email will contain the netid.
@@ -247,7 +250,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       .catch((e: Error) => { if (!cancelled) setGlError(e.message); })
       .finally(() => { if (!cancelled) setGlLoading(false); });
     return () => { cancelled = true; };
-  }, [gitlab, glToken]);
+  }, [gitlab, glToken, semesterStart]);
 
 
   const handleOpenRepo = () => {

@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { UserSummary, normalizeRole, UserRole } from '../utils/auth';
 import { getUsersByRole, createUser, updateUser, deleteUser } from '../api/users';
+import { getSemesterStartDate, setSemesterStartDate } from '../api/settings';
 import { useTheme } from '../contexts/ThemeContext';
 
 type StaffRole = 'TA' | 'HTA' | 'Instructor';
@@ -38,6 +39,9 @@ export default function StaffManagerScreen({ userRole }: Props) {
   const [showCsvInfo, setShowCsvInfo] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; failed: string[]; blocked?: string[] } | null>(null);
   const [expandedId, setExpandedId] = useState<number | string | null>(null);
+  const [semesterStartDate, setSemesterStartDateState] = useState<string>('');
+  const [semesterInput, setSemesterInput] = useState<string>('');
+  const [semesterSaving, setSemesterSaving] = useState(false);
   const [inviteForm, setInviteForm] = useState({
     netid: '',
     name: '',
@@ -66,6 +70,27 @@ export default function StaffManagerScreen({ userRole }: Props) {
   };
 
   useEffect(() => { loadStaff(); }, []);
+
+  useEffect(() => {
+    if (!isInstructor && !isHTA) return;
+    getSemesterStartDate().then((d) => {
+      if (d) { setSemesterStartDateState(d); setSemesterInput(d); }
+    }).catch(() => {});
+  }, []);
+
+  const handleSaveSemesterStart = async () => {
+    if (!semesterInput.trim()) return;
+    setSemesterSaving(true);
+    try {
+      const saved = await setSemesterStartDate(semesterInput.trim());
+      setSemesterStartDateState(saved);
+      Alert.alert('Saved', `Semester start date set to ${saved}`);
+    } catch {
+      Alert.alert('Error', 'Failed to save semester start date.');
+    } finally {
+      setSemesterSaving(false);
+    }
+  };
 
   const filteredStaff = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -363,6 +388,38 @@ export default function StaffManagerScreen({ userRole }: Props) {
           {isInstructor && <Text style={{ fontSize: 11, color: colors.warningText }}>• Instructor rows require confirmation before adding</Text>}
           <Text style={{ fontSize: 11, color: colors.warningText }}>{'• Password defaults to "changeme" if blank'}</Text>
           <Text style={{ fontSize: 11, color: colors.warningText }}>• Existing NetIDs are skipped (no overwrite)</Text>
+        </View>
+      )}
+
+      {/* Semester Start Date */}
+      {(isInstructor || isHTA) && (
+        <View style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 14, marginBottom: 14 }}>
+          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 4 }}>Semester Start Date</Text>
+          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 10 }}>
+            {semesterStartDate
+              ? `Current: ${semesterStartDate}`
+              : 'Not set — GitLab frequency charts will use a rolling window instead.'}
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <TextInput
+              value={semesterInput}
+              onChangeText={setSemesterInput}
+              placeholder="YYYY-MM-DD  e.g. 2026-01-13"
+              placeholderTextColor={colors.textFaint}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={{ flex: 1, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg }}
+            />
+            <TouchableOpacity
+              onPress={handleSaveSemesterStart}
+              disabled={semesterSaving || !semesterInput.trim()}
+              style={{ backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 8, alignItems: 'center', opacity: semesterSaving || !semesterInput.trim() ? 0.5 : 1 }}
+            >
+              {semesterSaving
+                ? <ActivityIndicator size="small" color={colors.textInverse} />
+                : <Text style={{ color: colors.textInverse, fontWeight: '600', fontSize: 13 }}>Save</Text>}
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
