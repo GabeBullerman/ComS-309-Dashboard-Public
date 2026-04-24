@@ -23,7 +23,7 @@ public class AppSettingsController {
         return ResponseEntity.ok(Map.of("semesterStartDate", value != null ? value : ""));
     }
 
-    @PreAuthorize("hasAnyAuthority('Instructor', 'HTA')")
+    @PreAuthorize("hasAnyAuthority('Instructor', 'INSTRUCTOR', 'PROFESSOR', 'HTA', 'HEAD_TA')")
     @PutMapping("/semester-start")
     public ResponseEntity<Map<String, String>> setSemesterStart(@RequestBody Map<String, String> body) {
         String date = body.get("semesterStartDate");
