@@ -10,6 +10,7 @@ import {
   updateAttendance,
   deleteAttendance,
 } from "@/api/attendance";
+import { getSemesterStartDate } from "@/api/settings";
 import { useTheme } from '../contexts/ThemeContext';
 
 type LocalStatus = "present" | "late" | "absent" | "excused" | null;
@@ -61,6 +62,7 @@ interface Props {
 export default function MemberAttendance({ netid, readOnly = false, style }: Props) {
   const { colors } = useTheme();
   const today = new Date();
+  const [semesterStart, setSemesterStart] = useState<Date | null>(null);
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [selectedDay, setSelectedDay] = useState<number | null>(today.getDate());
@@ -75,6 +77,10 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0, w: 0 });
   const menuRef = useRef<View>(null);
+
+  useEffect(() => {
+    getSemesterStartDate().then(d => { if (d) setSemesterStart(new Date(d)); }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!netid) return;
@@ -186,7 +192,21 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
   const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
   const monthLabel = new Date(currentYear, currentMonth).toLocaleString("default", { month: "short", year: "numeric" });
 
+  const atSemesterStartMonth = semesterStart
+    ? (currentYear < semesterStart.getFullYear() ||
+       (currentYear === semesterStart.getFullYear() && currentMonth <= semesterStart.getMonth()))
+    : false;
+
+  const isBeforeSemesterStart = (day: number) => {
+    if (!semesterStart) return false;
+    const d = new Date(currentYear, currentMonth, day);
+    const s = new Date(semesterStart);
+    s.setHours(0, 0, 0, 0);
+    return d < s;
+  };
+
   const prevMonth = () => {
+    if (atSemesterStartMonth) return;
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
     else setCurrentMonth(m => m - 1);
     setSelectedDay(null);
@@ -247,7 +267,7 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
         {/* LEFT: Calendar */}
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-            <TouchableOpacity onPress={prevMonth} style={{ padding: 4 }}>
+            <TouchableOpacity onPress={prevMonth} disabled={atSemesterStartMonth} style={{ padding: 4, opacity: atSemesterStartMonth ? 0.2 : 1 }}>
               <Ionicons name="chevron-back" size={14} color={colors.textMuted} />
             </TouchableOpacity>
             <Text style={{ fontSize: 13, fontWeight: "600", color: colors.textSecondary }}>{monthLabel}</Text>
@@ -280,8 +300,9 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
 
                     if (calendarView === "all") {
                       const { lecture, meeting } = getDayStatuses(day);
+                      const beforeStart = isBeforeSemesterStart(day);
                       return (
-                        <TouchableOpacity key={day} onPress={() => setSelectedDay(day)} style={{ flex: 1, height: CELL_H, padding: 1 }}>
+                        <TouchableOpacity key={day} onPress={() => !beforeStart && setSelectedDay(day)} style={{ flex: 1, height: CELL_H, padding: 1, opacity: beforeStart ? 0.25 : 1 }}>
                           <View style={{
                             flex: 1, borderRadius: 4, alignItems: "center", justifyContent: "center",
                             borderWidth: (isSelected || isToday) ? 1 : 0,
@@ -302,8 +323,9 @@ export default function MemberAttendance({ netid, readOnly = false, style }: Pro
 
                     const status = getDayStatus(day);
                     const dotColor = status ? STATUS_CONFIG[status].color : null;
+                    const beforeStart = isBeforeSemesterStart(day);
                     return (
-                      <TouchableOpacity key={day} onPress={() => setSelectedDay(day)} style={{ flex: 1, height: CELL_H, padding: 1 }}>
+                      <TouchableOpacity key={day} onPress={() => !beforeStart && setSelectedDay(day)} style={{ flex: 1, height: CELL_H, padding: 1, opacity: beforeStart ? 0.25 : 1 }}>
                         <View style={{
                           flex: 1, borderRadius: 4, alignItems: "center", justifyContent: "center",
                           backgroundColor: dotColor ?? "transparent",

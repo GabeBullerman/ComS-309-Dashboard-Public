@@ -812,7 +812,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       </View>
       {/* Weekly Performance */}
       <View style={{ marginHorizontal: pad, marginBottom: 12 }}>
-        <WeeklyPerformance members={teamMembers} readOnly={userRole === 'Student'} />
+        <WeeklyPerformance members={teamMembers} readOnly={userRole === 'Student'} semesterStart={semesterStart} />
       </View>
 
       {/* Bulk Attendance — staff only */}

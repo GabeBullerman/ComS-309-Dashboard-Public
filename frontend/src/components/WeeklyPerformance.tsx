@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { View, Text, TouchableOpacity, Modal, Pressable, ActivityIndicator, Alert, Platform } from "react-native";
+import { View, Text, TouchableOpacity, Modal, Pressable, ActivityIndicator, Alert, Platform, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { TeamMember } from "@/types/Teams";
 import {
@@ -36,23 +36,46 @@ const LEVEL_TO_SCORE: Record<string, number> = { poor: 0, moderate: 1, good: 2 }
 
 type MemberScore = { code: ProgressLevel; teamwork: ProgressLevel; id?: number };
 
-function buildWeeks(count: number): { label: string; key: string }[] {
-  const weeks: { label: string; key: string }[] = [];
+function buildWeeks(semesterStart?: Date): { label: string; key: string }[] {
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  if (semesterStart) {
+    const dow = semesterStart.getDay();
+    const firstMonday = new Date(semesterStart);
+    firstMonday.setDate(semesterStart.getDate() - (dow === 0 ? 6 : dow - 1));
+    firstMonday.setHours(0, 0, 0, 0);
+    const numWeeks = Math.min(Math.max(Math.ceil((Date.now() - firstMonday.getTime()) / (7 * 86_400_000)), 1), 16);
+    return Array.from({ length: numWeeks }, (_, i) => {
+      const s = new Date(firstMonday);
+      s.setDate(firstMonday.getDate() + i * 7);
+      const e = new Date(s);
+      e.setDate(s.getDate() + 6);
+      return { label: `W${i + 1}  ${fmt(s)} – ${fmt(e)}`, key: s.toISOString().split('T')[0] };
+    });
+  }
+
+  // Fallback: rolling 8 weeks back from today
   const now = new Date();
   const day = now.getDay();
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
   startOfWeek.setHours(0, 0, 0, 0);
-
-  for (let i = 0; i < count; i++) {
+  return Array.from({ length: 8 }, (_, i) => {
     const s = new Date(startOfWeek);
     s.setDate(startOfWeek.getDate() - i * 7);
     const e = new Date(s);
     e.setDate(s.getDate() + 6);
-    const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    weeks.push({ label: `${fmt(s)} – ${fmt(e)}`, key: s.toISOString().split('T')[0] });
+    return { label: `${fmt(s)} – ${fmt(e)}`, key: s.toISOString().split('T')[0] };
+  });
+}
+
+function getCurrentWeekKey(weeks: { key: string }[]): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let i = weeks.length - 1; i >= 0; i--) {
+    if (today >= new Date(weeks[i].key)) return weeks[i].key;
   }
-  return weeks;
+  return weeks[0].key;
 }
 
 function ProgressCell({ level, onPress, readOnly }: { level: ProgressLevel; onPress: (l: ProgressLevel) => void; readOnly?: boolean }) {
@@ -115,20 +138,22 @@ function WeekDropdown({ weeks, selected, onSelect }: { weeks: { label: string; k
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)}>
-          <View style={{ position: 'absolute', top: pos.y + 4, left: pos.x, minWidth: Math.max(pos.w, 220), backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, elevation: 8, shadowColor: colors.shadow, shadowOpacity: 0.12, shadowRadius: 6, overflow: 'hidden' }}>
-            {weeks.map((w, i) => {
-              const isActive = w.key === selected;
-              return (
-                <TouchableOpacity
-                  key={w.key}
-                  onPress={() => { onSelect(w.key); setOpen(false); }}
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: i < weeks.length - 1 ? 1 : 0, borderBottomColor: colors.borderLight, backgroundColor: isActive ? colors.statusPoorBg : colors.surface }}
-                >
-                  <Text style={{ fontSize: 13, color: isActive ? colors.statusPoorText : colors.textSecondary, fontWeight: isActive ? '600' : '400' }}>{w.label}</Text>
-                  {isActive && <Ionicons name="checkmark" size={14} color={colors.statusPoorText} />}
-                </TouchableOpacity>
-              );
-            })}
+          <View style={{ position: 'absolute', top: pos.y + 4, left: pos.x, minWidth: Math.max(pos.w, 220), maxHeight: 240, backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border, elevation: 8, shadowColor: colors.shadow, shadowOpacity: 0.12, shadowRadius: 6, overflow: 'hidden' }}>
+            <ScrollView bounces={false} showsVerticalScrollIndicator>
+              {weeks.map((w, i) => {
+                const isActive = w.key === selected;
+                return (
+                  <TouchableOpacity
+                    key={w.key}
+                    onPress={() => { onSelect(w.key); setOpen(false); }}
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: i < weeks.length - 1 ? 1 : 0, borderBottomColor: colors.borderLight, backgroundColor: isActive ? colors.statusPoorBg : colors.surface }}
+                  >
+                    <Text style={{ fontSize: 13, color: isActive ? colors.statusPoorText : colors.textSecondary, fontWeight: isActive ? '600' : '400' }}>{w.label}</Text>
+                    {isActive && <Ionicons name="checkmark" size={14} color={colors.statusPoorText} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
         </Pressable>
       </Modal>
@@ -139,12 +164,13 @@ function WeekDropdown({ weeks, selected, onSelect }: { weeks: { label: string; k
 interface Props {
   members: TeamMember[];
   readOnly?: boolean;
+  semesterStart?: Date;
 }
 
-export default function WeeklyPerformance({ members, readOnly = false }: Props) {
+export default function WeeklyPerformance({ members, readOnly = false, semesterStart }: Props) {
   const { colors } = useTheme();
-  const weeks = buildWeeks(8);
-  const [selectedWeek, setSelectedWeek] = useState(weeks[0].key);
+  const weeks = buildWeeks(semesterStart);
+  const [selectedWeek, setSelectedWeek] = useState(() => getCurrentWeekKey(weeks));
   const [scores, setScores] = useState<Record<string, Record<string, MemberScore>>>({});
   const originalScoresRef = useRef<Record<string, Record<string, MemberScore>>>({});
   const [loading, setLoading] = useState(true);
