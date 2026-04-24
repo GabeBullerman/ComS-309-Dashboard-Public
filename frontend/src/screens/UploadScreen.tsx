@@ -14,7 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import FileUpload from "@/components/FileUpload";
 import DropZone from "@/components/DropZone";
-import axiosInstance from "@/api/client";
+import axiosInstance, { apiBaseUrl, TOKEN_KEY } from "@/api/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getUsersByRole } from "@/api/users";
 import { createUser, getUserByNetid } from "@/api/users";
@@ -297,6 +297,45 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
     }
   }, [teamName, teamSection, selectedTaNetid, studentRows]);
 
+  // ── Export state ──────────────────────────────────────────────────────────
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    setExportError(null);
+    try {
+      const token = await AsyncStorage.getItem(TOKEN_KEY);
+      const response = await fetch(`${apiBaseUrl}/api/file/export`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) throw new Error(`Server returned ${response.status}`);
+
+      const ab = await response.arrayBuffer();
+      const bytes = new Uint8Array(ab);
+
+      // xlsx is a zip — must start with PK (0x50 0x4B)
+      if (bytes.length < 4 || bytes[0] !== 0x50 || bytes[1] !== 0x4B) {
+        const preview = new TextDecoder().decode(bytes.slice(0, 500));
+        throw new Error(`Server did not return a valid xlsx file (${ab.byteLength} bytes). Content: ${preview}`);
+      }
+
+      const blob = new Blob([ab], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'dashboard_export.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err: any) {
+      setExportError(err?.message ?? 'Export failed.');
+    } finally {
+      setExporting(false);
+    }
+  }, []);
+
   // ── Format tooltip state ──────────────────────────────────────────────────
   const [showFormatTip, setShowFormatTip] = useState(false);
 
@@ -334,8 +373,8 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
         animationType="fade"
         onRequestClose={() => { if (!creating) setShowCreateModal(false); }}
       >
-        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 20 }}>
-          <View style={{ backgroundColor: colors.surface, borderRadius: 16, maxHeight: '90%', overflow: 'hidden' }}>
+        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 20, alignItems: 'center' }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, maxHeight: '90%', overflow: 'hidden', width: '100%', maxWidth: 480 }}>
             {/* Modal header */}
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>Create Team Manually</Text>
@@ -704,6 +743,37 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
               })}
             </View>
           )}
+        </View>
+
+        {/* ── Export ── */}
+        <View style={{ marginTop: 32, backgroundColor: colors.surface, borderRadius: 16, padding: 20, shadowColor: colors.shadow, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 8 }}>
+            <Ionicons name="download-outline" size={18} color={colors.primary} />
+            <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>Export Data</Text>
+          </View>
+          <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 16 }}>
+            Downloads an Excel workbook with all students on the Students sheet. Each team has its own sheet with attendance, demo performance, and weekly performance data.
+          </Text>
+
+          {exportError && (
+            <View style={{ backgroundColor: colors.criticalBg, borderRadius: 8, padding: 10, marginBottom: 12, borderWidth: 1, borderColor: colors.criticalBorder }}>
+              <Text style={{ color: colors.criticalText, fontSize: 12 }}>{exportError}</Text>
+            </View>
+          )}
+
+          <TouchableOpacity
+            onPress={handleExport}
+            disabled={exporting}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 13, opacity: exporting ? 0.6 : 1 }}
+          >
+            {exporting
+              ? <ActivityIndicator color={colors.textInverse} />
+              : <>
+                  <Ionicons name="download-outline" size={16} color={colors.textInverse} />
+                  <Text style={{ color: colors.textInverse, fontWeight: '700', fontSize: 14 }}>Download Export (.xlsx)</Text>
+                </>
+            }
+          </TouchableOpacity>
         </View>
 
         {/* ── Danger Zone (Instructor only) ── */}

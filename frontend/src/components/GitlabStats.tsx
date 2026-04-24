@@ -277,8 +277,8 @@ export default function GitLabStatsPanel({ gitlabUrl, memberNetid, memberName, s
         ]));
 
       const sizeData: CommitSizeWeek[] = buckets.map((bucket) => {
-        const weekCommits = commits.filter((c: { created_at: string }) => {
-          const t = new Date(c.created_at).getTime();
+        const weekCommits = commits.filter((c: { authored_date: string; created_at: string }) => {
+          const t = new Date(c.authored_date || c.created_at).getTime();
           return t >= bucket.start.getTime() && t < bucket.end.getTime();
         });
         return {
@@ -293,8 +293,8 @@ export default function GitLabStatsPanel({ gitlabUrl, memberNetid, memberName, s
 
       const freqData: CommitFreqWeek[] = buckets.map((bucket) => ({
         week: bucket.week,
-        commits: commits.filter((c: { created_at: string }) => {
-          const t = new Date(c.created_at).getTime();
+        commits: commits.filter((c: { authored_date: string; created_at: string }) => {
+          const t = new Date(c.authored_date || c.created_at).getTime();
           return t >= bucket.start.getTime() && t < bucket.end.getTime();
         }).length,
       }));

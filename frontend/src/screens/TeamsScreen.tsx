@@ -434,6 +434,23 @@ export default function ClassTeamsScreen({ userRole }: Props) {
                 )
               }
               showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 64, paddingHorizontal: 32 }}>
+                  <Ionicons name="people-outline" size={52} color={colors.textFaint} />
+                  <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textMuted, marginTop: 16, textAlign: 'center' }}>
+                    {searchQuery || statusFilter !== 'All' || sectionFilter !== 'All' || semesterFilter !== 'All'
+                      ? 'No teams match your filters'
+                      : isStudentView ? 'No team assigned yet'
+                      : isTAView ? 'No teams assigned yet'
+                      : 'No teams found'}
+                  </Text>
+                  {teams.length === 0 && (isStudentView || isTAView) && (
+                    <Text style={{ fontSize: 14, color: colors.textFaint, marginTop: 8, textAlign: 'center' }}>
+                      Contact your instructor to get assigned to a team.
+                    </Text>
+                  )}
+                </View>
+              }
             />
           );
         })()}

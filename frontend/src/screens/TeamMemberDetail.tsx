@@ -111,7 +111,7 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
           initials={member.initials}
           size={INNER}
           borderRadius={RADIUS_INNER}
-          canEdit={!isStudent}
+          canEdit
           bordered
         />
 

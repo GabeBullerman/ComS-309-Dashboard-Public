@@ -34,21 +34,46 @@ export const clearToken = async () => {
   await AsyncStorage.multiRemove([TOKEN_KEY, REFRESH_TOKEN_KEY]);
 };
 
-// ── Request interceptor — attach Bearer token ─────────────────────────────────
+// ── JWT expiry helper ─────────────────────────────────────────────────────────
 
-axiosInstance.interceptors.request.use(async (config) => {
+function getJwtExpiry(token: string): number | null {
   try {
-    const skipAuth = ['/api/auth/login', '/api/auth/refresh', '/api/users/testing/hashAllPasswords'];
-    if (skipAuth.some((u) => config.url?.startsWith(u))) return config;
-    const token = await AsyncStorage.getItem(TOKEN_KEY);
-    if (token && config.headers) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
   } catch {
-    // ignore
+    return null;
   }
-  return config;
-});
+}
+
+// ── Token refresh (uses raw fetch to bypass axios interceptors) ───────────────
+
+let refreshPromise: Promise<string> | null = null;
+
+async function doRefresh(): Promise<string> {
+  const rt = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!rt) throw new Error('No refresh token stored');
+
+  const res = await fetch(`${apiBaseUrl}/api/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken: rt }),
+  });
+
+  if (!res.ok) throw new Error(`Refresh failed: ${res.status}`);
+
+  const data = await res.json();
+  await storeToken(data.accessToken);
+  await AsyncStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
+  return data.accessToken as string;
+}
+
+// Deduplicates concurrent refresh calls — all callers share the same promise.
+function getRefreshPromise(): Promise<string> {
+  if (!refreshPromise) {
+    refreshPromise = doRefresh().finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
+}
 
 // ── Force-logout callback (set by App.tsx so interceptor can trigger nav) ─────
 
@@ -57,15 +82,37 @@ export const setForceLogoutHandler = (handler: () => void) => {
   onForceLogout = handler;
 };
 
-// ── Response interceptor — transparent token refresh on 401 ──────────────────
+// ── Request interceptor — proactively refresh token when it's near expiry ─────
 
-let isRefreshing = false;
-let refreshQueue: Array<{ resolve: (token: string) => void; reject: (err: unknown) => void }> = [];
+axiosInstance.interceptors.request.use(async (config) => {
+  try {
+    const skipAuth = ['/api/auth/login', '/api/auth/refresh', '/api/users/testing/hashAllPasswords'];
+    if (skipAuth.some((u) => config.url?.startsWith(u))) return config;
 
-const drainQueue = (err: unknown, token?: string) => {
-  refreshQueue.forEach((cb) => (err ? cb.reject(err) : cb.resolve(token!)));
-  refreshQueue = [];
-};
+    let token = await AsyncStorage.getItem(TOKEN_KEY);
+
+    if (token) {
+      const exp = getJwtExpiry(token);
+      // Proactively refresh if the token expires within 60 seconds
+      if (!exp || Date.now() >= exp - 60_000) {
+        try {
+          token = await getRefreshPromise();
+        } catch {
+          // Refresh failed — let the request proceed; the 401 handler will force-logout
+        }
+      }
+    }
+
+    if (token && config.headers) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+  } catch {
+    // ignore — request proceeds without auth header
+  }
+  return config;
+});
+
+// ── Response interceptor — reactive 401 fallback (clock skew / race safety) ──
 
 axiosInstance.interceptors.response.use(
   (res) => res,
@@ -73,41 +120,24 @@ axiosInstance.interceptors.response.use(
     const original = error.config;
     const skipRefresh = ['/api/auth/login', '/api/auth/refresh'];
     const status = error.response?.status;
-    // Only refresh on 401 (token expired); 403 means forbidden/wrong role — don't loop
+
     if (
       status === 401 &&
       !original._retry &&
       !skipRefresh.some((u) => original.url?.startsWith(u))
     ) {
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          refreshQueue.push({ resolve, reject });
-        }).then((token) => {
-          original.headers['Authorization'] = `Bearer ${token}`;
-          return axiosInstance(original);
-        });
-      }
       original._retry = true;
-      isRefreshing = true;
       try {
-        const refreshToken = await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
-        const res = await axiosInstance.post('/api/auth/refresh', { refreshToken });
-        const { accessToken, refreshToken: newRefreshToken } = res.data;
-        await storeToken(accessToken);
-        await AsyncStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
-        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-        drainQueue(null, accessToken);
-        original.headers['Authorization'] = `Bearer ${accessToken}`;
+        const newToken = await getRefreshPromise();
+        original.headers['Authorization'] = `Bearer ${newToken}`;
         return axiosInstance(original);
       } catch (refreshErr) {
-        drainQueue(refreshErr);
         await clearToken();
         onForceLogout?.();
         return Promise.reject(refreshErr);
-      } finally {
-        isRefreshing = false;
       }
     }
+
     return Promise.reject(error);
   }
 );

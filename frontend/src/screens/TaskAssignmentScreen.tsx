@@ -264,26 +264,28 @@ export default function TaskAssignmentScreen() {
           />
 
           <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 4 }}>Due Date</Text>
-          {Platform.OS === 'web'
-            ? React.createElement('input', {
-                type: 'date',
-                value: dueDate,
-                onChange: (e: any) => setDueDate(e.target.value),
-                style: {
-                  border: `1px solid ${colors.inputBorder}`, borderRadius: 8,
-                  padding: '8px 12px', marginBottom: 16, fontSize: 14,
-                  width: '100%', boxSizing: 'border-box', color: colors.text,
-                  backgroundColor: colors.inputBg,
-                },
-              })
-            : <TextInput
-                value={dueDate}
-                onChangeText={setDueDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.textFaint}
-                style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 16, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg }}
-              />
-          }
+          <View style={{ overflow: 'hidden', marginBottom: 16 }}>
+            {Platform.OS === 'web'
+              ? React.createElement('input', {
+                  type: 'date',
+                  value: dueDate,
+                  onChange: (e: any) => setDueDate(e.target.value),
+                  style: {
+                    border: `1px solid ${colors.inputBorder}`, borderRadius: 8,
+                    padding: '8px 12px', fontSize: 14,
+                    width: '100%', boxSizing: 'border-box', color: colors.text,
+                    backgroundColor: colors.inputBg, display: 'block',
+                  },
+                })
+              : <TextInput
+                  value={dueDate}
+                  onChangeText={setDueDate}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={colors.textFaint}
+                  style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg, alignSelf: 'stretch' }}
+                />
+            }
+          </View>
 
           {/* Assign To */}
           <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 }}>Assign To</Text>
@@ -516,20 +518,22 @@ export default function TaskAssignmentScreen() {
                     placeholderTextColor={colors.textFaint}
                     style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, color: colors.text, backgroundColor: colors.inputBg }}
                   />
-                  {Platform.OS === 'web'
-                    ? React.createElement('input', {
-                        type: 'date', value: editDraft.dueDate,
-                        onChange: (e: any) => setEditDraft((p) => ({ ...p, dueDate: e.target.value })),
-                        style: { border: `1px solid ${colors.inputBorder}`, borderRadius: 6, padding: '6px 10px', fontSize: 13, width: '100%', boxSizing: 'border-box', color: colors.text, backgroundColor: colors.inputBg },
-                      })
-                    : <TextInput
-                        value={editDraft.dueDate}
-                        onChangeText={(t) => setEditDraft((p) => ({ ...p, dueDate: t }))}
-                        placeholder="YYYY-MM-DD"
-                        placeholderTextColor={colors.textFaint}
-                        style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, color: colors.text, backgroundColor: colors.inputBg }}
-                      />
-                  }
+                  <View style={{ overflow: 'hidden' }}>
+                    {Platform.OS === 'web'
+                      ? React.createElement('input', {
+                          type: 'date', value: editDraft.dueDate,
+                          onChange: (e: any) => setEditDraft((p) => ({ ...p, dueDate: e.target.value })),
+                          style: { border: `1px solid ${colors.inputBorder}`, borderRadius: 6, padding: '6px 10px', fontSize: 13, width: '100%', boxSizing: 'border-box', color: colors.text, backgroundColor: colors.inputBg, display: 'block' },
+                        })
+                      : <TextInput
+                          value={editDraft.dueDate}
+                          onChangeText={(t) => setEditDraft((p) => ({ ...p, dueDate: t }))}
+                          placeholder="YYYY-MM-DD"
+                          placeholderTextColor={colors.textFaint}
+                          style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, color: colors.text, backgroundColor: colors.inputBg, alignSelf: 'stretch' }}
+                        />
+                    }
+                  </View>
                   <TouchableOpacity
                     onPress={() => handleSaveEdit(g.ids)}
                     disabled={!editDraft.title.trim()}
