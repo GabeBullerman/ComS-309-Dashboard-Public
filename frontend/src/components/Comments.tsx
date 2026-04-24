@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, TextInput, ScrollView, useWindowDimensions, Platform } from "react-native";
+import { View, Text, TouchableOpacity, TextInput, ScrollView, useWindowDimensions, Platform, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
     getMemberComments,
@@ -92,7 +92,7 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid, is
             setSelectedStatus(null);
             setIsPrivate(false);
         } catch {
-            // silent
+            Alert.alert('Error', 'Failed to submit comment.');
         } finally {
             setLoading(false);
         }
@@ -113,7 +113,9 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid, is
             const updated = await updateComment(c.id, { commentBody: editText, status: editStatus, isPrivate: editIsPrivate });
             setComments((prev) => prev.map((x) => x.id === c.id ? updated : x));
             setEditingId(null);
-        } catch { /* silent */ }
+        } catch {
+            Alert.alert('Error', 'Failed to save comment.');
+        }
     };
 
     const handleDelete = async (id: number) => {
@@ -124,7 +126,9 @@ export default function MemberComments({ recipientNetid, teamId, authorNetid, is
         try {
             await deleteComment(id);
             setComments((prev) => prev.filter((c) => c.id !== id));
-        } catch { /* silent */ }
+        } catch {
+            Alert.alert('Error', 'Failed to delete comment.');
+        }
     };
 
     const title = recipientNetid ? "Member Comments" : "Team Comments";

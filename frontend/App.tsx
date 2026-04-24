@@ -12,7 +12,7 @@ import UploadScreen from "./src/screens/UploadScreen";
 import DashboardScreen from "./src/screens/DashboardScreen";
 import TeamDetailScreen from "./src/screens/TeamDetail";
 import { logout as apiLogout, getToken } from './src/utils/auth';
-import { setForceLogoutHandler, apiBaseUrl } from './src/api/client';
+import axiosInstance, { setForceLogoutHandler, apiBaseUrl } from './src/api/client';
 import type { UserRole } from './src/utils/auth';
 import { Team, TeamMember } from "@/data/teams";
 import TeamMemberDetail from "@/screens/TeamMemberDetail";
@@ -83,12 +83,19 @@ function AppInner() {
 
   const checkConnection = useCallback(async () => {
     setConnStatus('checking');
-    try {
-      await fetch(`${apiBaseUrl}/api/auth/login`, { method: 'HEAD', mode: 'no-cors', signal: AbortSignal.timeout(5000) });
-      setConnStatus('online');
-    } catch {
-      setConnStatus('offline');
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
+        await axiosInstance.get('/api/auth/login', { timeout: 6000 });
+        setConnStatus('online');
+        return;
+      } catch (e: any) {
+        // Any HTTP response (401, 400, etc.) means the server is reachable
+        if (e?.response) { setConnStatus('online'); return; }
+        // Otherwise it's a network error — retry
+      }
     }
+    setConnStatus('offline');
   }, []);
 
   useEffect(() => { checkConnection(); }, []);

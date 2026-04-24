@@ -16,6 +16,8 @@ import AtRiskStudentsScreen from "./AtRiskStudentsScreen";
 import StudentListScreen from "./StudentListScreen";
 import StaffChatScreen from "./StaffChatScreen";
 import { getUnreadCount } from "../api/chat";
+import { getTodayEventCount } from "../api/calendar";
+import CalendarModal from "../components/CalendarModal";
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DashboardScreen'>;
 
@@ -27,6 +29,8 @@ export default function DashboardScreen({route}: Props) {
   const [displayName, setDisplayName] = useState("User");
   const [netid, setNetid] = useState("");
   const [chatUnread, setChatUnread] = useState(0);
+  const [calendarBadge, setCalendarBadge] = useState(0);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const screenWidth = Dimensions.get("window").width;
   const isMobile = screenWidth < 768;
   const role = route.params.userRole;
@@ -39,6 +43,15 @@ export default function DashboardScreen({route}: Props) {
     const id = setInterval(fetch, 30_000);
     return () => clearInterval(id);
   }, [role]);
+
+  // Poll today's calendar event count
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const fetch = () => getTodayEventCount().then(setCalendarBadge).catch(() => {});
+    fetch();
+    const id = setInterval(fetch, 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -155,6 +168,24 @@ export default function DashboardScreen({route}: Props) {
         );
       })}
 
+      {/* Calendar button */}
+      <TouchableOpacity
+        onPress={() => setCalendarOpen(true)}
+        className="flex-row items-center gap-3 rounded-lg px-4 py-3 mb-2"
+      >
+        <View>
+          <Ionicons name="calendar-outline" size={18} color="rgba(255,255,255,0.85)" />
+          {calendarBadge > 0 && (
+            <View style={{ position: 'absolute', top: -4, right: -6, backgroundColor: colors.criticalBorder, borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 }}>
+              <Text style={{ color: colors.textInverse, fontSize: 9, fontWeight: '700' }}>
+                {calendarBadge > 9 ? '9+' : calendarBadge}
+              </Text>
+            </View>
+          )}
+        </View>
+        <Text className="font-medium text-white">Calendar</Text>
+      </TouchableOpacity>
+
       {/* User Section */}
       <View className="mt-auto pt-6" style={{ borderTopWidth: 1.5, borderTopColor: 'rgba(241,190,72,0.45)' }}>
         <TouchableOpacity
@@ -239,7 +270,26 @@ export default function DashboardScreen({route}: Props) {
               </TouchableOpacity>
             );
           })}
+          {/* Calendar tab */}
+          <TouchableOpacity
+            style={{ flex: 1, alignItems: 'center', paddingVertical: 4 }}
+            onPress={() => setCalendarOpen(true)}
+            activeOpacity={0.7}
+          >
+            <View>
+              <Ionicons name="calendar-outline" size={22} color="rgba(255,255,255,0.65)" />
+              {calendarBadge > 0 && (
+                <View style={{ position: 'absolute', top: -3, right: -5, backgroundColor: colors.criticalBorder, borderRadius: 7, minWidth: 14, height: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2 }}>
+                  <Text style={{ color: colors.textInverse, fontSize: 9, fontWeight: '700' }}>
+                    {calendarBadge > 9 ? '9+' : calendarBadge}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, marginTop: 2 }}>Calendar</Text>
+          </TouchableOpacity>
         </View>
+        <CalendarModal visible={calendarOpen} onClose={() => { setCalendarOpen(false); getTodayEventCount().then(setCalendarBadge).catch(() => {}); }} netid={netid} />
       </View>
     );
   }
@@ -255,6 +305,7 @@ export default function DashboardScreen({route}: Props) {
           {renderScreen()}
         </View>
       </View>
+      <CalendarModal visible={calendarOpen} onClose={() => { setCalendarOpen(false); getTodayEventCount().then(setCalendarBadge).catch(() => {}); }} netid={netid} />
     </View>
   );
 }
