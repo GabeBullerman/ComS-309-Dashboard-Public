@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { View, Text, TouchableOpacity, Modal, Pressable, ActivityIndicator, Alert, Platform, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { TeamMember } from "@/types/Teams";
@@ -169,8 +169,12 @@ interface Props {
 
 export default function WeeklyPerformance({ members, readOnly = false, semesterStart }: Props) {
   const { colors } = useTheme();
-  const weeks = buildWeeks(semesterStart);
+  const weeks = useMemo(() => buildWeeks(semesterStart), [semesterStart]);
   const [selectedWeek, setSelectedWeek] = useState(() => getCurrentWeekKey(weeks));
+
+  useEffect(() => {
+    setSelectedWeek(getCurrentWeekKey(weeks));
+  }, [weeks]);
   const [scores, setScores] = useState<Record<string, Record<string, MemberScore>>>({});
   const originalScoresRef = useRef<Record<string, Record<string, MemberScore>>>({});
   const [loading, setLoading] = useState(true);
