@@ -555,69 +555,72 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         const RADIUS = isMobile ? 20 : 35;
         const tileW = isMobile ? 80 : 152;
         const tileHMargin = isMobile ? 0 : INNER / 4;
+        const addColW = canEditRepo ? 56 : 0;
         return (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', paddingVertical: 16, paddingHorizontal: pad, gap: 12 }}>
-            {teamMembers.map((m) => {
-              const memberKey = m.netid || m.name;
-              const role = memberRoles[memberKey];
-              return (
-                <View key={memberKey} style={{ alignItems: 'center', width: tileW, marginHorizontal: tileHMargin }}>
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate('TeamMemberDetail', { member: m, gitlabUrl: gitlab || undefined, teamId: team.id, teamName: teamName })}
-                    style={{ alignItems: 'center', width: tileW }}
-                  >
-                    {canEditRepo ? (
-                      <TouchableOpacity
-                        ref={(ref) => { if (ref) badgeRefs.current[memberKey] = ref; }}
-                        onPress={(e) => { e.stopPropagation(); handleBadgePress(memberKey); }}
-                        style={{ backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
-                      >
-                        <Text style={{ color: colors.textInverse, fontSize: 11, fontWeight: '500' }}>{role ?? 'Set Role'}</Text>
-                        <Ionicons name="chevron-down" size={10} color={colors.textInverse} style={{ marginLeft: 3 }} />
-                      </TouchableOpacity>
-                    ) : role ? (
-                      <View style={{ backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, marginBottom: 6 }}>
-                        <Text style={{ color: colors.textInverse, fontSize: 11, fontWeight: '500' }}>{role}</Text>
-                      </View>
-                    ) : (
-                      <View style={{ height: isMobile ? 22 : 24, marginBottom: 6 }} />
-                    )}
-                    <MemberAvatar
-                      memberId={m.netid || m.name}
-                      initials={m.initials}
-                      size={INNER}
-                      borderRadius={RADIUS - 4}
-                      bordered
-                    />
-                    <Text style={{ marginTop: 6, fontSize: isMobile ? 11 : 14, textAlign: 'center', lineHeight: isMobile ? 16 : 22, color: colors.text }} numberOfLines={2}>
-                      {m.name}
-                    </Text>
-                  </TouchableOpacity>
-                  {canEditRepo && (
+          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 16, paddingHorizontal: pad }}>
+            {/* Left spacer mirrors the add-button column so tiles stay centered */}
+            {canEditRepo && <View style={{ width: addColW }} />}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}>
+              {teamMembers.map((m) => {
+                const memberKey = m.netid || m.name;
+                const role = memberRoles[memberKey];
+                return (
+                  <View key={memberKey} style={{ alignItems: 'center', width: tileW, marginHorizontal: tileHMargin }}>
                     <TouchableOpacity
-                      onPress={() => handleRemoveMember(m)}
-                      disabled={removingId === m.id}
-                      style={{ position: 'absolute', top: isMobile ? 22 : 26, right: 0, width: 20, height: 20, borderRadius: 10, backgroundColor: removingId === m.id ? colors.border : colors.criticalBorder, alignItems: 'center', justifyContent: 'center' }}
+                      onPress={() => navigation.navigate('TeamMemberDetail', { member: m, gitlabUrl: gitlab || undefined, teamId: team.id, teamName: teamName })}
+                      style={{ alignItems: 'center', width: tileW }}
                     >
-                      {removingId === m.id
-                        ? <ActivityIndicator size="small" color="white" />
-                        : <Ionicons name="close" size={11} color="white" />}
+                      {canEditRepo ? (
+                        <TouchableOpacity
+                          ref={(ref) => { if (ref) badgeRefs.current[memberKey] = ref; }}
+                          onPress={(e) => { e.stopPropagation(); handleBadgePress(memberKey); }}
+                          style={{ backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
+                        >
+                          <Text style={{ color: colors.textInverse, fontSize: 11, fontWeight: '500' }}>{role ?? 'Set Role'}</Text>
+                          <Ionicons name="chevron-down" size={10} color={colors.textInverse} style={{ marginLeft: 3 }} />
+                        </TouchableOpacity>
+                      ) : role ? (
+                        <View style={{ backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, marginBottom: 6 }}>
+                          <Text style={{ color: colors.textInverse, fontSize: 11, fontWeight: '500' }}>{role}</Text>
+                        </View>
+                      ) : (
+                        <View style={{ height: isMobile ? 22 : 24, marginBottom: 6 }} />
+                      )}
+                      <MemberAvatar
+                        memberId={m.netid || m.name}
+                        initials={m.initials}
+                        size={INNER}
+                        borderRadius={RADIUS - 4}
+                        bordered
+                      />
+                      <Text style={{ marginTop: 6, fontSize: isMobile ? 11 : 14, textAlign: 'center', lineHeight: isMobile ? 16 : 22, color: colors.text }} numberOfLines={2}>
+                        {m.name}
+                      </Text>
                     </TouchableOpacity>
-                  )}
-                </View>
-              );
-            })}
+                    {canEditRepo && (
+                      <TouchableOpacity
+                        onPress={() => handleRemoveMember(m)}
+                        disabled={removingId === m.id}
+                        style={{ position: 'absolute', top: isMobile ? 22 : 26, right: 0, width: 20, height: 20, borderRadius: 10, backgroundColor: removingId === m.id ? colors.border : colors.criticalBorder, alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        {removingId === m.id
+                          ? <ActivityIndicator size="small" color="white" />
+                          : <Ionicons name="close" size={11} color="white" />}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
             {canEditRepo && (
-              <TouchableOpacity
-                onPress={openAddMemberModal}
-                style={{ alignItems: 'center', width: tileW, marginHorizontal: tileHMargin }}
-              >
-                <View style={{ height: isMobile ? 22 : 24, marginBottom: 6 }} />
-                <View style={{ width: INNER, height: INNER, borderRadius: RADIUS - 4, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: colors.border }}>
-                  <Ionicons name="person-add-outline" size={isMobile ? 22 : 44} color={colors.textMuted} />
-                </View>
-                <Text style={{ marginTop: 6, fontSize: isMobile ? 11 : 14, textAlign: 'center', color: colors.textMuted }}>Add</Text>
-              </TouchableOpacity>
+              <View style={{ width: addColW, alignItems: 'center', justifyContent: 'center' }}>
+                <TouchableOpacity onPress={openAddMemberModal} style={{ alignItems: 'center' }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: colors.primary, borderStyle: 'dashed' }}>
+                    <Text style={{ fontSize: 22, lineHeight: 26, color: colors.primary, fontWeight: '300' }}>+</Text>
+                  </View>
+                  <Text style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, textAlign: 'center', color: colors.primary }}>Add</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         );
