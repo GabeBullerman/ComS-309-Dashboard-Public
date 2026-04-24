@@ -143,8 +143,8 @@ export async function fetchRecentCommits(
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   // all=true fetches all branches; dedupe by SHA in case ISU GitLab returns duplicates
   return gitlabFetchAllPages<GitLabCommit>(
-    `${GITLAB_BASE}/projects/${path}/repository/commits?per_page=100&since=${since}&all=true`,
-    token, 20, 'id'
+    `${GITLAB_BASE}/projects/${path}/repository/commits?per_page=100&since=${since}`,
+    token, 20
   );
 }
 
