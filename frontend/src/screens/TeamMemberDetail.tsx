@@ -33,7 +33,10 @@ type TeamMemberDetailProps = NativeStackScreenProps<RootStackParamList, 'TeamMem
 
 export default function TeamProgressScreen({ navigation, route }: TeamMemberDetailProps) {
   const { colors } = useTheme();
-  const { member, teamId, teamName } = route.params;
+  const member = route.params?.member ?? null;
+  const teamId = route.params?.teamId;
+  const teamName = route.params?.teamName;
+
   const [authorNetid, setAuthorNetid] = useState<string | undefined>(undefined);
   const [isStudent, setIsStudent] = useState(false);
 
@@ -60,9 +63,17 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
   }, []);
 
   useEffect(() => {
-    if (!member.netid || isStudent) return;
+    if (!member?.netid || isStudent) return;
     getAtRiskOverridesForStudent(member.netid).then(setOverrides).catch(() => {});
-  }, [member.netid, isStudent]);
+  }, [member?.netid, isStudent]);
+
+  if (!member) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+        <Text style={{ color: colors.textMuted }}>Member not found.</Text>
+      </View>
+    );
+  }
 
   const handleFlag = async () => {
     if (!flagReason.trim() || !member.netid) return;

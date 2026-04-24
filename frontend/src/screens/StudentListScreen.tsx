@@ -194,7 +194,7 @@ export default function ClassStudentsScreen({ userRole }: Props) {
     setIsDeleting(true);
     try {
       if (deletingStudent.teamId) {
-        await removeStudentFromTeam(deletingStudent.teamId, deletingStudent.id).catch(() => {});
+        await removeStudentFromTeam(deletingStudent.teamId, deletingStudent.id);
       }
       await deleteUser(deletingStudent.id);
       setStudents(prev => prev.filter(s => s.netid !== deletingStudent.netid));
@@ -301,18 +301,18 @@ export default function ClassStudentsScreen({ userRole }: Props) {
                 {sectionOptions.map((opt) => {
                   const active = sectionFilter === opt;
                   return (
-                    <Text
+                    <TouchableOpacity
                       key={opt}
                       onPress={() => setSectionFilter(opt)}
                       style={{
                         paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
                         backgroundColor: active ? colors.primary : colors.borderLight,
-                        color: active ? colors.textInverse : colors.textSecondary,
-                        fontSize: 12, fontWeight: '500', overflow: 'hidden',
                       }}
                     >
-                      {opt === 'All' ? 'All Sections' : `Section ${opt}`}
-                    </Text>
+                      <Text style={{ color: active ? colors.textInverse : colors.textSecondary, fontSize: 12, fontWeight: '500' }}>
+                        {opt === 'All' ? 'All Sections' : `Section ${opt}`}
+                      </Text>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -321,18 +321,18 @@ export default function ClassStudentsScreen({ userRole }: Props) {
                   {taOptions.map((opt) => {
                     const active = taFilter === opt;
                     return (
-                      <Text
+                      <TouchableOpacity
                         key={opt}
                         onPress={() => setTaFilter(opt)}
                         style={{
                           paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
                           backgroundColor: active ? colors.primary : colors.borderLight,
-                          color: active ? colors.textInverse : colors.textSecondary,
-                          fontSize: 12, fontWeight: '500', overflow: 'hidden',
                         }}
                       >
-                        {opt === 'All' ? 'All TAs' : opt}
-                      </Text>
+                        <Text style={{ color: active ? colors.textInverse : colors.textSecondary, fontSize: 12, fontWeight: '500' }}>
+                          {opt === 'All' ? 'All TAs' : opt}
+                        </Text>
+                      </TouchableOpacity>
                     );
                   })}
                 </View>

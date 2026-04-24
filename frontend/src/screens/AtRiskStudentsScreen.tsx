@@ -3,9 +3,6 @@ import {
   View, Text, TextInput, FlatList, ActivityIndicator, useWindowDimensions, TouchableOpacity, Platform, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
 import { UserRole, normalizeRole } from '../utils/auth';
 import { getCurrentUser, getUsersByRole } from '../api/users';
 import { getTeams, TeamApiResponse } from '../api/teams';
@@ -84,7 +81,6 @@ const copyViaDom = (text: string) => {
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function AtRiskStudentsScreen({ userRole }: Props) {
-  const _navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const numColumns = width < 640 ? 1 : width < 960 ? 2 : width < 1280 ? 3 : 4;
@@ -102,6 +98,7 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
   const [bccCopied, setBccCopied] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     const load = async () => {
       setIsLoading(true);
       setErrorMessage('');
@@ -203,15 +200,16 @@ export default function AtRiskStudentsScreen({ userRole }: Props) {
           return a.studentName.localeCompare(b.studentName);
         });
 
-        setAtRiskStudents(flagged);
+        if (!cancelled) setAtRiskStudents(flagged);
       } catch {
-        setErrorMessage('Failed to load student data.');
+        if (!cancelled) setErrorMessage('Failed to load student data.');
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     load();
+    return () => { cancelled = true; };
   }, [effectiveRole]);
 
   const filtered = useMemo(() => {

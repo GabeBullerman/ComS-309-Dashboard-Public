@@ -57,6 +57,7 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [results, setResults] = useState<UploadResult[]>([]);
 
   const handleFilesSelected = useCallback((newFiles: UploadedFile[]) => {
@@ -77,6 +78,7 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
     const validFiles = files.filter(isAccepted);
     setUploading(true);
     setResults([]);
+    setUploadProgress(Object.fromEntries(validFiles.map(f => [f.name, 0])));
     const uploadResults: UploadResult[] = await Promise.all(
       validFiles.map(async (f) => {
         const formData = new FormData();
@@ -84,6 +86,11 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
         try {
           await axiosInstance.post('/api/file/import', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: (e) => {
+              if (e.total) {
+                setUploadProgress(prev => ({ ...prev, [f.name]: Math.round((e.loaded / e.total!) * 100) }));
+              }
+            },
           });
           return { name: f.name, ok: true, message: 'Uploaded successfully' };
         } catch (err: any) {
@@ -94,6 +101,7 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
     );
     setResults(uploadResults);
     setUploading(false);
+    setUploadProgress({});
     const failedNames = new Set(uploadResults.filter((r) => !r.ok).map((r) => r.name));
     setFiles((prev) => prev.filter((f) => failedNames.has(f.name)));
   }, [files]);
@@ -659,22 +667,41 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
 
         {/* Upload CTA */}
         {files.length > 0 && (
-          <TouchableOpacity
-            style={{
-              marginTop: 24, borderRadius: 16, paddingVertical: 16, alignItems: 'center',
-              backgroundColor: invalidCount === 0 && validCount > 0 && !uploading ? colors.gold : colors.borderMedium,
-            }}
-            disabled={invalidCount > 0 || validCount === 0 || uploading}
-            onPress={handleUpload}
-          >
-            {uploading ? (
-              <ActivityIndicator color={colors.text} />
-            ) : (
-              <Text style={{ fontSize: 13, fontWeight: '700', letterSpacing: 0.5, color: invalidCount === 0 && validCount > 0 ? colors.text : colors.textMuted }}>
-                {invalidCount > 0 ? "RESOLVE ERRORS TO CONTINUE" : `UPLOAD ${validCount} FILE${validCount !== 1 ? "S" : ""}`}
-              </Text>
+          <>
+            <TouchableOpacity
+              style={{
+                marginTop: 24, borderRadius: 16, paddingVertical: 16, alignItems: 'center',
+                backgroundColor: invalidCount === 0 && validCount > 0 && !uploading ? colors.gold : colors.borderMedium,
+              }}
+              disabled={invalidCount > 0 || validCount === 0 || uploading}
+              onPress={handleUpload}
+            >
+              {uploading ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <ActivityIndicator color={colors.text} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>
+                    {Object.values(uploadProgress).length > 0
+                      ? `${Math.round(Object.values(uploadProgress).reduce((a, b) => a + b, 0) / Object.values(uploadProgress).length)}%`
+                      : 'Uploading...'}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={{ fontSize: 13, fontWeight: '700', letterSpacing: 0.5, color: invalidCount === 0 && validCount > 0 ? colors.text : colors.textMuted }}>
+                  {invalidCount > 0 ? "RESOLVE ERRORS TO CONTINUE" : `UPLOAD ${validCount} FILE${validCount !== 1 ? "S" : ""}`}
+                </Text>
+              )}
+            </TouchableOpacity>
+            {uploading && Object.keys(uploadProgress).length > 1 && (
+              <View style={{ marginTop: 10, gap: 4 }}>
+                {Object.entries(uploadProgress).map(([name, pct]) => (
+                  <View key={name} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ flex: 1, fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{name}</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSecondary, width: 36, textAlign: 'right' }}>{pct}%</Text>
+                  </View>
+                ))}
+              </View>
             )}
-          </TouchableOpacity>
+          </>
         )}
 
         {/* Avatar Bulk Upload */}

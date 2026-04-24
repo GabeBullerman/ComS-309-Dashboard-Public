@@ -7,6 +7,7 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  ActivityIndicator,
   ViewStyle,
 } from "react-native";
 import {
@@ -254,80 +255,97 @@ export default function GitLabStatsPanel({ gitlabUrl, memberNetid, memberName, s
   const [commitSizeData, setCommitSizeData] = useState<CommitSizeWeek[]>([]);
   const [commitFreqData, setCommitFreqData] = useState<CommitFreqWeek[]>([]);
   const [mrData, setMRData] = useState<MRWeek[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [tokenMissing, setTokenMissing] = useState(false);
 
   useEffect(() => {
     if (!gitlabUrl || !memberNetid) return;
+    let cancelled = false;
 
     (async () => {
       const token = await getGitLabToken();
-      if (!token) return;
+      if (!token) {
+        if (!cancelled) setTokenMissing(true);
+        return;
+      }
+      if (!cancelled) { setTokenMissing(false); setLoading(true); }
 
-      const semesterDateStr = await getSemesterStartDate().catch(() => null);
-      const semesterStart = semesterDateStr ? new Date(semesterDateStr) : undefined;
-      const numWeeks = semesterStart
-        ? Math.min(Math.max(Math.ceil((Date.now() - semesterStart.getTime()) / (7 * 86_400_000)), 1), 16)
-        : 16;
-      const buckets: WeekBucket[] = buildWeekBuckets(numWeeks, semesterStart);
-      setWeeks(buckets.map((b) => ({ week: b.week, label: b.label })));
-      const now = Date.now();
-      const currentBucket = buckets.slice().reverse().find(b => now >= b.start.getTime());
-      setSelectedWeek(currentBucket ? currentBucket.week : `W${buckets.length}`);
+      try {
+        const semesterDateStr = await getSemesterStartDate().catch(() => null);
+        const semesterStart = semesterDateStr ? new Date(semesterDateStr) : undefined;
+        const numWeeks = semesterStart
+          ? Math.min(Math.max(Math.ceil((Date.now() - semesterStart.getTime()) / (7 * 86_400_000)), 1), 16)
+          : 16;
+        const buckets: WeekBucket[] = buildWeekBuckets(numWeeks, semesterStart);
+        if (!cancelled) {
+          setWeeks(buckets.map((b) => ({ week: b.week, label: b.label })));
+          const now = Date.now();
+          const currentBucket = buckets.slice().reverse().find(b => now >= b.start.getTime());
+          setSelectedWeek(currentBucket ? currentBucket.week : `W${buckets.length}`);
+        }
 
-      const since = buckets[0].start.toISOString();
-      const allCommits = await fetchAllCommitsSince(gitlabUrl, token, since).catch(() => []);
-      const commits = filterCommitsByMember(allCommits, memberNetid, memberName ?? '');
+        const since = buckets[0].start.toISOString();
+        const allCommits = await fetchAllCommitsSince(gitlabUrl, token, since).catch(() => []);
+        if (cancelled) return;
+        const commits = filterCommitsByMember(allCommits, memberNetid, memberName ?? '');
 
-      const details = await Promise.all(
-        commits.map((c: { id: string }) =>
-          fetchCommitDetail(gitlabUrl, token, c.id).catch(() => ({ id: c.id, stats: { additions: 0, deletions: 0, total: 0 } }))
-        )
-      );
-      const statsBySha: Record<string, { additions: number; deletions: number; files: number }> =
-        Object.fromEntries(details.map((d: { id: string; stats: { additions: number; deletions: number }; diffs?: { new_path: string }[] }) => [
-          d.id,
-          { ...d.stats, files: d.diffs?.length ?? 0 },
-        ]));
+        const details = await Promise.all(
+          commits.map((c: { id: string }) =>
+            fetchCommitDetail(gitlabUrl, token, c.id).catch(() => ({ id: c.id, stats: { additions: 0, deletions: 0, total: 0 } }))
+          )
+        );
+        if (cancelled) return;
+        const statsBySha: Record<string, { additions: number; deletions: number; files: number }> =
+          Object.fromEntries(details.map((d: { id: string; stats: { additions: number; deletions: number }; diffs?: { new_path: string }[] }) => [
+            d.id,
+            { ...d.stats, files: d.diffs?.length ?? 0 },
+          ]));
 
-      const sizeData: CommitSizeWeek[] = buckets.map((bucket) => {
-        const weekCommits = commits.filter((c: { authored_date: string; created_at: string }) => {
-          const t = new Date(c.authored_date || c.created_at).getTime();
-          return t >= bucket.start.getTime() && t < bucket.end.getTime();
+        const sizeData: CommitSizeWeek[] = buckets.map((bucket) => {
+          const weekCommits = commits.filter((c: { authored_date: string; created_at: string }) => {
+            const t = new Date(c.authored_date || c.created_at).getTime();
+            return t >= bucket.start.getTime() && t < bucket.end.getTime();
+          });
+          return {
+            week: bucket.week,
+            label: bucket.label,
+            additions: weekCommits.reduce((sum: number, c: { id: string }) => sum + (statsBySha[c.id]?.additions ?? 0), 0),
+            deletions: weekCommits.reduce((sum: number, c: { id: string }) => sum + (statsBySha[c.id]?.deletions ?? 0), 0),
+            files: weekCommits.reduce((sum: number, c: { id: string }) => sum + (statsBySha[c.id]?.files ?? 0), 0),
+          };
         });
-        return {
-          week: bucket.week,
-          label: bucket.label,
-          additions: weekCommits.reduce((sum: number, c: { id: string }) => sum + (statsBySha[c.id]?.additions ?? 0), 0),
-          deletions: weekCommits.reduce((sum: number, c: { id: string }) => sum + (statsBySha[c.id]?.deletions ?? 0), 0),
-          files: weekCommits.reduce((sum: number, c: { id: string }) => sum + (statsBySha[c.id]?.files ?? 0), 0),
-        };
-      });
-      setCommitSizeData(sizeData);
+        if (!cancelled) setCommitSizeData(sizeData);
 
-      const freqData: CommitFreqWeek[] = buckets.map((bucket) => ({
-        week: bucket.week,
-        commits: commits.filter((c: { authored_date: string; created_at: string }) => {
-          const t = new Date(c.authored_date || c.created_at).getTime();
-          return t >= bucket.start.getTime() && t < bucket.end.getTime();
-        }).length,
-      }));
-      setCommitFreqData(freqData);
-
-      const mrs = await fetchMemberMergeRequests(gitlabUrl, token, memberNetid, since, memberName ?? '').catch(() => []);
-      const mrBuckets: MRWeek[] = buckets.map((bucket) => {
-        const inBucket = (iso: string | null) => {
-          if (!iso) return false;
-          const t = new Date(iso).getTime();
-          return t >= bucket.start.getTime() && t < bucket.end.getTime();
-        };
-        return {
+        const freqData: CommitFreqWeek[] = buckets.map((bucket) => ({
           week: bucket.week,
-          opened: mrs.filter((mr) => inBucket(mr.created_at)).length,
-          merged: mrs.filter((mr) => inBucket(mr.merged_at)).length,
-          closed: mrs.filter((mr) => mr.state === 'closed' && inBucket(mr.closed_at)).length,
-        };
-      });
-      setMRData(mrBuckets);
+          commits: commits.filter((c: { authored_date: string; created_at: string }) => {
+            const t = new Date(c.authored_date || c.created_at).getTime();
+            return t >= bucket.start.getTime() && t < bucket.end.getTime();
+          }).length,
+        }));
+        if (!cancelled) setCommitFreqData(freqData);
+
+        const mrs = await fetchMemberMergeRequests(gitlabUrl, token, memberNetid, since, memberName ?? '').catch(() => []);
+        if (cancelled) return;
+        const mrBuckets: MRWeek[] = buckets.map((bucket) => {
+          const inBucket = (iso: string | null) => {
+            if (!iso) return false;
+            const t = new Date(iso).getTime();
+            return t >= bucket.start.getTime() && t < bucket.end.getTime();
+          };
+          return {
+            week: bucket.week,
+            opened: mrs.filter((mr) => inBucket(mr.created_at)).length,
+            merged: mrs.filter((mr) => inBucket(mr.merged_at)).length,
+            closed: mrs.filter((mr) => mr.state === 'closed' && inBucket(mr.closed_at)).length,
+          };
+        });
+        if (!cancelled) setMRData(mrBuckets);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
+    return () => { cancelled = true; };
   }, [gitlabUrl, memberNetid]);
 
   return (
@@ -382,19 +400,35 @@ export default function GitLabStatsPanel({ gitlabUrl, memberNetid, memberName, s
 
       {/* Tab Content */}
       <View style={{ flex: 1, padding: 12 }}>
-        {activeTab !== "frequency" && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-            {weeks.length > 0 && (
-              <WeekDropdown weeks={weeks} selectedWeek={selectedWeek} onSelect={setSelectedWeek} />
-            )}
+        {tokenMissing ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 32 }}>
+            <Text style={{ fontSize: 28 }}>🦊</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary, textAlign: 'center' }}>GitLab token not configured</Text>
+            <Text style={{ fontSize: 12, color: colors.textFaint, textAlign: 'center', maxWidth: 240 }}>
+              Add your GitLab access token in the Profile tab to see contribution stats.
+            </Text>
           </View>
+        ) : loading ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 32 }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={{ fontSize: 12, color: colors.textFaint }}>Loading GitLab stats...</Text>
+          </View>
+        ) : (
+          <>
+            {activeTab !== "frequency" && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                {weeks.length > 0 && (
+                  <WeekDropdown weeks={weeks} selectedWeek={selectedWeek} onSelect={setSelectedWeek} />
+                )}
+              </View>
+            )}
+            <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 16 }}>
+              {activeTab === "size"      && <CommitSizeChart      data={commitSizeData} selectedWeek={selectedWeek} />}
+              {activeTab === "frequency" && <CommitFrequencyChart data={commitFreqData} />}
+              {activeTab === "mrs"       && <MergeRequestChart    data={mrData}         selectedWeek={selectedWeek} />}
+            </View>
+          </>
         )}
-
-        <View style={{ flex: 1, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 16 }}>
-          {activeTab === "size"      && <CommitSizeChart      data={commitSizeData} selectedWeek={selectedWeek} />}
-          {activeTab === "frequency" && <CommitFrequencyChart data={commitFreqData} />}
-          {activeTab === "mrs"       && <MergeRequestChart    data={mrData}         selectedWeek={selectedWeek} />}
-        </View>
       </View>
     </View>
   );

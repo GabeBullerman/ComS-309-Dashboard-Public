@@ -41,11 +41,8 @@ async function toStorableUri(uri: string): Promise<string> {
     canvas.height = h;
     canvas.getContext('2d')!.drawImage(bitmap, 0, 0, w, h);
     bitmap.close();
-    const out = canvas.toDataURL('image/jpeg', 0.8);
-    console.log(`[profile-avatar] compressed to ${w}x${h}, ${(out.length / 1024).toFixed(1)} KB`);
-    return out;
-  } catch (e) {
-    console.warn('[profile-avatar] compression failed, storing original:', e);
+    return canvas.toDataURL('image/jpeg', 0.8);
+  } catch {
     return uri;
   }
 }

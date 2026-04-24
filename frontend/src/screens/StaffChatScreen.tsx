@@ -336,6 +336,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
       setInputText('');
       setMentionQuery(null);
       setShowEmojiPicker(false);
+      setTypingUsers([]);
     } catch {
       Alert.alert('Error', 'Failed to send message.');
     } finally { setSending(false); }

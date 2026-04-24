@@ -26,6 +26,7 @@ export default function ProfileScreen({ userRole, onLogout }: Props) {
   const [displayName, setDisplayName] = useState('');
   const [netid, setNetid] = useState('');
   const [glToken, setGlToken] = useState<string | null>(null);
+  const [glTokenLoadError, setGlTokenLoadError] = useState(false);
   const [tokenInput, setTokenInput] = useState('');
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -44,7 +45,7 @@ export default function ProfileScreen({ userRole, onLogout }: Props) {
       if (user?.netid) setNetid(user.netid);
     }).catch(() => {});
 
-    getGitLabToken().then((t) => setGlToken(t)).catch(() => {});
+    getGitLabToken().then((t) => setGlToken(t)).catch(() => setGlTokenLoadError(true));
   }, []);
 
   const masked = glToken
@@ -129,7 +130,21 @@ export default function ProfileScreen({ userRole, onLogout }: Props) {
           {' '}(scope: read_api).
         </Text>
 
-        {!editing && glToken ? (
+        {glTokenLoadError ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.criticalBg, borderRadius: 8, padding: 12, marginBottom: 8 }}>
+            <Ionicons name="warning-outline" size={16} color={colors.criticalBorder} />
+            <Text style={{ flex: 1, fontSize: 13, color: colors.criticalText }}>Failed to load token.</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setGlTokenLoadError(false);
+                getGitLabToken().then((t) => setGlToken(t)).catch(() => setGlTokenLoadError(true));
+              }}
+              style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: colors.criticalBorder }}
+            >
+              <Text style={{ fontSize: 12, color: colors.criticalBorder, fontWeight: '600' }}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : !editing && glToken ? (
           // Token is set — show masked value + actions
           <View>
             <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.inputBg, borderRadius: 8, borderWidth: 1, borderColor: colors.inputBorder, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12 }}>

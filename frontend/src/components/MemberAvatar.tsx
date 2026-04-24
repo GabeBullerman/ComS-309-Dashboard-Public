@@ -41,11 +41,8 @@ async function toStorableUri(uri: string): Promise<string> {
     canvas.height = h;
     canvas.getContext('2d')!.drawImage(bitmap, 0, 0, w, h);
     bitmap.close();
-    const out = canvas.toDataURL('image/jpeg', 0.75);
-    console.log(`[avatar] compressed to ${w}x${h}, ${(out.length / 1024).toFixed(1)} KB`);
-    return out;
-  } catch (e) {
-    console.warn('[avatar] compression failed, storing original:', e);
+    return canvas.toDataURL('image/jpeg', 0.75);
+  } catch {
     return uri;
   }
 }
@@ -87,7 +84,6 @@ export default function MemberAvatar({ memberId, initials, size, borderRadius, c
   }, [memberId]);
 
   const pickImage = async () => {
-    console.log('[avatar] pickImage called for', memberId);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission required', 'Please allow access to your photo library to upload an image.');

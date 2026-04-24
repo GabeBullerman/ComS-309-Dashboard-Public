@@ -62,22 +62,13 @@ async function gitlabFetchAllPages<T>(
 ): Promise<T[]> {
   const all: T[] = [];
   const seen = new Set<unknown>();
-  console.log(`[GitLab] Starting paginated fetch: ${url} (maxPages=${maxPages})`);
   for (let page = 1; page <= maxPages; page++) {
     const sep = url.includes('?') ? '&' : '?';
     const pageUrl = `${url}${sep}page=${page}`;
     const res = await fetch(pageUrl, { headers: { 'PRIVATE-TOKEN': token } });
-    console.log(`[GitLab] Page ${page} → status=${res.status}, x-next-page="${res.headers.get('x-next-page')}", x-total="${res.headers.get('x-total')}"`);
-    if (!res.ok) {
-      console.error(`[GitLab] Error on page ${page}: HTTP ${res.status}`);
-      throw new Error(`GitLab API error ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`GitLab API error ${res.status}`);
     const data: T[] = await res.json();
-    console.log(`[GitLab] Page ${page} returned ${Array.isArray(data) ? data.length : 'non-array'} items`);
-    if (!Array.isArray(data) || data.length === 0) {
-      console.log(`[GitLab] Empty/non-array response on page ${page}, stopping.`);
-      break;
-    }
+    if (!Array.isArray(data) || data.length === 0) break;
     for (const item of data) {
       if (dedupeKey) {
         const key = item[dedupeKey];
@@ -87,7 +78,6 @@ async function gitlabFetchAllPages<T>(
       all.push(item);
     }
   }
-  console.log(`[GitLab] Fetch complete. Total unique items: ${all.length}`);
   return all;
 }
 
