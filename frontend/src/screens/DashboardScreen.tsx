@@ -218,6 +218,7 @@ export default function DashboardScreen({route}: Props) {
             width: 44, height: 44, borderRadius: 22,
             backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
             shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 6, elevation: 6,
+            zIndex: 100,
           }}
         >
           <Ionicons name="calendar-outline" size={22} color={colors.textInverse} />
@@ -290,6 +291,7 @@ export default function DashboardScreen({route}: Props) {
           width: 44, height: 44, borderRadius: 22,
           backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
           shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 6, elevation: 6,
+          zIndex: 100,
         }}
       >
         <Ionicons name="calendar-outline" size={22} color={colors.textInverse} />
