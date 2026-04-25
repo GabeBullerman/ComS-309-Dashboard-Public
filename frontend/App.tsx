@@ -26,6 +26,12 @@ if (Platform.OS === "web") {
   import("./nativewind/output.css"); // Use the built file
 }
 
+// Ensure PWA on iPhone gets safe-area-inset values via CSS env()
+if (Platform.OS === "web" && typeof document !== "undefined") {
+  const vp = document.querySelector('meta[name="viewport"]');
+  if (vp) vp.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
+}
+
 // This is how you pass screen props to the screen since navigation doesn't support it directly
 export type RootStackParamList = {
   Home: undefined;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert, Platform, KeyboardAvoidingView,
+  ActivityIndicator, Alert, Platform, KeyboardAvoidingView, useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -114,6 +114,8 @@ interface Props {
 
 export default function StaffChatScreen({ myNetid, myName: _myName, userRole, onUnreadChange }: Props) {
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
   const isInstructor = userRole === 'Instructor';
   const [activeChannel, setActiveChannel] = useState('general');
   const [channelMeta, setChannelMeta] = useState<Record<string, ChannelMeta>>({});
@@ -136,6 +138,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(0);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [selectedMsgId, setSelectedMsgId] = useState<number | null>(null);
   const [activityStatuses, setActivityStatuses] = useState<Record<string, ActivityStatus>>({});
 
   const scrollRef = useRef<ScrollView>(null);
@@ -420,46 +423,70 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
     } finally { setSavingChannel(false); }
   };
 
-  return (
-    <View style={{ flex: 1, flexDirection: 'row', backgroundColor: colors.background }}>
+  const channelStrip = (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={{ backgroundColor: colors.navBg, flexGrow: 0, borderBottomWidth: 2, borderBottomColor: colors.gold }}
+      contentContainerStyle={{ paddingHorizontal: 8, paddingVertical: 6, gap: 6, flexDirection: 'row' }}
+    >
+      {CHANNELS.map(ch => {
+        const isActive = ch.id === activeChannel;
+        const unread = channelUnreads[ch.id] ?? 0;
+        const label = channelMeta[ch.id]?.displayName ?? ch.defaultLabel;
+        return (
+          <TouchableOpacity
+            key={ch.id}
+            onPress={() => { setActiveChannel(ch.id); setEditingChannel(false); }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: isActive ? colors.gold : 'rgba(255,255,255,0.12)' }}
+          >
+            <Ionicons name={ch.icon} size={14} color={isActive ? '#7c2d12' : 'white'} />
+            <Text style={{ fontSize: 13, fontWeight: isActive ? '700' : '500', color: isActive ? '#7c2d12' : 'white' }}>{label}</Text>
+            {unread > 0 && !isActive && (
+              <View style={{ backgroundColor: colors.gold, borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 }}>
+                <Text style={{ color: '#7c2d12', fontSize: 9, fontWeight: '700' }}>{unread > 99 ? '99+' : unread}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
 
-      {/* ── Channel sidebar ── */}
-      <View style={{ width: 180, backgroundColor: colors.navBg, paddingTop: 16, borderLeftWidth: 3, borderLeftColor: colors.gold }}>
-        <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, paddingHorizontal: 12, marginBottom: 6 }}>
-          CHANNELS
-        </Text>
-        {CHANNELS.map(ch => {
-          const isActive = ch.id === activeChannel;
-          const unread = channelUnreads[ch.id] ?? 0;
-          const label = channelMeta[ch.id]?.displayName ?? ch.defaultLabel;
-          return (
-            <TouchableOpacity
-              key={ch.id}
-              onPress={() => { setActiveChannel(ch.id); setEditingChannel(false); }}
-              style={{
-                flexDirection: 'row', alignItems: 'center', gap: 8,
-                paddingHorizontal: 12, paddingVertical: 8, marginHorizontal: 4,
-                borderRadius: 6, marginBottom: 2,
-                backgroundColor: isActive ? colors.gold : 'transparent',
-              }}
-            >
-              <Ionicons
-                name={ch.icon}
-                size={17}
-                color={isActive ? '#7c2d12' : unread > 0 ? 'white' : 'rgba(255,255,255,0.85)'}
-              />
-              <Text style={{ fontSize: 15, color: isActive ? '#7c2d12' : unread > 0 ? 'white' : 'rgba(255,255,255,0.9)', fontWeight: isActive || unread > 0 ? '700' : '500', flex: 1 }} numberOfLines={1}>
-                {label}
-              </Text>
-              {unread > 0 && !isActive && (
-                <View style={{ backgroundColor: colors.gold, borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
-                  <Text style={{ color: '#7c2d12', fontSize: 10, fontWeight: '700' }}>{unread > 99 ? '99+' : unread}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+  const sidebarDesktop = (
+    <View style={{ width: 180, backgroundColor: colors.navBg, paddingTop: 16, borderLeftWidth: 3, borderLeftColor: colors.gold }}>
+      <Text style={{ fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.5)', letterSpacing: 1, paddingHorizontal: 12, marginBottom: 6 }}>
+        CHANNELS
+      </Text>
+      {CHANNELS.map(ch => {
+        const isActive = ch.id === activeChannel;
+        const unread = channelUnreads[ch.id] ?? 0;
+        const label = channelMeta[ch.id]?.displayName ?? ch.defaultLabel;
+        return (
+          <TouchableOpacity
+            key={ch.id}
+            onPress={() => { setActiveChannel(ch.id); setEditingChannel(false); }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, marginHorizontal: 4, borderRadius: 6, marginBottom: 2, backgroundColor: isActive ? colors.gold : 'transparent' }}
+          >
+            <Ionicons name={ch.icon} size={17} color={isActive ? '#7c2d12' : unread > 0 ? 'white' : 'rgba(255,255,255,0.85)'} />
+            <Text style={{ fontSize: 15, color: isActive ? '#7c2d12' : unread > 0 ? 'white' : 'rgba(255,255,255,0.9)', fontWeight: isActive || unread > 0 ? '700' : '500', flex: 1 }} numberOfLines={1}>
+              {label}
+            </Text>
+            {unread > 0 && !isActive && (
+              <View style={{ backgroundColor: colors.gold, borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+                <Text style={{ color: '#7c2d12', fontSize: 10, fontWeight: '700' }}>{unread > 99 ? '99+' : unread}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+
+  return (
+    <View style={{ flex: 1, flexDirection: isMobile ? 'column' : 'row', backgroundColor: colors.background }}>
+
+      {isMobile ? channelStrip : sidebarDesktop}
 
       {/* ── Main chat area ── */}
       <KeyboardAvoidingView style={{ flex: 1, flexDirection: 'column' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -501,11 +528,11 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
             </View>
           </View>
         ) : (
-          <View style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Ionicons name={activeChannelStatic.icon} size={18} color={colors.primary} />
+          <View style={{ paddingHorizontal: isMobile ? 12 : 20, paddingVertical: isMobile ? 8 : 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name={activeChannelStatic.icon} size={isMobile ? 15 : 18} color={colors.primary} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>{activeDisplayName}</Text>
-              {activeDescription && (
+              <Text style={{ fontSize: isMobile ? 14 : 17, fontWeight: '700', color: colors.text }}>{activeDisplayName}</Text>
+              {activeDescription && !isMobile && (
                 <Text style={{ fontSize: 12, color: colors.textFaint, marginTop: 1 }}>{activeDescription}</Text>
               )}
             </View>
@@ -524,7 +551,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
         <ScrollView
           ref={scrollRef}
           style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
+          contentContainerStyle={{ padding: isMobile ? 10 : 16, paddingBottom: 8 }}
           onScroll={e => {
             const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
             isAtBottomRef.current = contentOffset.y + layoutMeasurement.height >= contentSize.height - 60;
@@ -566,89 +593,127 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
               const { msg, showHeader } = row;
               const isOwn = msg.senderNetid === myNetid;
               const displayName = msg.senderName || msg.senderNetid;
+              const isMsgSelected = isMobile && selectedMsgId === msg.id;
 
               return (
-                <View
-                  key={`msg-${msg.id}`}
-                  // @ts-expect-error web-only hover
-                  onMouseEnter={() => setHoveredId(msg.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  style={{
-                    flexDirection: 'row',
-                    marginBottom: showHeader ? 6 : 1,
-                    paddingTop: showHeader ? 6 : 0,
-                    paddingHorizontal: 4,
-                    borderRadius: 6,
-                    backgroundColor: hoveredId === msg.id ? colors.borderLight : 'transparent',
-                  }}
-                >
-                  <View style={{ width: 40, marginRight: 10, alignItems: 'center', paddingTop: showHeader ? 2 : 0 }}>
-                    {showHeader && (
-                      <ColorAvatar
-                        name={displayName}
-                        size={36}
-                        status={activityStatuses[msg.senderNetid] ?? 'offline'}
+                <View key={`msg-${msg.id}`}>
+                  <TouchableOpacity
+                    activeOpacity={isMobile ? 0.85 : 1}
+                    onPress={() => {
+                      if (!isMobile) return;
+                      setSelectedMsgId(prev => prev === msg.id ? null : msg.id);
+                    }}
+                    // @ts-expect-error web-only hover
+                    onMouseEnter={() => !isMobile && setHoveredId(msg.id)}
+                    onMouseLeave={() => !isMobile && setHoveredId(null)}
+                    style={{
+                      flexDirection: 'row',
+                      marginBottom: showHeader ? 6 : 1,
+                      paddingTop: showHeader ? 6 : 0,
+                      paddingHorizontal: 4,
+                      borderRadius: 6,
+                      backgroundColor: isMsgSelected ? colors.borderLight : hoveredId === msg.id ? colors.borderLight : 'transparent',
+                    }}
+                  >
+                    <View style={{ width: 40, marginRight: 10, alignItems: 'center', paddingTop: showHeader ? 2 : 0 }}>
+                      {showHeader && (
+                        <ColorAvatar
+                          name={displayName}
+                          size={36}
+                          status={activityStatuses[msg.senderNetid] ?? 'offline'}
+                        />
+                      )}
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      {showHeader && (
+                        <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+                          <Text style={{ fontWeight: '700', fontSize: 14, color: colors.text }}>{displayName}</Text>
+                          <Text style={{ fontSize: 11, color: colors.textFaint }}>{formatTime(msg.createdAt)}</Text>
+                          {msg.edited && <Text style={{ fontSize: 10, color: colors.textFaint, fontStyle: 'italic' }}>(edited)</Text>}
+                          {hoveredId === msg.id && !isMobile && (() => {
+                            const st = activityStatuses[msg.senderNetid] ?? 'offline';
+                            return (
+                              <Text style={{ fontSize: 11, fontWeight: '600', color: st === 'online' ? '#22c55e' : st === 'away' ? '#eab308' : '#94a3b8' }}>
+                                {st === 'online' ? 'Online' : st === 'away' ? 'Away' : 'Offline'}
+                              </Text>
+                            );
+                          })()}
+                        </View>
+                      )}
+
+                      {msg.replyTo && (
+                        <View style={{ borderLeftWidth: 3, borderLeftColor: colors.gold, backgroundColor: colors.warningBg, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 4 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.warningText, marginBottom: 1 }}>
+                            {msg.replyTo.senderName || msg.replyTo.senderNetid}
+                          </Text>
+                          <Text style={{ fontSize: 12, color: colors.textMuted }} numberOfLines={2}>{msg.replyTo.content}</Text>
+                        </View>
+                      )}
+
+                      <MessageContent
+                        content={msg.content}
+                        mentionedNetids={msg.mentionedNetids}
+                        mentionedRoles={msg.mentionedRoles}
+                        myNetid={myNetid}
+                        staffMap={staffMap}
+                        colors={colors}
                       />
-                    )}
-                  </View>
+                    </View>
 
-                  <View style={{ flex: 1 }}>
-                    {showHeader && (
-                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
-                        <Text style={{ fontWeight: '700', fontSize: 14, color: colors.text }}>{displayName}</Text>
-                        <Text style={{ fontSize: 11, color: colors.textFaint }}>{formatTime(msg.createdAt)}</Text>
-                        {msg.edited && <Text style={{ fontSize: 10, color: colors.textFaint, fontStyle: 'italic' }}>(edited)</Text>}
-                        {hoveredId === msg.id && (() => {
-                          const st = activityStatuses[msg.senderNetid] ?? 'offline';
-                          return (
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: st === 'online' ? '#22c55e' : st === 'away' ? '#eab308' : '#94a3b8' }}>
-                              {st === 'online' ? 'Online' : st === 'away' ? 'Away' : 'Offline'}
-                            </Text>
-                          );
-                        })()}
+                    {hoveredId === msg.id && !isMobile && (
+                      <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', paddingLeft: 8 }}>
+                        <TouchableOpacity
+                          onPress={() => { setReplyingTo(msg); setEditingMsg(null); inputRef.current?.focus(); }}
+                          style={{ padding: 6, backgroundColor: colors.surface, borderRadius: 6, borderWidth: 1, borderColor: colors.border }}
+                        >
+                          <Ionicons name="return-down-back-outline" size={15} color={colors.textMuted} />
+                        </TouchableOpacity>
+                        {isOwn && (
+                          <>
+                            <TouchableOpacity
+                              onPress={() => startEdit(msg)}
+                              style={{ padding: 6, backgroundColor: colors.surface, borderRadius: 6, borderWidth: 1, borderColor: colors.border }}
+                            >
+                              <Ionicons name="pencil-outline" size={15} color={colors.textMuted} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={() => handleDelete(msg)}
+                              style={{ padding: 6, backgroundColor: colors.criticalBg, borderRadius: 6, borderWidth: 1, borderColor: colors.criticalBorder }}
+                            >
+                              <Ionicons name="trash-outline" size={15} color={colors.criticalBorder} />
+                            </TouchableOpacity>
+                          </>
+                        )}
                       </View>
                     )}
+                  </TouchableOpacity>
 
-                    {msg.replyTo && (
-                      <View style={{ borderLeftWidth: 3, borderLeftColor: colors.gold, backgroundColor: colors.warningBg, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 4 }}>
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.warningText, marginBottom: 1 }}>
-                          {msg.replyTo.senderName || msg.replyTo.senderNetid}
-                        </Text>
-                        <Text style={{ fontSize: 12, color: colors.textMuted }} numberOfLines={2}>{msg.replyTo.content}</Text>
-                      </View>
-                    )}
-
-                    <MessageContent
-                      content={msg.content}
-                      mentionedNetids={msg.mentionedNetids}
-                      mentionedRoles={msg.mentionedRoles}
-                      myNetid={myNetid}
-                      staffMap={staffMap}
-                      colors={colors}
-                    />
-                  </View>
-
-                  {hoveredId === msg.id && (
-                    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', paddingLeft: 8 }}>
+                  {/* Mobile tap-to-select action bar */}
+                  {isMsgSelected && (
+                    <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 4, paddingBottom: 6, marginLeft: 50 }}>
                       <TouchableOpacity
-                        onPress={() => { setReplyingTo(msg); setEditingMsg(null); inputRef.current?.focus(); }}
-                        style={{ padding: 6, backgroundColor: colors.surface, borderRadius: 6, borderWidth: 1, borderColor: colors.border }}
+                        onPress={() => { setReplyingTo(msg); setEditingMsg(null); setSelectedMsgId(null); inputRef.current?.focus(); }}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: colors.surface, borderRadius: 6, borderWidth: 1, borderColor: colors.border }}
                       >
-                        <Ionicons name="return-down-back-outline" size={15} color={colors.textMuted} />
+                        <Ionicons name="return-down-back-outline" size={13} color={colors.textMuted} />
+                        <Text style={{ fontSize: 11, color: colors.textMuted, fontWeight: '500' }}>Reply</Text>
                       </TouchableOpacity>
                       {isOwn && (
                         <>
                           <TouchableOpacity
-                            onPress={() => startEdit(msg)}
-                            style={{ padding: 6, backgroundColor: colors.surface, borderRadius: 6, borderWidth: 1, borderColor: colors.border }}
+                            onPress={() => { startEdit(msg); setSelectedMsgId(null); }}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: colors.surface, borderRadius: 6, borderWidth: 1, borderColor: colors.border }}
                           >
-                            <Ionicons name="pencil-outline" size={15} color={colors.textMuted} />
+                            <Ionicons name="pencil-outline" size={13} color={colors.textMuted} />
+                            <Text style={{ fontSize: 11, color: colors.textMuted, fontWeight: '500' }}>Edit</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
-                            onPress={() => handleDelete(msg)}
-                            style={{ padding: 6, backgroundColor: colors.criticalBg, borderRadius: 6, borderWidth: 1, borderColor: colors.criticalBorder }}
+                            onPress={() => { setSelectedMsgId(null); handleDelete(msg); }}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: colors.criticalBg, borderRadius: 6, borderWidth: 1, borderColor: colors.criticalBorder }}
                           >
-                            <Ionicons name="trash-outline" size={15} color={colors.criticalBorder} />
+                            <Ionicons name="trash-outline" size={13} color={colors.criticalBorder} />
+                            <Text style={{ fontSize: 11, color: colors.criticalBorder, fontWeight: '500' }}>Delete</Text>
                           </TouchableOpacity>
                         </>
                       )}

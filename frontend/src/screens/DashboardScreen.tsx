@@ -195,15 +195,16 @@ export default function DashboardScreen({route}: Props) {
   );
 
   // ── Mobile layout: content + bottom tab bar ───────────────────────────────
-  const tabBarPaddingBottom = Platform.OS === 'android' ? 8 : Math.max(insets.bottom, 16);
-  const TAB_BAR_HEIGHT = (Platform.OS === 'android' ? 58 : 50) + tabBarPaddingBottom;
+  const tabBarPaddingBottom = Platform.OS === 'android' ? 8 : Platform.OS === 'web' ? 0 : Math.max(insets.bottom, 16);
+  // On web the tab bar uses env(safe-area-inset-bottom) via CSS, so we add a generous fixed estimate for content padding
+  const TAB_BAR_HEIGHT = Platform.OS === 'web' ? 90 : (Platform.OS === 'android' ? 58 : 50) + tabBarPaddingBottom;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {isMobile ? (
         <>
-          {/* Top safe area — covers Dynamic Island / notch on iOS, status bar on Android */}
-          <View style={{ height: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : insets.top, backgroundColor: colors.navBg }} />
+          {/* Top safe area — covers Dynamic Island / notch on iOS, status bar on Android, and PWA notch on web */}
+          <View style={{ height: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : Platform.OS === 'web' ? ('env(safe-area-inset-top)' as unknown as number) : insets.top, backgroundColor: colors.navBg }} />
 
           {/* Screen content — padded so it doesn't hide behind the fixed tab bar */}
           <View style={{ flex: 1, paddingBottom: TAB_BAR_HEIGHT }}>
@@ -219,7 +220,7 @@ export default function DashboardScreen({route}: Props) {
             flexDirection: 'row',
             backgroundColor: colors.navBg,
             paddingTop: 6,
-            paddingBottom: tabBarPaddingBottom,
+            paddingBottom: Platform.OS === 'web' ? ('env(safe-area-inset-bottom)' as unknown as number) : tabBarPaddingBottom,
             borderTopWidth: 1.5,
             borderTopColor: 'rgba(241,190,72,0.45)',
           }}>
