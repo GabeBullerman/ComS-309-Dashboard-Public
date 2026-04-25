@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import * as DocumentPicker from 'expo-document-picker';
 import {
   View,
   Text,
@@ -133,14 +134,28 @@ export default function StaffManagerScreen({ userRole }: Props) {
 
   const _isAdminRole = (role: string) => role === 'HTA' || role === 'Instructor';
 
-  const handleImportCSV = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.csv';
-    input.onchange = async (e: any) => {
-      const file: File = e.target.files[0];
-      if (!file) return;
-      const text = await file.text();
+  const handleImportCSV = async () => {
+    let text: string;
+    if (Platform.OS !== 'web') {
+      const result = await DocumentPicker.getDocumentAsync({ type: 'text/comma-separated-values', copyToCacheDirectory: true });
+      if (result.canceled || !result.assets?.[0]) return;
+      const uri = result.assets[0].uri;
+      const resp = await fetch(uri);
+      text = await resp.text();
+    } else {
+      text = await new Promise<string>((resolve, reject) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv';
+        input.onchange = async (e: any) => {
+          const file: File = e.target.files[0];
+          if (!file) { reject(new Error('no file')); return; }
+          resolve(await file.text());
+        };
+        input.click();
+      });
+    }
+    const processCSV = async () => {
       const lines = text.trim().split('\n').filter((l) => l.trim());
       const dataLines = lines[0]?.toLowerCase().includes('netid') ? lines.slice(1) : lines;
 
@@ -197,7 +212,7 @@ export default function StaffManagerScreen({ userRole }: Props) {
       setImportResult({ success, failed });
       await loadStaff();
     };
-    input.click();
+    await processCSV();
   };
 
   const handleCreate = async () => {

@@ -84,19 +84,19 @@ export const TeamCard: React.FC<TeamCardProps> = ({
         </View>
 
         {/* Member count */}
-        <View className="flex-row items-center" style={{ marginBottom: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
           <Ionicons name="people" size={17} color={colors.iconPeople} style={{ marginRight: 6 }} />
           <Text style={{ fontSize: 14, color: colors.textSecondary }}>{memberCount} members</Text>
         </View>
 
         {/* TA */}
-        <View className="flex-row items-center" style={{ marginBottom: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
           <Ionicons name="person-sharp" size={17} color={colors.iconTA} style={{ marginRight: 6 }} />
           <Text style={{ fontSize: 14, color: colors.textSecondary }}>TA: {ta}</Text>
         </View>
 
         {/* Section */}
-        <View className="flex-row items-center" style={{ marginBottom: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
           <Ionicons name="book" size={17} color={colors.primary} style={{ marginRight: 6 }} />
           <Text style={{ fontSize: 14, color: colors.textSecondary }}>Section: {section}</Text>
         </View>
