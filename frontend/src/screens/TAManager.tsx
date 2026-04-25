@@ -298,13 +298,17 @@ export default function StaffManagerScreen({ userRole }: Props) {
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{item.name ?? '—'}</Text>
-              {item.netid && (
-                <ActivityStatusBadge
-                  status={activityStatuses[item.netid] ?? 'offline'}
-                  size={12}
-                  borderColor={colors.surface}
-                />
-              )}
+              {item.netid && (() => {
+                const st = activityStatuses[item.netid] ?? 'offline';
+                return (
+                  <>
+                    <ActivityStatusBadge status={st} size={12} borderColor={colors.surface} />
+                    <Text style={{ fontSize: 11, fontWeight: '600', color: st === 'online' ? '#22c55e' : st === 'away' ? '#eab308' : '#94a3b8' }}>
+                      {st === 'online' ? 'Online' : st === 'away' ? 'Away' : 'Offline'}
+                    </Text>
+                  </>
+                );
+              })()}
             </View>
             <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 1 }}>{item.netid}</Text>
           </View>

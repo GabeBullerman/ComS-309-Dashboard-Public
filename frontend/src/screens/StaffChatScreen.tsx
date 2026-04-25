@@ -598,6 +598,14 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
                         <Text style={{ fontWeight: '700', fontSize: 14, color: colors.text }}>{displayName}</Text>
                         <Text style={{ fontSize: 11, color: colors.textFaint }}>{formatTime(msg.createdAt)}</Text>
                         {msg.edited && <Text style={{ fontSize: 10, color: colors.textFaint, fontStyle: 'italic' }}>(edited)</Text>}
+                        {hoveredId === msg.id && (() => {
+                          const st = activityStatuses[msg.senderNetid] ?? 'offline';
+                          return (
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: st === 'online' ? '#22c55e' : st === 'away' ? '#eab308' : '#94a3b8' }}>
+                              {st === 'online' ? 'Online' : st === 'away' ? 'Away' : 'Offline'}
+                            </Text>
+                          );
+                        })()}
                       </View>
                     )}
 

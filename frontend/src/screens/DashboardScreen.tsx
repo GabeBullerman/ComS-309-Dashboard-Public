@@ -198,92 +198,74 @@ export default function DashboardScreen({route}: Props) {
   // ── Mobile layout: content + bottom tab bar ───────────────────────────────
   const TAB_BAR_HEIGHT = Platform.OS === 'android' ? 58 : 72;
 
-  if (isMobile) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        {Platform.OS === 'android' && (
-          <View style={{ height: StatusBar.currentHeight ?? 0, backgroundColor: colors.navBg }} />
-        )}
-
-        {/* Screen content — padded so it doesn't hide behind the fixed tab bar */}
-        <View style={{ flex: 1, paddingBottom: TAB_BAR_HEIGHT }}>
-          {renderScreen()}
-        </View>
-
-        {/* Floating calendar button — top right */}
-        <TouchableOpacity
-          onPress={() => setCalendarVisible(true)}
-          style={{
-            position: 'absolute', top: 14, right: 14,
-            width: 44, height: 44, borderRadius: 22,
-            backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
-            shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 6, elevation: 6,
-            zIndex: 100,
-          }}
-        >
-          <Ionicons name="calendar-outline" size={22} color={colors.textInverse} />
-        </TouchableOpacity>
-
-        <CalendarModal visible={calendarVisible} onClose={() => setCalendarVisible(false)} netid={netid} />
-
-        {/* Bottom tab bar */}
-        <View style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          flexDirection: 'row',
-          backgroundColor: colors.navBg,
-          paddingTop: 6,
-          paddingBottom: Platform.OS === 'android' ? 8 : 20,
-          borderTopWidth: 1.5,
-          borderTopColor: 'rgba(241,190,72,0.45)',
-        }}>
-          {navItems.filter(i => !i.mobileHidden).map((item) => {
-            const isActive = activeScreen === item.label;
-            return (
-              <TouchableOpacity
-                key={item.label}
-                style={{ flex: 1, alignItems: 'center', paddingVertical: 4 }}
-                onPress={() => setActiveScreen(item.label)}
-                activeOpacity={0.7}
-              >
-                <View>
-                  <Ionicons
-                    name={item.icon as any}
-                    size={22}
-                    color={isActive ? colors.navActive : 'rgba(255,255,255,0.65)'}
-                  />
-                </View>
-                <Text style={{
-                  color: isActive ? colors.navActive : 'rgba(255,255,255,0.65)',
-                  fontSize: 10,
-                  marginTop: 2,
-                  fontWeight: isActive ? '600' : '400',
-                }}>
-                  {item.mobileLabel}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-    );
-  }
-
-  // ── Desktop layout: sidebar + content ────────────────────────────────────
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ flex: 1, flexDirection: 'row' }}>
-        <View style={{ width: 240, backgroundColor: colors.navBg, padding: 20, borderRightWidth: 3, borderRightColor: colors.gold }}>
-          {renderSidebarContent()}
-        </View>
-        <View style={{ flex: 1 }}>
-          {renderScreen()}
-        </View>
-      </View>
+      {isMobile ? (
+        <>
+          {Platform.OS === 'android' && (
+            <View style={{ height: StatusBar.currentHeight ?? 0, backgroundColor: colors.navBg }} />
+          )}
 
-      {/* Floating calendar button — top right, above all screens */}
+          {/* Screen content — padded so it doesn't hide behind the fixed tab bar */}
+          <View style={{ flex: 1, paddingBottom: TAB_BAR_HEIGHT }}>
+            {renderScreen()}
+          </View>
+
+          {/* Bottom tab bar */}
+          <View style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            flexDirection: 'row',
+            backgroundColor: colors.navBg,
+            paddingTop: 6,
+            paddingBottom: Platform.OS === 'android' ? 8 : 20,
+            borderTopWidth: 1.5,
+            borderTopColor: 'rgba(241,190,72,0.45)',
+          }}>
+            {navItems.filter(i => !i.mobileHidden).map((item) => {
+              const isActive = activeScreen === item.label;
+              return (
+                <TouchableOpacity
+                  key={item.label}
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 4 }}
+                  onPress={() => setActiveScreen(item.label)}
+                  activeOpacity={0.7}
+                >
+                  <View>
+                    <Ionicons
+                      name={item.icon as any}
+                      size={22}
+                      color={isActive ? colors.navActive : 'rgba(255,255,255,0.65)'}
+                    />
+                  </View>
+                  <Text style={{
+                    color: isActive ? colors.navActive : 'rgba(255,255,255,0.65)',
+                    fontSize: 10,
+                    marginTop: 2,
+                    fontWeight: isActive ? '600' : '400',
+                  }}>
+                    {item.mobileLabel}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </>
+      ) : (
+        // ── Desktop layout: sidebar + content ──────────────────────────────
+        <View style={{ flex: 1, flexDirection: 'row' }}>
+          <View style={{ width: 240, backgroundColor: colors.navBg, padding: 20, borderRightWidth: 3, borderRightColor: colors.gold }}>
+            {renderSidebarContent()}
+          </View>
+          <View style={{ flex: 1 }}>
+            {renderScreen()}
+          </View>
+        </View>
+      )}
+
+      {/* Floating calendar button — single shared button, top right */}
       <TouchableOpacity
         onPress={() => setCalendarVisible(true)}
         style={{
