@@ -277,9 +277,7 @@ export default function StaffManagerScreen({ userRole }: Props) {
     const canExpand = isInstructor;
 
     return (
-      <TouchableOpacity
-        activeOpacity={canExpand ? 0.85 : 1}
-        onPress={() => canExpand && setExpandedId(isExpanded ? null : cardKey)}
+      <View
         style={{
           backgroundColor: colors.surface,
           borderRadius: 10,
@@ -312,14 +310,19 @@ export default function StaffManagerScreen({ userRole }: Props) {
             </View>
             <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 1 }}>{item.netid}</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <TouchableOpacity
+            onPress={() => canExpand && setExpandedId(isExpanded ? null : cardKey)}
+            disabled={!canExpand}
+            hitSlop={{ top: 8, bottom: 8, left: 12, right: 8 }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+          >
             <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: ROLE_BADGE_BG[role] ?? colors.borderLight }}>
               <Text style={{ fontSize: 12, fontWeight: '600', color: ROLE_BADGE_TEXT[role] ?? colors.textSecondary }}>
                 {ROLE_LABEL[role] ?? role}
               </Text>
             </View>
             {canExpand && <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />}
-          </View>
+          </TouchableOpacity>
         </View>
 
         {isExpanded && isInstructor && (
@@ -355,7 +358,7 @@ export default function StaffManagerScreen({ userRole }: Props) {
             </TouchableOpacity>
           </View>
         )}
-      </TouchableOpacity>
+      </View>
     );
   };
 
@@ -364,33 +367,64 @@ export default function StaffManagerScreen({ userRole }: Props) {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: pad }}>
       {/* Header */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
-        <Text style={{ fontSize: isMobile ? 22 : 26, fontWeight: 'bold', color: colors.text }}>Staff Management</Text>
-        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-          {(isInstructor || isHTA) && (
-            <>
-              <TouchableOpacity onPress={() => setShowCsvInfo(!showCsvInfo)} style={{ padding: 6 }}>
-                <Ionicons name="information-circle-outline" size={22} color={colors.textMuted} />
-              </TouchableOpacity>
+      <View style={{ marginBottom: 16, gap: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ fontSize: isMobile ? 22 : 26, fontWeight: 'bold', color: colors.text }}>Staff Management</Text>
+          {!isMobile && (
+            <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+              {(isInstructor || isHTA) && (
+                <>
+                  <TouchableOpacity onPress={() => setShowCsvInfo(!showCsvInfo)} style={{ padding: 6 }}>
+                    <Ionicons name="information-circle-outline" size={22} color={colors.textMuted} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleImportCSV}
+                    style={{ backgroundColor: colors.textSecondary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                  >
+                    <Ionicons name="cloud-upload-outline" size={15} color={colors.textInverse} />
+                    <Text style={{ color: colors.textInverse, fontWeight: '600', fontSize: 14 }}>Import CSV</Text>
+                  </TouchableOpacity>
+                </>
+              )}
               <TouchableOpacity
-                onPress={handleImportCSV}
-                style={{ backgroundColor: colors.textSecondary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
+                onPress={() => setShowInviteForm(!showInviteForm)}
+                style={{ backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
               >
-                <Ionicons name="cloud-upload-outline" size={15} color={colors.textInverse} />
-                <Text style={{ color: colors.textInverse, fontWeight: '600', fontSize: 14 }}>Import CSV</Text>
+                <Ionicons name="person-add" size={15} color={colors.textInverse} />
+                <Text style={{ color: colors.textInverse, fontWeight: '600', fontSize: 14 }}>
+                  {showInviteForm ? 'Cancel' : 'Add Staff'}
+                </Text>
               </TouchableOpacity>
-            </>
+            </View>
           )}
-          <TouchableOpacity
-            onPress={() => setShowInviteForm(!showInviteForm)}
-            style={{ backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
-          >
-            <Ionicons name="person-add" size={15} color={colors.textInverse} />
-            <Text style={{ color: colors.textInverse, fontWeight: '600', fontSize: 14 }}>
-              {showInviteForm ? 'Cancel' : 'Add Staff'}
-            </Text>
-          </TouchableOpacity>
         </View>
+        {isMobile && (
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            {(isInstructor || isHTA) && (
+              <>
+                <TouchableOpacity onPress={() => setShowCsvInfo(!showCsvInfo)} style={{ padding: 6 }}>
+                  <Ionicons name="information-circle-outline" size={22} color={colors.textMuted} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleImportCSV}
+                  style={{ backgroundColor: colors.textSecondary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}
+                >
+                  <Ionicons name="cloud-upload-outline" size={15} color={colors.textInverse} />
+                  <Text style={{ color: colors.textInverse, fontWeight: '600', fontSize: 14 }}>Import CSV</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            <TouchableOpacity
+              onPress={() => setShowInviteForm(!showInviteForm)}
+              style={{ backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center' }}
+            >
+              <Ionicons name="person-add" size={15} color={colors.textInverse} />
+              <Text style={{ color: colors.textInverse, fontWeight: '600', fontSize: 14 }}>
+                {showInviteForm ? 'Cancel' : 'Add Staff'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* CSV format info */}

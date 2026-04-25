@@ -557,9 +557,10 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         const tileHMargin = isMobile ? 0 : INNER / 4;
         const addColW = canEditRepo ? 56 : 0;
         return (
-          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 16, paddingHorizontal: pad }}>
-            {/* Left spacer mirrors the add-button column so tiles stay centered */}
-            {canEditRepo && <View style={{ width: addColW }} />}
+          <View style={{ paddingVertical: 16, paddingHorizontal: pad }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
+            {/* Left spacer mirrors the add-button column so tiles stay centered (desktop only) */}
+            {canEditRepo && !isMobile && <View style={{ width: addColW }} />}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}>
               {teamMembers.map((m) => {
                 const memberKey = m.netid || m.name;
@@ -612,16 +613,26 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                 );
               })}
             </View>
-            {canEditRepo && (
+            {canEditRepo && !isMobile && (
               <View style={{ width: addColW, alignItems: 'center', justifyContent: 'center' }}>
                 <TouchableOpacity onPress={openAddMemberModal} style={{ alignItems: 'center' }}>
                   <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.borderLight, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: colors.primary, borderStyle: 'dashed' }}>
                     <Text style={{ fontSize: 22, lineHeight: 26, color: colors.primary, fontWeight: '300' }}>+</Text>
                   </View>
-                  <Text style={{ marginTop: 4, fontSize: isMobile ? 10 : 12, textAlign: 'center', color: colors.primary }}>Add</Text>
+                  <Text style={{ marginTop: 4, fontSize: 12, textAlign: 'center', color: colors.primary }}>Add</Text>
                 </TouchableOpacity>
               </View>
             )}
+          </View>
+          {canEditRepo && isMobile && (
+            <TouchableOpacity
+              onPress={openAddMemberModal}
+              style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 8, borderWidth: 1.5, borderColor: colors.primary, borderStyle: 'dashed' }}
+            >
+              <Text style={{ fontSize: 15, color: colors.primary, fontWeight: '300' }}>+</Text>
+              <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '600' }}>Add Member</Text>
+            </TouchableOpacity>
+          )}
           </View>
         );
       })()}
