@@ -1,4 +1,5 @@
 import { View, Text, TouchableOpacity, Image, Dimensions, StatusBar, Platform } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
 import TeamsScreen from "../screens/TeamsScreen";
 import StaffManagerScreen from "../screens/TAManager";
@@ -23,6 +24,7 @@ const ACTIVE_SCREEN_KEY = 'dashboard_active_screen';
 
 export default function DashboardScreen({route}: Props) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [activeScreen, setActiveScreen] = useState("Teams");
   const [displayName, setDisplayName] = useState("User");
   const [netid, setNetid] = useState("");
@@ -193,15 +195,15 @@ export default function DashboardScreen({route}: Props) {
   );
 
   // ── Mobile layout: content + bottom tab bar ───────────────────────────────
-  const TAB_BAR_HEIGHT = Platform.OS === 'android' ? 58 : 72;
+  const tabBarPaddingBottom = Platform.OS === 'android' ? 8 : Math.max(insets.bottom, 16);
+  const TAB_BAR_HEIGHT = (Platform.OS === 'android' ? 58 : 50) + tabBarPaddingBottom;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {isMobile ? (
         <>
-          {Platform.OS === 'android' && (
-            <View style={{ height: StatusBar.currentHeight ?? 0, backgroundColor: colors.navBg }} />
-          )}
+          {/* Top safe area — covers Dynamic Island / notch on iOS, status bar on Android */}
+          <View style={{ height: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : insets.top, backgroundColor: colors.navBg }} />
 
           {/* Screen content — padded so it doesn't hide behind the fixed tab bar */}
           <View style={{ flex: 1, paddingBottom: TAB_BAR_HEIGHT }}>
@@ -217,7 +219,7 @@ export default function DashboardScreen({route}: Props) {
             flexDirection: 'row',
             backgroundColor: colors.navBg,
             paddingTop: 6,
-            paddingBottom: Platform.OS === 'android' ? 8 : 20,
+            paddingBottom: tabBarPaddingBottom,
             borderTopWidth: 1.5,
             borderTopColor: 'rgba(241,190,72,0.45)',
           }}>

@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useTheme } from '../contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from "App";
 import MemberAttendance from "@/components/MemberAttendance";
 import MemberComments from "@/components/Comments";
@@ -42,7 +43,8 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
 
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
-  const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+  const insets = useSafeAreaInsets();
+  const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : insets.top;
   const pad = isMobile ? 12 : 20;
 
   const INNER = isMobile ? 80 : 200;

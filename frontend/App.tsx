@@ -1,6 +1,7 @@
 import "nativewind/global.css";
 import { Platform, View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import React, { useState, useEffect, useCallback } from 'react';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -72,6 +73,7 @@ function NoConnectionScreen({ onRetry, checking }: { onRetry: () => void; checki
 
 function AppInner() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [fontsLoaded] = useFonts({ ...Ionicons.font });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<UserRole>('Student');
@@ -228,7 +230,7 @@ function AppInner() {
         onPress={() => setCalendarOpen(true)}
         style={{
           position: 'absolute',
-          top: 12,
+          top: insets.top + 8,
           right: 12,
           width: 40,
           height: 40,
@@ -284,8 +286,10 @@ function AppInner() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AppInner />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AppInner />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

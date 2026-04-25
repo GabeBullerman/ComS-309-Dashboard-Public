@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../App';
 import { useTheme } from '../contexts/ThemeContext';
 import { TeamMember } from '../types/Teams';
@@ -483,7 +484,8 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   ];
 
   const pad = isMobile ? 12 : 20;
-  const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+  const insets = useSafeAreaInsets();
+  const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : insets.top;
 
   return (
     <ScrollView
