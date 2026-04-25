@@ -285,16 +285,13 @@ export default function CalendarModal({ visible, onClose, netid }: Props) {
     const meta = EVENT_TYPE_META[e.eventType] ?? EVENT_TYPE_META.PERSONAL;
     return (
       <View key={`cal-${e.id}`} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight, opacity: e.completed ? 0.6 : 1 }}>
-        <TouchableOpacity
-          onPress={() => handleToggleComplete(e)}
-          style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: e.completed ? '#22c55e22' : meta.color + '22', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}
-        >
+        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: e.completed ? '#22c55e22' : meta.color + '22', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
           <Ionicons
             name={e.completed ? 'checkmark-circle' : meta.icon as any}
             size={16}
             color={e.completed ? '#22c55e' : meta.color}
           />
-        </TouchableOpacity>
+        </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, textDecorationLine: e.completed ? 'line-through' : 'none' }} numberOfLines={1}>{e.title}</Text>
           <Text style={{ fontSize: 11, color: colors.textMuted }}>
@@ -304,13 +301,20 @@ export default function CalendarModal({ visible, onClose, netid }: Props) {
             <Text style={{ fontSize: 11, color: colors.textFaint, marginTop: 2 }} numberOfLines={2}>{e.description}</Text>
           )}
         </View>
-        <View style={{ flexDirection: 'row', gap: 4, marginLeft: 8 }}>
+        <View style={{ flexDirection: 'row', gap: 2, marginLeft: 8, alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => handleToggleComplete(e)} style={{ padding: 5 }}>
+            <Ionicons
+              name={e.completed ? 'checkmark-circle' : 'checkmark-circle-outline'}
+              size={22}
+              color={e.completed ? '#22c55e' : colors.textMuted}
+            />
+          </TouchableOpacity>
           {!e.completed && (
-            <TouchableOpacity onPress={() => openEdit(e)} style={{ padding: 4 }}>
+            <TouchableOpacity onPress={() => openEdit(e)} style={{ padding: 5 }}>
               <Ionicons name="pencil-outline" size={15} color={colors.textMuted} />
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={() => handleDelete(e)} style={{ padding: 4 }}>
+          <TouchableOpacity onPress={() => handleDelete(e)} style={{ padding: 5 }}>
             <Ionicons name="trash-outline" size={15} color={colors.statusPoorBar} />
           </TouchableOpacity>
         </View>
