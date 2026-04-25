@@ -265,20 +265,6 @@ export default function DashboardScreen({route}: Props) {
         </View>
       )}
 
-      {/* Floating calendar button — single shared button, top right */}
-      <TouchableOpacity
-        onPress={() => setCalendarVisible(true)}
-        style={{
-          position: 'absolute', top: 14, right: 14,
-          width: 44, height: 44, borderRadius: 22,
-          backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
-          shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 6, elevation: 6,
-          zIndex: 100,
-        }}
-      >
-        <Ionicons name="calendar-outline" size={22} color={colors.textInverse} />
-      </TouchableOpacity>
-
       <CalendarModal visible={calendarVisible} onClose={() => setCalendarVisible(false)} netid={netid} />
     </View>
   );
