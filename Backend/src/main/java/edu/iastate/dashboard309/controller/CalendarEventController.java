@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 
@@ -36,7 +37,7 @@ public class CalendarEventController {
 
     @GetMapping("/events/today-count")
     public Map<String, Long> todayCount(Authentication auth) {
-        long count = repo.countByNetidAndEventDate(auth.getName(), LocalDate.now());
+        long count = repo.countTodayActive(auth.getName(), LocalDate.now(), LocalTime.now());
         return Map.of("count", count);
     }
 
