@@ -79,6 +79,7 @@ export default function DashboardScreen({route}: Props) {
     { label: "Teams",        mobileLabel: "Teams",    icon: "people-outline" },
     ...(role !== 'Instructor'
       ? [{ label: "Tasks",        mobileLabel: "Tasks",  icon: "checkmark-circle-outline" }] : []),
+    { label: "Calendar",     mobileLabel: "Calendar", icon: "calendar-outline", calendarOnly: true },
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
       ? [{ label: "Staff Chat", mobileLabel: "Chat", icon: "chatbubbles-outline", badge: chatUnread, mobileHidden: true }] : []),
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
@@ -92,7 +93,7 @@ export default function DashboardScreen({route}: Props) {
     ...(role === 'Instructor' || role === 'HTA'
       ? [{ label: "Upload", mobileLabel: "Upload", icon: "cloud-upload-outline" }] : []),
     { label: "Profile",      mobileLabel: "Profile",  icon: "person-circle-outline" },
-  ] as { label: string; mobileLabel: string; icon: string; badge?: number; mobileHidden?: boolean }[];
+  ] as { label: string; mobileLabel: string; icon: string; badge?: number; mobileHidden?: boolean; calendarOnly?: boolean }[];
 
   // Restore last active screen on mount; persist on every change
   useEffect(() => {
@@ -144,7 +145,7 @@ export default function DashboardScreen({route}: Props) {
         return (
           <TouchableOpacity
             key={item.label}
-            onPress={() => setActiveScreen(item.label)}
+            onPress={() => item.calendarOnly ? setCalendarVisible(true) : setActiveScreen(item.label)}
             className={`flex-row items-center gap-3 rounded-lg px-4 py-3 mb-2 ${isActive ? "bg-yellow-400" : ""}`}
           >
             <Ionicons
@@ -264,20 +265,6 @@ export default function DashboardScreen({route}: Props) {
           </View>
         </View>
       )}
-
-      {/* Floating calendar button — top right */}
-      <TouchableOpacity
-        onPress={() => setCalendarVisible(true)}
-        style={{
-          position: 'absolute', top: 14, right: 14,
-          width: 44, height: 44, borderRadius: 22,
-          backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
-          shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 6, elevation: 6,
-          zIndex: 100,
-        }}
-      >
-        <Ionicons name="calendar-outline" size={22} color={colors.textInverse} />
-      </TouchableOpacity>
 
       <CalendarModal visible={calendarVisible} onClose={() => setCalendarVisible(false)} netid={netid} />
     </View>
