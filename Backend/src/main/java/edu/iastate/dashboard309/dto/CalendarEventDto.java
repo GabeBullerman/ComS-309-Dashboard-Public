@@ -12,5 +12,6 @@ public record CalendarEventDto(
     LocalTime eventTime,
     String netid,
     String eventType,
+    boolean completed,
     LocalDateTime createdAt
 ) {}

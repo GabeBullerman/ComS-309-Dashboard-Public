@@ -14,6 +14,9 @@ import edu.iastate.dashboard309.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.websocket.server.PathParam;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -270,6 +273,34 @@ public class UserController {
                 userRepository.save(user);
             }
         }
+    }
+
+    @PostMapping("/heartbeat")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void heartbeat(Authentication auth) {
+        userRepository.findByNetid(auth.getName()).ifPresent(user -> {
+            user.setLastActivity(LocalDateTime.now());
+            userRepository.save(user);
+        });
+    }
+
+    @GetMapping("/activity-status")
+    public Map<String, String> getActivityStatus() {
+        LocalDateTime now = LocalDateTime.now();
+        Map<String, String> result = new HashMap<>();
+        for (User user : userRepository.findAll()) {
+            String status;
+            if (user.getLastActivity() == null) {
+                status = "offline";
+            } else {
+                long minutes = ChronoUnit.MINUTES.between(user.getLastActivity(), now);
+                if (minutes <= 3) status = "online";
+                else if (minutes <= 10) status = "away";
+                else status = "offline";
+            }
+            result.put(user.getNetid(), status);
+        }
+        return result;
     }
 
     @DeleteMapping("/{id}")

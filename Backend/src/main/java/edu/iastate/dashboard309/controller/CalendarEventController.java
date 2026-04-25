@@ -83,10 +83,21 @@ public class CalendarEventController {
         repo.deleteById(id);
     }
 
+    @PatchMapping("/events/{id}/complete")
+    public CalendarEventDto toggleComplete(@PathVariable Long id, Authentication auth) {
+        CalendarEvent event = repo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+        if (!event.getNetid().equals(auth.getName())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your event");
+        }
+        event.setCompleted(!event.isCompleted());
+        return toDto(repo.save(event));
+    }
+
     private CalendarEventDto toDto(CalendarEvent e) {
         return new CalendarEventDto(
                 e.getId(), e.getTitle(), e.getDescription(),
                 e.getEventDate(), e.getEventTime(), e.getNetid(),
-                e.getEventType(), e.getCreatedAt());
+                e.getEventType(), e.isCompleted(), e.getCreatedAt());
     }
 }

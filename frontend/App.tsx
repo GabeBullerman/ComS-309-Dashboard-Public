@@ -17,6 +17,9 @@ import type { UserRole } from './src/utils/auth';
 import { Team, TeamMember } from "@/data/teams";
 import TeamMemberDetail from "@/screens/TeamMemberDetail";
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
+import { getCurrentUser } from './src/api/users';
+import { getTodayEventCount } from './src/api/calendar';
+import CalendarModal from './src/components/CalendarModal';
 
 if (Platform.OS === "web") {
   import("./nativewind/output.css"); // Use the built file
@@ -74,6 +77,9 @@ function AppInner() {
   const [userRole, setUserRole] = useState<UserRole>('Student');
   const [connStatus, setConnStatus] = useState<ConnStatus>('checking');
   const [updateReady, setUpdateReady] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [calendarBadge, setCalendarBadge] = useState(0);
+  const [calendarNetid, setCalendarNetid] = useState('');
 
   // Listen for Electron's "update downloaded" signal via the preload bridge
   useEffect(() => {
@@ -135,6 +141,16 @@ function AppInner() {
       console.warn('Failed to persist user role', e);
     }
   };
+
+  // Load netid + poll today's badge whenever user is logged in
+  useEffect(() => {
+    if (!isLoggedIn) { setCalendarNetid(''); setCalendarBadge(0); return; }
+    getCurrentUser().then(u => { if (u?.netid) setCalendarNetid(u.netid); }).catch(() => {});
+    const fetchBadge = () => getTodayEventCount().then(setCalendarBadge).catch(() => {});
+    fetchBadge();
+    const id = setInterval(fetchBadge, 60_000);
+    return () => clearInterval(id);
+  }, [isLoggedIn]);
 
   const handleLogout = async () => {
     try {
@@ -205,6 +221,63 @@ function AppInner() {
         )}
       </Stack.Navigator>
     </NavigationContainer>
+
+    {/* Floating calendar button — shown on every screen once logged in */}
+    {isLoggedIn && (
+      <TouchableOpacity
+        onPress={() => setCalendarOpen(true)}
+        style={{
+          position: 'absolute',
+          top: 12,
+          right: 12,
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOpacity: 0.25,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 2 },
+        }}
+      >
+        <Ionicons name="calendar-outline" size={18} color={colors.textInverse} />
+        {calendarBadge > 0 && (
+          <View style={{
+            position: 'absolute',
+            top: -1,
+            right: -1,
+            minWidth: 15,
+            height: 15,
+            borderRadius: 8,
+            backgroundColor: colors.gold,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 3,
+            borderWidth: 1.5,
+            borderColor: colors.primary,
+          }}>
+            <Text style={{ fontSize: 8, fontWeight: '800', color: '#000' }}>
+              {calendarBadge > 9 ? '9+' : calendarBadge}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    )}
+
+    {isLoggedIn && calendarNetid ? (
+      <CalendarModal
+        visible={calendarOpen}
+        onClose={() => {
+          setCalendarOpen(false);
+          getTodayEventCount().then(setCalendarBadge).catch(() => {});
+        }}
+        netid={calendarNetid}
+      />
+    ) : null}
     </View>
   );
 }

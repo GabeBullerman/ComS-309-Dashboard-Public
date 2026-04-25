@@ -16,6 +16,7 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "users")
@@ -196,4 +197,10 @@ public class User {
     public void setProjectRole(String projectRole) {
         this.projectRole = projectRole;
     }
+
+    @Column(name = "last_activity")
+    private LocalDateTime lastActivity;
+
+    public LocalDateTime getLastActivity() { return lastActivity; }
+    public void setLastActivity(LocalDateTime lastActivity) { this.lastActivity = lastActivity; }
 }

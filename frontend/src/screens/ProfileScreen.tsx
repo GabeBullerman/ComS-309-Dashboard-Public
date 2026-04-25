@@ -15,6 +15,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import { getCurrentUser, changePassword } from '../api/users';
 import { getGitLabToken, saveGitLabToken, clearGitLabToken } from '../utils/gitlab';
 import ProfileAvatar from '../components/ProfileAvatar';
+import ActivityStatusBadge from '../components/ActivityStatusBadge';
 
 interface Props {
   userRole: string;
@@ -97,17 +98,28 @@ export default function ProfileScreen({ userRole, onLogout }: Props) {
       {/* Profile card */}
       <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 20, marginBottom: 16, shadowColor: colors.shadow, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-          <ProfileAvatar
-            userId={netid || displayName}
-            initials={initials}
-            size={72}
-            canEdit
-          />
+          <View>
+            <ProfileAvatar
+              userId={netid || displayName}
+              initials={initials}
+              size={72}
+              canEdit
+            />
+            <View style={{ position: 'absolute', bottom: 2, right: 2 }}>
+              <ActivityStatusBadge status="online" size={16} borderColor={colors.surface} />
+            </View>
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>{displayName || '—'}</Text>
             <Text style={{ fontSize: 13, color: colors.textMuted }}>{netid || '—'}</Text>
-            <View style={{ marginTop: 4, backgroundColor: colors.warningBg, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start' }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.warningText }}>{userRole}</Text>
+            <View style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ backgroundColor: colors.warningBg, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.warningText }}>{userRole}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <ActivityStatusBadge status="online" size={12} borderColor={colors.surface} />
+                <Text style={{ fontSize: 11, color: '#22c55e', fontWeight: '600' }}>Online</Text>
+              </View>
             </View>
           </View>
           {/* Dark/light mode toggle */}

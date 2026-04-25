@@ -31,6 +31,9 @@ public class CalendarEvent {
     @Column(name = "event_type", nullable = false)
     private String eventType = "PERSONAL";
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean completed = false;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -54,6 +57,9 @@ public class CalendarEvent {
 
     public String getEventType() { return eventType; }
     public void setEventType(String eventType) { this.eventType = eventType; }
+
+    public boolean isCompleted() { return completed; }
+    public void setCompleted(boolean completed) { this.completed = completed; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

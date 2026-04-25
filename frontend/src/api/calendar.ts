@@ -10,6 +10,7 @@ export interface CalendarEvent {
   eventTime?: string;  // 'HH:MM:SS' or null
   netid: string;
   eventType: CalendarEventType;
+  completed: boolean;
   createdAt: string;
 }
 
@@ -43,4 +44,9 @@ export async function updateCalendarEvent(id: number, req: CalendarEventCreateRe
 
 export async function deleteCalendarEvent(id: number): Promise<void> {
   await axiosInstance.delete(`/api/calendar/events/${id}`);
+}
+
+export async function toggleCalendarEventComplete(id: number): Promise<CalendarEvent> {
+  const { data } = await axiosInstance.patch(`/api/calendar/events/${id}/complete`);
+  return data;
 }

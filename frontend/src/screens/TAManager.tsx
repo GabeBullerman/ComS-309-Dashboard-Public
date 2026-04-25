@@ -16,6 +16,8 @@ import { UserSummary, normalizeRole, UserRole } from '../utils/auth';
 import { getUsersByRole, createUser, updateUser, deleteUser } from '../api/users';
 import { getSemesterStartDate, setSemesterStartDate } from '../api/settings';
 import { useTheme } from '../contexts/ThemeContext';
+import { getActivityStatuses, ActivityStatus } from '../api/activity';
+import ActivityStatusBadge from '../components/ActivityStatusBadge';
 
 type StaffRole = 'TA' | 'HTA' | 'Instructor';
 
@@ -39,6 +41,7 @@ export default function StaffManagerScreen({ userRole }: Props) {
   const [showCsvInfo, setShowCsvInfo] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; failed: string[]; blocked?: string[] } | null>(null);
   const [expandedId, setExpandedId] = useState<number | string | null>(null);
+  const [activityStatuses, setActivityStatuses] = useState<Record<string, ActivityStatus>>({});
   const [semesterStartDate, setSemesterStartDateState] = useState<string>('');
   const [semesterInput, setSemesterInput] = useState<string>('');
   const [semesterSaving, setSemesterSaving] = useState(false);
@@ -70,6 +73,13 @@ export default function StaffManagerScreen({ userRole }: Props) {
   };
 
   useEffect(() => { loadStaff(); }, []);
+
+  useEffect(() => {
+    const fetch = () => getActivityStatuses().then(setActivityStatuses).catch(() => {});
+    fetch();
+    const id = setInterval(fetch, 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (!isInstructor && !isHTA) return;
@@ -286,7 +296,16 @@ export default function StaffManagerScreen({ userRole }: Props) {
       >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{item.name ?? '—'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{item.name ?? '—'}</Text>
+              {item.netid && (
+                <ActivityStatusBadge
+                  status={activityStatuses[item.netid] ?? 'offline'}
+                  size={12}
+                  borderColor={colors.surface}
+                />
+              )}
+            </View>
             <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 1 }}>{item.netid}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

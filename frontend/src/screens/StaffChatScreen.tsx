@@ -14,6 +14,8 @@ import { getUsersByRole } from '../api/users';
 import { UserRole, UserSummary } from '../utils/auth';
 import { useTheme } from '../contexts/ThemeContext';
 import { ColorPalette } from '../constants/colors';
+import { getActivityStatuses, ActivityStatus } from '../api/activity';
+import ActivityStatusBadge from '../components/ActivityStatusBadge';
 
 const POLL_MS = 5000;
 const ROLES = ['everyone', 'TA', 'HTA', 'Instructor'];
@@ -51,12 +53,19 @@ function formatDate(iso: string) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function ColorAvatar({ name, size = 36 }: { name: string; size?: number }) {
+function ColorAvatar({ name, size = 36, status }: { name: string; size?: number; status?: ActivityStatus }) {
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || '?';
   const hue = name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360;
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: `hsl(${hue},55%,48%)`, alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ color: 'white', fontWeight: '700', fontSize: size * 0.38 }}>{initials}</Text>
+    <View style={{ width: size, height: size }}>
+      <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: `hsl(${hue},55%,48%)`, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: 'white', fontWeight: '700', fontSize: size * 0.38 }}>{initials}</Text>
+      </View>
+      {status && (
+        <View style={{ position: 'absolute', bottom: 0, right: 0 }}>
+          <ActivityStatusBadge status={status} size={size * 0.38} borderColor="#1f2937" />
+        </View>
+      )}
     </View>
   );
 }
@@ -127,6 +136,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [emojiCategory, setEmojiCategory] = useState(0);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [activityStatuses, setActivityStatuses] = useState<Record<string, ActivityStatus>>({});
 
   const scrollRef = useRef<ScrollView>(null);
   const isAtBottomRef = useRef(true);
@@ -154,6 +164,14 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
       getUsersByRole('HTA').catch(() => [] as UserSummary[]),
       getUsersByRole('Instructor').catch(() => [] as UserSummary[]),
     ]).then(([a, b, c]) => setStaff([...a, ...b, ...c]));
+  }, []);
+
+  // Poll activity status of all staff
+  useEffect(() => {
+    const fetch = () => getActivityStatuses().then(setActivityStatuses).catch(() => {});
+    fetch();
+    const id = setInterval(fetch, 30_000);
+    return () => clearInterval(id);
   }, []);
 
   // Load channel metadata (names + descriptions)
@@ -565,7 +583,13 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
                   }}
                 >
                   <View style={{ width: 40, marginRight: 10, alignItems: 'center', paddingTop: showHeader ? 2 : 0 }}>
-                    {showHeader && <ColorAvatar name={displayName} size={36} />}
+                    {showHeader && (
+                      <ColorAvatar
+                        name={displayName}
+                        size={36}
+                        status={activityStatuses[msg.senderNetid] ?? 'offline'}
+                      />
+                    )}
                   </View>
 
                   <View style={{ flex: 1 }}>
