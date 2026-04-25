@@ -144,6 +144,7 @@ export default function StaffManagerScreen({ userRole }: Props) {
       text = await resp.text();
     } else {
       text = await new Promise<string>((resolve, reject) => {
+        if (typeof document === 'undefined') { reject(new Error('no document')); return; }
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.csv';

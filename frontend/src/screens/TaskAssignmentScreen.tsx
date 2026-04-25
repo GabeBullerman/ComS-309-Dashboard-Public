@@ -286,7 +286,7 @@ export default function TaskAssignmentScreen() {
             placeholder="Optional description"
             placeholderTextColor={colors.textFaint}
             multiline
-            style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg, minHeight: 72, textAlignVertical: 'top' }}
+            style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg, minHeight: 44, textAlignVertical: 'top' }}
           />
 
           <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 4 }}>Due Date</Text>
@@ -343,7 +343,7 @@ export default function TaskAssignmentScreen() {
               <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>
                 Select HTA{selectedHTANetids.size > 0 ? ` (${selectedHTANetids.size} selected)` : ''}
               </Text>
-              <ScrollView style={{ maxHeight: 140, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 12 }}>
+              <ScrollView style={{ maxHeight: 220, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 12 }}>
                 {htas.length === 0 ? (
                   <Text style={{ padding: 12, color: colors.textFaint, fontSize: 13 }}>No HTAs found.</Text>
                 ) : (
@@ -380,7 +380,7 @@ export default function TaskAssignmentScreen() {
               <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>
                 Select TA{selectedTANetids.size > 0 ? ` (${selectedTANetids.size} selected)` : ''}
               </Text>
-              <ScrollView style={{ maxHeight: 140, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 12 }}>
+              <ScrollView style={{ maxHeight: 220, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 12 }}>
                 {tas.length === 0 ? (
                   <Text style={{ padding: 12, color: colors.textFaint, fontSize: 13 }}>No TAs found.</Text>
                 ) : (
@@ -417,7 +417,7 @@ export default function TaskAssignmentScreen() {
               <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>
                 Select Team{selectedTeamIds.size > 0 ? ` (${selectedTeamIds.size} selected)` : ''}
               </Text>
-              <ScrollView style={{ maxHeight: 140, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 12 }}>
+              <ScrollView style={{ maxHeight: 220, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 12 }}>
                 {teams.length === 0 ? (
                   <Text style={{ padding: 12, color: colors.textFaint, fontSize: 13 }}>No teams found.</Text>
                 ) : (
