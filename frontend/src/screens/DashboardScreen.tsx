@@ -5,7 +5,7 @@ import StaffManagerScreen from "../screens/TAManager";
 import TaskAssignmentScreen from "../screens/TaskAssignmentScreen";
 import AssignmentsScreen from "../screens/AssignmentsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { getCurrentUser } from "../api/users";
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
@@ -30,6 +30,8 @@ export default function DashboardScreen({route}: Props) {
   const [netid, setNetid] = useState("");
   const [chatUnread, setChatUnread] = useState(0);
   const [calendarVisible, setCalendarVisible] = useState(false);
+  const [calBtnPos, setCalBtnPos] = useState<{ top: number; left: number } | null>(null);
+  const calDrag = useRef<{ sx: number; sy: number; st: number; sl: number; moved: boolean } | null>(null);
   const screenWidth = Dimensions.get("window").width;
   const isMobile = screenWidth < 768;
   const role = route.params.userRole;
@@ -68,6 +70,37 @@ export default function DashboardScreen({route}: Props) {
       .catch(() => {});
     return () => { mounted = false; };
   }, []);
+
+  // Draggable calendar button (web only)
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    setCalBtnPos({ top: 14, left: window.innerWidth - 58 });
+  }, []);
+
+  const handleCalBtnMouseDown = (e: any) => {
+    if (Platform.OS !== 'web') return;
+    const pos = calBtnPos ?? { top: 14, left: window.innerWidth - 58 };
+    calDrag.current = { sx: e.clientX, sy: e.clientY, st: pos.top, sl: pos.left, moved: false };
+    const onMove = (me: MouseEvent) => {
+      if (!calDrag.current) return;
+      const dx = me.clientX - calDrag.current.sx;
+      const dy = me.clientY - calDrag.current.sy;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) calDrag.current.moved = true;
+      setCalBtnPos({
+        top: Math.max(8, calDrag.current.st + dy),
+        left: Math.max(8, Math.min(window.innerWidth - 52, calDrag.current.sl + dx)),
+      });
+    };
+    const onUp = () => {
+      if (calDrag.current && !calDrag.current.moved) setCalendarVisible(true);
+      calDrag.current = null;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  };
 
   const initials = displayName
     .split(" ")
@@ -264,6 +297,30 @@ export default function DashboardScreen({route}: Props) {
           </View>
         </View>
       )}
+
+      {/* Draggable calendar button — click to open, drag to move */}
+      <TouchableOpacity
+        onPress={Platform.OS !== 'web' ? () => setCalendarVisible(true) : undefined}
+        // @ts-expect-error web-only mouse events
+        onMouseDown={Platform.OS === 'web' ? handleCalBtnMouseDown : undefined}
+        style={[{
+          position: 'absolute',
+          width: 44, height: 44, borderRadius: 22,
+          backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
+          shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 6, elevation: 6,
+          zIndex: 100,
+        },
+        calBtnPos ? { top: calBtnPos.top, left: calBtnPos.left } : { top: 14, right: 14 },
+        Platform.OS === 'web' ? { cursor: 'grab' } as any : {},
+        ]}
+      >
+        <Ionicons name="calendar-outline" size={20} color={colors.textInverse} />
+        {Platform.OS === 'web' && (
+          <View style={{ position: 'absolute', top: 3, left: 3 }}>
+            <Ionicons name="move-outline" size={11} color="rgba(255,255,255,0.6)" />
+          </View>
+        )}
+      </TouchableOpacity>
 
       <CalendarModal visible={calendarVisible} onClose={() => setCalendarVisible(false)} netid={netid} />
     </View>
