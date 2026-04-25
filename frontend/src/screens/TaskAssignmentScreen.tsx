@@ -17,8 +17,9 @@ import { normalizeRole, UserSummary } from '../utils/auth';
 import { getCurrentUser, getUsersByRole, getUserByNetid } from '../api/users';
 import { getTeams, TeamApiResponse } from '../api/teams';
 import { getTasksAssignedBy, createTask, updateTask, deleteTask, TaskApiResponse, TaskStatus } from '../api/tasks';
+import { getAnnouncements, createAnnouncement, deleteAnnouncement, Announcement } from '../api/announcements';
 
-type RecipientType = 'specific-hta' | 'all-htas' | 'specific-ta' | 'all-tas' | 'specific-team' | 'all-my-teams' | 'all-students';
+type RecipientType = 'hta' | 'ta' | 'team' | 'all-students';
 
 export default function TaskAssignmentScreen() {
   const { colors } = useTheme();
@@ -35,6 +36,10 @@ export default function TaskAssignmentScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState({ title: '', description: '', dueDate: '' });
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [announcementText, setAnnouncementText] = useState('');
+  const [showAnnounceForm, setShowAnnounceForm] = useState(false);
+  const [postingAnnouncement, setPostingAnnouncement] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -43,6 +48,38 @@ export default function TaskAssignmentScreen() {
   const [selectedHTANetids, setSelectedHTANetids] = useState<Set<string>>(new Set());
   const [selectedTANetids, setSelectedTANetids] = useState<Set<string>>(new Set());
   const [selectedTeamIds, setSelectedTeamIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    getAnnouncements().then(setAnnouncements).catch(() => {});
+  }, []);
+
+  const handlePostAnnouncement = async () => {
+    if (!announcementText.trim()) return;
+    setPostingAnnouncement(true);
+    try {
+      const created = await createAnnouncement(announcementText.trim());
+      setAnnouncements(prev => [created, ...prev]);
+      setAnnouncementText('');
+      setShowAnnounceForm(false);
+    } catch {
+      Alert.alert('Error', 'Failed to post announcement.');
+    } finally {
+      setPostingAnnouncement(false);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (id: number) => {
+    const msg = 'Delete this announcement?';
+    const doDelete = async () => {
+      await deleteAnnouncement(id);
+      setAnnouncements(prev => prev.filter(a => a.id !== id));
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(msg)) doDelete();
+    } else {
+      Alert.alert('Delete', msg, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: doDelete }]);
+    }
+  };
 
   const handleSaveEdit = async (ids: number[]) => {
     if (!editDraft.title.trim()) return;
@@ -100,10 +137,10 @@ export default function TaskAssignmentScreen() {
           );
         }
         fetches.push(getTeams().then(setTeams).catch(() => {}));
-        setRecipientType(r === 'Instructor' ? 'specific-hta' : 'specific-ta');
+        setRecipientType(r === 'Instructor' ? 'hta' : 'ta');
       } else if (r === 'TA') {
         fetches.push(getTeams(user.netid).then(setTeams).catch(() => {}));
-        setRecipientType('specific-team');
+        setRecipientType('team');
       }
 
       await Promise.all(fetches);
@@ -117,23 +154,16 @@ export default function TaskAssignmentScreen() {
 
     let recipients: string[] = [];
 
-    if (recipientType === 'specific-hta') {
+    if (recipientType === 'hta') {
       if (selectedHTANetids.size === 0) { Alert.alert('Select at least one HTA.'); return; }
       recipients = [...selectedHTANetids];
-    } else if (recipientType === 'all-htas') {
-      recipients = htas.map((h) => h.netid!).filter(Boolean);
-    } else if (recipientType === 'specific-ta') {
+    } else if (recipientType === 'ta') {
       if (selectedTANetids.size === 0) { Alert.alert('Select at least one TA.'); return; }
       recipients = [...selectedTANetids];
-    } else if (recipientType === 'all-tas') {
-      recipients = tas.map((t) => t.netid!).filter(Boolean);
-    } else if (recipientType === 'specific-team') {
+    } else if (recipientType === 'team') {
       if (selectedTeamIds.size === 0) { Alert.alert('Select at least one team.'); return; }
       const selectedTeams = teams.filter((t) => t.id !== undefined && selectedTeamIds.has(t.id));
       const all = selectedTeams.flatMap((t) => (t.students ?? []).map((s) => s.netid!)).filter(Boolean);
-      recipients = [...new Set(all)];
-    } else if (recipientType === 'all-my-teams') {
-      const all = teams.flatMap((t) => (t.students ?? []).map((s) => s.netid!)).filter(Boolean);
       recipients = [...new Set(all)];
     } else if (recipientType === 'all-students') {
       const all = teams.flatMap((t) => (t.students ?? []).map((s) => s.netid!)).filter(Boolean);
@@ -179,23 +209,19 @@ export default function TaskAssignmentScreen() {
 
   const recipientOptions: { key: RecipientType; label: string }[] = role === 'Instructor'
     ? [
-        { key: 'specific-hta', label: 'Specific HTA' },
-        { key: 'all-htas', label: 'All HTAs' },
-        { key: 'specific-ta', label: 'Specific TA' },
-        { key: 'all-tas', label: 'All TAs' },
-        { key: 'specific-team', label: 'Specific Team' },
+        { key: 'hta',          label: 'HTA' },
+        { key: 'ta',           label: 'TA' },
+        { key: 'team',         label: 'Team' },
         { key: 'all-students', label: 'All Students' },
       ]
     : isHtaOrInstructor
     ? [
-        { key: 'specific-ta', label: 'Specific TA' },
-        { key: 'all-tas', label: 'All TAs' },
-        { key: 'specific-team', label: 'Specific Team' },
+        { key: 'ta',           label: 'TA' },
+        { key: 'team',         label: 'Team' },
         { key: 'all-students', label: 'All Students' },
       ]
     : [
-        { key: 'specific-team', label: 'Specific Team' },
-        { key: 'all-my-teams', label: 'All My Teams' },
+        { key: 'team', label: 'Team' },
       ];
 
   if (loading) return (
@@ -312,103 +338,111 @@ export default function TaskAssignmentScreen() {
           </View>
 
           {/* HTA picker */}
-          {recipientType === 'specific-hta' && (
+          {recipientType === 'hta' && (
             <>
               <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>
                 Select HTA{selectedHTANetids.size > 0 ? ` (${selectedHTANetids.size} selected)` : ''}
               </Text>
-              <ScrollView style={{ maxHeight: 112, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 12 }}>
+              <ScrollView style={{ maxHeight: 140, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 12 }}>
                 {htas.length === 0 ? (
                   <Text style={{ padding: 12, color: colors.textFaint, fontSize: 13 }}>No HTAs found.</Text>
                 ) : (
-                  htas.map((hta) => {
-                    const selected = selectedHTANetids.has(hta.netid!);
-                    return (
-                      <TouchableOpacity
-                        key={hta.netid}
-                        onPress={() => setSelectedHTANetids((prev) => {
-                          const next = new Set(prev);
-                          selected ? next.delete(hta.netid!) : next.add(hta.netid!);
-                          return next;
-                        })}
-                        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: selected ? colors.statusPoorBg : 'transparent' }}
-                      >
-                        <Ionicons name={selected ? 'checkbox' : 'square-outline'} size={16} color={selected ? colors.primary : colors.textFaint} style={{ marginRight: 8 }} />
-                        <Text style={{ fontSize: 13, color: selected ? colors.primary : colors.textSecondary, fontWeight: selected ? '600' : '400' }}>
-                          {hta.name ?? hta.netid}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })
+                  <>
+                    <TouchableOpacity
+                      onPress={() => setSelectedHTANetids(selectedHTANetids.size === htas.length ? new Set() : new Set(htas.map(h => h.netid!)))}
+                      style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight, backgroundColor: colors.borderLight }}
+                    >
+                      <Ionicons name={selectedHTANetids.size === htas.length ? 'checkbox' : 'square-outline'} size={16} color={colors.primary} style={{ marginRight: 8 }} />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>All HTAs</Text>
+                    </TouchableOpacity>
+                    {htas.map((hta) => {
+                      const selected = selectedHTANetids.has(hta.netid!);
+                      return (
+                        <TouchableOpacity
+                          key={hta.netid}
+                          onPress={() => setSelectedHTANetids((prev) => { const next = new Set(prev); selected ? next.delete(hta.netid!) : next.add(hta.netid!); return next; })}
+                          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: selected ? colors.statusPoorBg : 'transparent' }}
+                        >
+                          <Ionicons name={selected ? 'checkbox' : 'square-outline'} size={16} color={selected ? colors.primary : colors.textFaint} style={{ marginRight: 8 }} />
+                          <Text style={{ fontSize: 13, color: selected ? colors.primary : colors.textSecondary, fontWeight: selected ? '600' : '400' }}>{hta.name ?? hta.netid}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </>
                 )}
               </ScrollView>
             </>
           )}
 
           {/* TA picker */}
-          {recipientType === 'specific-ta' && (
+          {recipientType === 'ta' && (
             <>
               <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>
                 Select TA{selectedTANetids.size > 0 ? ` (${selectedTANetids.size} selected)` : ''}
               </Text>
-              <ScrollView style={{ maxHeight: 112, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 12 }}>
+              <ScrollView style={{ maxHeight: 140, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 12 }}>
                 {tas.length === 0 ? (
                   <Text style={{ padding: 12, color: colors.textFaint, fontSize: 13 }}>No TAs found.</Text>
                 ) : (
-                  tas.map((ta) => {
-                    const selected = selectedTANetids.has(ta.netid!);
-                    return (
-                      <TouchableOpacity
-                        key={ta.netid}
-                        onPress={() => setSelectedTANetids((prev) => {
-                          const next = new Set(prev);
-                          selected ? next.delete(ta.netid!) : next.add(ta.netid!);
-                          return next;
-                        })}
-                        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: selected ? colors.statusPoorBg : 'transparent' }}
-                      >
-                        <Ionicons name={selected ? 'checkbox' : 'square-outline'} size={16} color={selected ? colors.primary : colors.textFaint} style={{ marginRight: 8 }} />
-                        <Text style={{ fontSize: 13, color: selected ? colors.primary : colors.textSecondary, fontWeight: selected ? '600' : '400' }}>
-                          {ta.name ?? ta.netid}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })
+                  <>
+                    <TouchableOpacity
+                      onPress={() => setSelectedTANetids(selectedTANetids.size === tas.length ? new Set() : new Set(tas.map(t => t.netid!)))}
+                      style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight, backgroundColor: colors.borderLight }}
+                    >
+                      <Ionicons name={selectedTANetids.size === tas.length ? 'checkbox' : 'square-outline'} size={16} color={colors.primary} style={{ marginRight: 8 }} />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>All TAs</Text>
+                    </TouchableOpacity>
+                    {tas.map((ta) => {
+                      const selected = selectedTANetids.has(ta.netid!);
+                      return (
+                        <TouchableOpacity
+                          key={ta.netid}
+                          onPress={() => setSelectedTANetids((prev) => { const next = new Set(prev); selected ? next.delete(ta.netid!) : next.add(ta.netid!); return next; })}
+                          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: selected ? colors.statusPoorBg : 'transparent' }}
+                        >
+                          <Ionicons name={selected ? 'checkbox' : 'square-outline'} size={16} color={selected ? colors.primary : colors.textFaint} style={{ marginRight: 8 }} />
+                          <Text style={{ fontSize: 13, color: selected ? colors.primary : colors.textSecondary, fontWeight: selected ? '600' : '400' }}>{ta.name ?? ta.netid}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </>
                 )}
               </ScrollView>
             </>
           )}
 
           {/* Team picker */}
-          {recipientType === 'specific-team' && (
+          {recipientType === 'team' && (
             <>
               <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>
                 Select Team{selectedTeamIds.size > 0 ? ` (${selectedTeamIds.size} selected)` : ''}
               </Text>
-              <ScrollView style={{ maxHeight: 112, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 12 }}>
+              <ScrollView style={{ maxHeight: 140, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginBottom: 12 }}>
                 {teams.length === 0 ? (
                   <Text style={{ padding: 12, color: colors.textFaint, fontSize: 13 }}>No teams found.</Text>
                 ) : (
-                  teams.map((team) => {
-                    const selected = team.id !== undefined && selectedTeamIds.has(team.id);
-                    return (
-                      <TouchableOpacity
-                        key={team.id}
-                        onPress={() => setSelectedTeamIds((prev) => {
-                          if (team.id === undefined) return prev;
-                          const next = new Set(prev);
-                          selected ? next.delete(team.id) : next.add(team.id);
-                          return next;
-                        })}
-                        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: selected ? colors.statusPoorBg : 'transparent' }}
-                      >
-                        <Ionicons name={selected ? 'checkbox' : 'square-outline'} size={16} color={selected ? colors.primary : colors.textFaint} style={{ marginRight: 8 }} />
-                        <Text style={{ fontSize: 13, color: selected ? colors.primary : colors.textSecondary, fontWeight: selected ? '600' : '400' }}>
-                          {team.name}{team.section ? ` · Sec ${team.section}` : ''}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })
+                  <>
+                    <TouchableOpacity
+                      onPress={() => setSelectedTeamIds(selectedTeamIds.size === teams.filter(t => t.id !== undefined).length ? new Set() : new Set(teams.map(t => t.id!).filter(Boolean)))}
+                      style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.borderLight, backgroundColor: colors.borderLight }}
+                    >
+                      <Ionicons name={selectedTeamIds.size === teams.filter(t => t.id !== undefined).length ? 'checkbox' : 'square-outline'} size={16} color={colors.primary} style={{ marginRight: 8 }} />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>All Teams</Text>
+                    </TouchableOpacity>
+                    {teams.map((team) => {
+                      const selected = team.id !== undefined && selectedTeamIds.has(team.id);
+                      return (
+                        <TouchableOpacity
+                          key={team.id}
+                          onPress={() => setSelectedTeamIds((prev) => { if (team.id === undefined) return prev; const next = new Set(prev); selected ? next.delete(team.id) : next.add(team.id); return next; })}
+                          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: selected ? colors.statusPoorBg : 'transparent' }}
+                        >
+                          <Ionicons name={selected ? 'checkbox' : 'square-outline'} size={16} color={selected ? colors.primary : colors.textFaint} style={{ marginRight: 8 }} />
+                          <Text style={{ fontSize: 13, color: selected ? colors.primary : colors.textSecondary, fontWeight: selected ? '600' : '400' }}>{team.name}{team.section ? ` · Sec ${team.section}` : ''}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </>
                 )}
               </ScrollView>
             </>
@@ -589,12 +623,79 @@ export default function TaskAssignmentScreen() {
     </View>
   );
 
+  const announcementPanel = (
+    <View style={{ marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="megaphone-outline" size={16} color={colors.textSecondary} />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>
+            Announcements {announcements.length > 0 ? `(${announcements.length})` : ''}
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => { setShowAnnounceForm(v => !v); setAnnouncementText(''); }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: showAnnounceForm ? colors.borderLight : colors.primary }}
+        >
+          <Ionicons name={showAnnounceForm ? 'close' : 'add'} size={14} color={showAnnounceForm ? colors.textSecondary : colors.textInverse} />
+          <Text style={{ fontSize: 12, fontWeight: '600', color: showAnnounceForm ? colors.textSecondary : colors.textInverse }}>
+            {showAnnounceForm ? 'Cancel' : 'Post'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {showAnnounceForm && (
+        <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.warningBorder, marginBottom: 8 }}>
+          <TextInput
+            value={announcementText}
+            onChangeText={setAnnouncementText}
+            placeholder="Write an announcement visible to all users..."
+            placeholderTextColor={colors.textFaint}
+            multiline
+            style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg, minHeight: 80, textAlignVertical: 'top', marginBottom: 8 }}
+          />
+          <TouchableOpacity
+            onPress={handlePostAnnouncement}
+            disabled={postingAnnouncement || !announcementText.trim()}
+            style={{ borderRadius: 8, paddingVertical: 9, alignItems: 'center', backgroundColor: announcementText.trim() ? colors.warningBg : colors.borderLight, borderWidth: 1, borderColor: announcementText.trim() ? colors.warningBorder : colors.border }}
+          >
+            {postingAnnouncement
+              ? <ActivityIndicator size="small" color={colors.warningText} />
+              : <Text style={{ fontSize: 13, fontWeight: '600', color: announcementText.trim() ? colors.warningText : colors.textFaint }}>Post Announcement</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {announcements.length > 0 && (
+        <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, overflow: 'hidden' }}>
+          {announcements.map((a, i) => (
+            <View key={a.id} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: colors.borderLight, backgroundColor: colors.surface }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, color: colors.text, lineHeight: 19 }}>{a.message}</Text>
+                <Text style={{ fontSize: 11, color: colors.textFaint, marginTop: 3 }}>
+                  {a.createdByName ?? a.createdByNetid} · {a.createdAt ? new Date(a.createdAt).toLocaleDateString() : ''}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => handleDeleteAnnouncement(a.id)} style={{ paddingLeft: 8, paddingTop: 2 }}>
+                <Ionicons name="trash-outline" size={14} color={colors.criticalBorder} />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {announcements.length === 0 && !showAnnounceForm && (
+        <Text style={{ fontSize: 12, color: colors.textFaint, fontStyle: 'italic' }}>No active announcements.</Text>
+      )}
+    </View>
+  );
+
   const header = (
     <>
       <Text style={{ fontSize: isMobile ? 22 : 26, fontWeight: '700', color: colors.text, marginBottom: 2 }}>Assign Tasks</Text>
       <Text style={{ color: colors.textMuted, marginBottom: 16, fontSize: 13 }}>
         {isHtaOrInstructor ? 'Assign tasks to TAs or Student Teams' : "Assign tasks to your Student Teams"}
       </Text>
+      {announcementPanel}
     </>
   );
 

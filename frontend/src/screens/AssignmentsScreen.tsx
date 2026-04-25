@@ -11,6 +11,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { normalizeRole, UserSummary } from '../utils/auth';
 import { getCurrentUser, getUserByNetid } from '../api/users';
 import { getTasksAssignedTo, updateTaskStatus, TaskApiResponse, TaskStatus } from '../api/tasks';
+import { getAnnouncements, Announcement } from '../api/announcements';
 
 const roleLabel = (role?: string): string => {
   switch (normalizeRole(role)) {
@@ -49,6 +50,12 @@ export default function AssignmentsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>('All');
   const [assignerMap, setAssignerMap] = useState<Record<string, UserSummary>>({});
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [announcementsExpanded, setAnnouncementsExpanded] = useState(true);
+
+  useEffect(() => {
+    getAnnouncements().then(setAnnouncements).catch(() => {});
+  }, []);
 
   useEffect(() => {
     getCurrentUser().then((user) => {
@@ -128,6 +135,33 @@ export default function AssignmentsScreen() {
     <View style={{ flex: 1, backgroundColor: colors.background, padding: 24 }}>
       <Text style={{ fontSize: 26, fontWeight: '700', color: colors.text, marginBottom: 4 }}>Tasks</Text>
       <Text style={{ color: colors.textMuted, marginBottom: 16 }}>{netid}</Text>
+
+      {/* Announcements */}
+      {announcements.length > 0 && (
+        <View style={{ marginBottom: 16, borderWidth: 1, borderColor: colors.warningBorder, borderRadius: 10, overflow: 'hidden' }}>
+          <TouchableOpacity
+            onPress={() => setAnnouncementsExpanded(e => !e)}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: colors.warningBg }}
+          >
+            <Ionicons name="megaphone-outline" size={16} color={colors.warningText} />
+            <Text style={{ flex: 1, fontSize: 13, fontWeight: '700', color: colors.warningText }}>
+              Announcements ({announcements.length})
+            </Text>
+            <Ionicons name={announcementsExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={colors.warningText} />
+          </TouchableOpacity>
+          {announcementsExpanded && announcements.map((a, i) => (
+            <View
+              key={a.id}
+              style={{ paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.warningBorder, backgroundColor: colors.surface }}
+            >
+              <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20 }}>{a.message}</Text>
+              <Text style={{ fontSize: 11, color: colors.textFaint, marginTop: 4 }}>
+                {a.createdByName ?? a.createdByNetid} · {a.createdAt ? new Date(a.createdAt).toLocaleDateString() : ''}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Filters */}
       <View style={{ flexDirection: 'row', marginBottom: 16, gap: 8 }}>
