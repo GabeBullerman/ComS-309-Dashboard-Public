@@ -17,8 +17,6 @@ import StudentListScreen from "./StudentListScreen";
 import StaffChatScreen from "./StaffChatScreen";
 import { getUnreadCount } from "../api/chat";
 import { sendHeartbeat } from "../api/activity";
-import CalendarModal from "../components/CalendarModal";
-
 type Props = NativeStackScreenProps<RootStackParamList, 'DashboardScreen'>;
 
 const ACTIVE_SCREEN_KEY = 'dashboard_active_screen';
@@ -29,7 +27,6 @@ export default function DashboardScreen({route}: Props) {
   const [displayName, setDisplayName] = useState("User");
   const [netid, setNetid] = useState("");
   const [chatUnread, setChatUnread] = useState(0);
-  const [calendarVisible, setCalendarVisible] = useState(false);
   const screenWidth = Dimensions.get("window").width;
   const isMobile = screenWidth < 768;
   const role = route.params.userRole;
@@ -79,8 +76,7 @@ export default function DashboardScreen({route}: Props) {
     { label: "Teams",        mobileLabel: "Teams",    icon: "people-outline" },
     ...(role !== 'Instructor'
       ? [{ label: "Tasks",        mobileLabel: "Tasks",  icon: "checkmark-circle-outline" }] : []),
-    { label: "Calendar",     mobileLabel: "Calendar", icon: "calendar-outline", calendarOnly: true },
-    ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
+...(role === 'TA' || role === 'HTA' || role === 'Instructor'
       ? [{ label: "Staff Chat", mobileLabel: "Chat", icon: "chatbubbles-outline", badge: chatUnread, mobileHidden: true }] : []),
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
       ? [{ label: "Assign Tasks", mobileLabel: "Assign", icon: "clipboard-outline" }] : []),
@@ -93,7 +89,7 @@ export default function DashboardScreen({route}: Props) {
     ...(role === 'Instructor' || role === 'HTA'
       ? [{ label: "Upload", mobileLabel: "Upload", icon: "cloud-upload-outline" }] : []),
     { label: "Profile",      mobileLabel: "Profile",  icon: "person-circle-outline" },
-  ] as { label: string; mobileLabel: string; icon: string; badge?: number; mobileHidden?: boolean; calendarOnly?: boolean }[];
+  ] as { label: string; mobileLabel: string; icon: string; badge?: number; mobileHidden?: boolean }[];
 
   // Restore last active screen on mount; persist on every change
   useEffect(() => {
@@ -140,12 +136,12 @@ export default function DashboardScreen({route}: Props) {
         </Text>
       </View>
 
-      {navItems.filter(i => i.label !== 'Profile' && !i.calendarOnly).map((item) => {
+      {navItems.filter(i => i.label !== 'Profile').map((item) => {
         const isActive = activeScreen === item.label;
         return (
           <TouchableOpacity
             key={item.label}
-            onPress={() => item.calendarOnly ? setCalendarVisible(true) : setActiveScreen(item.label)}
+            onPress={() => setActiveScreen(item.label)}
             className={`flex-row items-center gap-3 rounded-lg px-4 py-3 mb-2 ${isActive ? "bg-yellow-400" : ""}`}
           >
             <Ionicons
@@ -266,7 +262,6 @@ export default function DashboardScreen({route}: Props) {
         </View>
       )}
 
-      <CalendarModal visible={calendarVisible} onClose={() => setCalendarVisible(false)} netid={netid} />
     </View>
   );
 }
