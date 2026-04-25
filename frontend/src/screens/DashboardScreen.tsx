@@ -140,7 +140,7 @@ export default function DashboardScreen({route}: Props) {
         </Text>
       </View>
 
-      {navItems.filter(i => i.label !== 'Profile').map((item) => {
+      {navItems.filter(i => i.label !== 'Profile' && !i.calendarOnly).map((item) => {
         const isActive = activeScreen === item.label;
         return (
           <TouchableOpacity
