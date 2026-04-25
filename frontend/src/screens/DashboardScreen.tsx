@@ -79,7 +79,7 @@ export default function DashboardScreen({route}: Props) {
     ...(role !== 'Instructor'
       ? [{ label: "Tasks",        mobileLabel: "Tasks",  icon: "checkmark-circle-outline" }] : []),
 ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
-      ? [{ label: "Staff Chat", mobileLabel: "Chat", icon: "chatbubbles-outline", badge: chatUnread, mobileHidden: true }] : []),
+      ? [{ label: "Staff Chat", mobileLabel: "Chat", icon: "chatbubbles-outline", badge: chatUnread }] : []),
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
       ? [{ label: "Assign Tasks", mobileLabel: "Assign", icon: "clipboard-outline" }] : []),
     ...(role === 'TA' || role === 'HTA' || role === 'Instructor'
