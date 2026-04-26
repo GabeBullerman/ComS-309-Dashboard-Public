@@ -274,7 +274,6 @@ export default function UploadScreen({ userRole }: Props): React.JSX.Element {
             const created = await createUser({
               netid: row.netid.trim(),
               name: `${row.firstName.trim()} ${row.lastName.trim()}`,
-              password: Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2),
               role: ['STUDENT'],
             });
             if (created?.id) studentIds.push(created.id);

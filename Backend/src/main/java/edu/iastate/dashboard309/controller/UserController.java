@@ -3,23 +3,20 @@ package edu.iastate.dashboard309.controller;
 import edu.iastate.dashboard309.dto.GitlabTokenRequest;
 import edu.iastate.dashboard309.dto.TeamRequest;
 import edu.iastate.dashboard309.dto.UserRequest;
-import edu.iastate.dashboard309.model.RefreshToken;
 import edu.iastate.dashboard309.model.Role;
 import edu.iastate.dashboard309.model.User;
-import edu.iastate.dashboard309.repository.RefreshTokenRepository;
 import edu.iastate.dashboard309.repository.RoleRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
+import edu.iastate.dashboard309.service.PasswordResetService;
 import edu.iastate.dashboard309.service.TeamService;
 import edu.iastate.dashboard309.service.UserService;
 import jakarta.validation.Valid;
-import jakarta.websocket.server.PathParam;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,7 +36,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 @RestController
@@ -51,17 +47,20 @@ public class UserController {
     private final RoleRepository roleRepository;
     private final UserService userService;
     private final TeamService teamService;
+    private final PasswordResetService passwordResetService;
 
     public UserController(UserRepository userRepository,
                           RoleRepository roleRepository,
                           UserService userService,
-                          TeamService teamService, 
-                          PasswordEncoder passwordEncoder) {
+                          TeamService teamService,
+                          PasswordEncoder passwordEncoder,
+                          PasswordResetService passwordResetService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userService = userService;
         this.teamService = teamService;
         this.passwordEncoder = passwordEncoder;
+        this.passwordResetService = passwordResetService;
     }
 
     @GetMapping
@@ -149,8 +148,9 @@ public class UserController {
         }
         user.setInitials(initials.toString());
 
-        // Hash password
-        user.setPassword(passwordEncoder.encode(request.password()));
+        if (request.password() != null) {
+            user.setPassword(passwordEncoder.encode(request.password()));
+        }
         System.out.println(request.role());
         for(String roleName : request.role()){
             Role role = roleRepository.findByRoleName(roleName)
@@ -159,6 +159,14 @@ public class UserController {
         }
 
         userRepository.save(user);
+
+        if (request.password() == null) {
+            try {
+                passwordResetService.sendTemporaryPassword(user.getNetid());
+            } catch (Exception e) {
+                // account is created; email failure is non-fatal
+            }
+        }
 
         return userService.getUserById(user.getId());
     }

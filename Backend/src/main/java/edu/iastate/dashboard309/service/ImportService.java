@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -36,11 +35,13 @@ public class ImportService {
     UserRepository userRepository;
     TeamRepository teamRepository;
     RoleRepository roleRepository;
+    PasswordResetService passwordResetService;
 
-    public ImportService(UserRepository userRepository, TeamRepository teamRepository, RoleRepository roleRepository){
+    public ImportService(UserRepository userRepository, TeamRepository teamRepository, RoleRepository roleRepository, PasswordResetService passwordResetService){
         this.userRepository = userRepository;
         this.teamRepository = teamRepository;
         this.roleRepository = roleRepository;
+        this.passwordResetService = passwordResetService;
     }
 
     Role studentRole;
@@ -247,16 +248,26 @@ public class ImportService {
                 List<User> students = teamMap.get(team.getName());
                 for(User student : students){
                     User managedStudent;
+                    boolean isNew;
                     if(userRepository.existsByNetid(student.getNetid())){
                         managedStudent = userRepository.findByNetid(student.getNetid())
                             .orElseThrow();
+                        isNew = false;
                     }
                     else{
                         managedStudent = student;
+                        isNew = true;
                     }
                     team.addStudent(managedStudent);
                     managedStudent.setTeam(team);
                     userRepository.save(managedStudent);
+                    if (isNew) {
+                        try {
+                            passwordResetService.sendTemporaryPassword(managedStudent.getNetid());
+                        } catch (Exception e) {
+                            // account is created; email failure is non-fatal
+                        }
+                    }
                 }
             }
         } catch(Exception e){
