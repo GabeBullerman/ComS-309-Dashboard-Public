@@ -142,7 +142,7 @@ interface Props {
   onUnreadChange: (count: number) => void;
 }
 
-export default function StaffChatScreen({ myNetid, myName: _myName, userRole, onUnreadChange }: Props) {
+export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadChange }: Props) {
   const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
@@ -171,6 +171,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
   const [selectedMsgId, setSelectedMsgId] = useState<number | null>(null);
   const [activityStatuses, setActivityStatuses] = useState<Record<string, ActivityStatus>>({});
   const [reactingToId, setReactingToId] = useState<number | null>(null);
+  const [hoveredReaction, setHoveredReaction] = useState<{ msgId: number; emoji: string } | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
   const isAtBottomRef = useRef(true);
@@ -734,20 +735,40 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
                           {reactionEntries.map(([emoji, netids]) => {
                             const iMine = netids.includes(myNetid);
+                            const isHovered = hoveredReaction?.msgId === msg.id && hoveredReaction?.emoji === emoji;
+                            const names = netids.map(nid => staffMap.get(nid) ?? (nid === myNetid ? myName : nid));
                             return (
-                              <TouchableOpacity
-                                key={emoji}
-                                onPress={() => handleToggleReaction(msg.id, emoji)}
-                                style={{
-                                  flexDirection: 'row', alignItems: 'center', gap: 3,
-                                  backgroundColor: iMine ? colors.ungradedBg : colors.borderLight,
-                                  borderRadius: 12, paddingHorizontal: 7, paddingVertical: 3,
-                                  borderWidth: 1, borderColor: iMine ? colors.ungradedBorder : colors.border,
-                                }}
-                              >
-                                <Text style={{ fontSize: 14 }}>{emoji}</Text>
-                                <Text style={{ fontSize: 11, fontWeight: '600', color: iMine ? colors.ungradedText : colors.textMuted }}>{netids.length}</Text>
-                              </TouchableOpacity>
+                              <View key={emoji} style={{ position: 'relative' }}>
+                                {isHovered && names.length > 0 && (
+                                  <View style={{
+                                    position: 'absolute', bottom: 30, left: 0, zIndex: 999,
+                                    backgroundColor: colors.surface, borderRadius: 6,
+                                    paddingHorizontal: 8, paddingVertical: 5,
+                                    borderWidth: 1, borderColor: colors.border,
+                                    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 4, elevation: 6,
+                                    minWidth: 80,
+                                  }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text }}>
+                                      {names.join('\n')}
+                                    </Text>
+                                  </View>
+                                )}
+                                <TouchableOpacity
+                                  onPress={() => handleToggleReaction(msg.id, emoji)}
+                                  // @ts-expect-error web-only
+                                  onMouseEnter={() => setHoveredReaction({ msgId: msg.id, emoji })}
+                                  onMouseLeave={() => setHoveredReaction(null)}
+                                  style={{
+                                    flexDirection: 'row', alignItems: 'center', gap: 3,
+                                    backgroundColor: iMine ? colors.ungradedBg : colors.borderLight,
+                                    borderRadius: 12, paddingHorizontal: 7, paddingVertical: 3,
+                                    borderWidth: 1, borderColor: iMine ? colors.ungradedBorder : colors.border,
+                                  }}
+                                >
+                                  <Text style={{ fontSize: 14 }}>{emoji}</Text>
+                                  <Text style={{ fontSize: 11, fontWeight: '600', color: iMine ? colors.ungradedText : colors.textMuted }}>{netids.length}</Text>
+                                </TouchableOpacity>
+                              </View>
                             );
                           })}
                         </View>

@@ -433,7 +433,7 @@ export default function CalendarModal({ visible, onClose, netid }: Props) {
 
   // ── main render ───────────────────────────────────────────────────────────────
 
-  const cardWidth = isMobile ? width - 24 : Math.min(700, width - 48);
+  const cardWidth = isMobile ? width - 24 : Math.min(820, width - 48);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -468,163 +468,206 @@ export default function CalendarModal({ visible, onClose, netid }: Props) {
               </TouchableOpacity>
             </View>
 
-            <View style={{ padding: isMobile ? 12 : 18 }}>
-              {/* Month navigation */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <TouchableOpacity onPress={prevMonth} style={{ padding: 6 }}>
-                  <Ionicons name="chevron-back" size={20} color={colors.text} />
-                </TouchableOpacity>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>
-                  {MONTH_NAMES[viewMonth]} {viewYear}
-                </Text>
-                <TouchableOpacity onPress={nextMonth} style={{ padding: 6 }}>
-                  <Ionicons name="chevron-forward" size={20} color={colors.text} />
-                </TouchableOpacity>
-              </View>
+            <View style={{ flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'flex-start' }}>
 
-              {/* Day headers */}
-              <View style={{ flexDirection: 'row', marginBottom: 4 }}>
-                {DAY_HEADERS.map(d => (
-                  <View key={d} style={{ width: cellSize, height: 22, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontSize: 10, fontWeight: '600', color: colors.textFaint }}>{d}</Text>
-                  </View>
-                ))}
-              </View>
+              {/* ── Left panel: month nav + grid ───────────────────────────── */}
+              <View style={{ padding: isMobile ? 12 : 18 }}>
 
-              {/* Calendar grid */}
-              {loading ? (
-                <View style={{ height: cellSize * 6, alignItems: 'center', justifyContent: 'center' }}>
-                  <ActivityIndicator color={colors.primary} />
-                </View>
-              ) : (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                  {grid.map(({ date, curr }, i) => {
-                    const ds = toDateStr(date);
-                    const isToday = ds === todayStr;
-                    const isSelected = ds === selectedDate;
-                    const dayEvts = dayMap[ds] ?? [];
-                    const count = dayEvts.length;
-
-                    return (
-                      <TouchableOpacity
-                        key={i}
-                        onPress={() => { setSelectedDate(ds); setFormMode('none'); }}
-                        style={{
-                          width: cellSize,
-                          height: cellSize,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: 6,
-                          backgroundColor: isSelected ? colors.primary + '22' : 'transparent',
-                          borderWidth: isSelected ? 1.5 : 0,
-                          borderColor: isSelected ? colors.primary : 'transparent',
-                        }}
-                      >
-                        {/* Day number */}
-                        <View style={{
-                          width: cellSize * 0.62,
-                          height: cellSize * 0.62,
-                          borderRadius: cellSize * 0.31,
-                          backgroundColor: isToday ? colors.primary : 'transparent',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}>
-                          <Text style={{
-                            fontSize: isMobile ? 12 : 13,
-                            fontWeight: isToday ? '700' : curr ? '500' : '400',
-                            color: isToday ? colors.textInverse : curr ? colors.text : colors.textFaint,
-                          }}>
-                            {date.getDate()}
-                          </Text>
-                        </View>
-
-                        {/* Event count badge */}
-                        {count > 0 && (
-                          <View style={{
-                            position: 'absolute',
-                            top: 3,
-                            right: 3,
-                            minWidth: 14,
-                            height: 14,
-                            borderRadius: 7,
-                            backgroundColor: colors.criticalBorder,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            paddingHorizontal: 2,
-                          }}>
-                            <Text style={{ fontSize: 9, fontWeight: '700', color: colors.textInverse }}>
-                              {count > 9 ? '9+' : count}
-                            </Text>
-                          </View>
-                        )}
-
-                        {/* Colored event type dots (up to 3) */}
-                        {count > 0 && (
-                          <View style={{ flexDirection: 'row', gap: 2, position: 'absolute', bottom: 3 }}>
-                            {dayEvts.slice(0, 3).map((de, di) => {
-                              const type = de.kind === 'calendar' ? de.event.eventType
-                                : de.kind === 'task' ? 'TASK' : 'SEMESTER';
-                              return (
-                                <View
-                                  key={di}
-                                  style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: EVENT_TYPE_META[type]?.color ?? '#3b82f6' }}
-                                />
-                              );
-                            })}
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-
-              {/* Divider */}
-              <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 14 }} />
-
-              {/* Selected day header */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
-                  {new Date(selectedDate + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-                </Text>
-                {formMode === 'none' && (
-                  <TouchableOpacity
-                    onPress={() => openAdd(selectedDate)}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.primary + '1a', borderWidth: 1, borderColor: colors.primary + '40' }}
-                  >
-                    <Ionicons name="add" size={16} color={colors.primary} />
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>Add</Text>
+                {/* Month navigation — constrained to grid width */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, width: 7 * cellSize }}>
+                  <TouchableOpacity onPress={prevMonth} style={{ padding: 6 }}>
+                    <Ionicons name="chevron-back" size={20} color={colors.text} />
                   </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Event list for selected day */}
-              {formMode === 'none' && (
-                selectedEvents.length === 0 ? (
-                  <Text style={{ fontSize: 13, color: colors.textFaint, textAlign: 'center', paddingVertical: 16 }}>
-                    No events scheduled
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>
+                    {MONTH_NAMES[viewMonth]} {viewYear}
                   </Text>
-                ) : (
-                  <View>
-                    {selectedEvents.map((e, i) => renderEventItem(e, i))}
-                  </View>
-                )
-              )}
+                  <TouchableOpacity onPress={nextMonth} style={{ padding: 6 }}>
+                    <Ionicons name="chevron-forward" size={20} color={colors.text} />
+                  </TouchableOpacity>
+                </View>
 
-              {/* Add / Edit form */}
-              {(formMode === 'add' || formMode === 'edit') && renderForm()}
-
-              {/* Legend */}
-              {formMode === 'none' && (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
-                  {Object.entries(EVENT_TYPE_META).map(([key, meta]) => (
-                    <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: meta.color }} />
-                      <Text style={{ fontSize: 10, color: colors.textFaint }}>{meta.label}</Text>
+                {/* Day headers */}
+                <View style={{ flexDirection: 'row', marginBottom: 4 }}>
+                  {DAY_HEADERS.map(d => (
+                    <View key={d} style={{ width: cellSize, height: 22, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 10, fontWeight: '600', color: colors.textFaint }}>{d}</Text>
                     </View>
                   ))}
                 </View>
+
+                {/* Calendar grid */}
+                {loading ? (
+                  <View style={{ height: cellSize * 6, alignItems: 'center', justifyContent: 'center' }}>
+                    <ActivityIndicator color={colors.primary} />
+                  </View>
+                ) : (
+                  <View>
+                    {Array.from({ length: 6 }, (_, row) => (
+                      <View key={row} style={{ flexDirection: 'row' }}>
+                        {grid.slice(row * 7, row * 7 + 7).map(({ date, curr }, i) => {
+                          const ds = toDateStr(date);
+                          const isToday = ds === todayStr;
+                          const isSelected = ds === selectedDate;
+                          const dayEvts = dayMap[ds] ?? [];
+                          const count = dayEvts.length;
+
+                          return (
+                            <TouchableOpacity
+                              key={i}
+                              onPress={() => { setSelectedDate(ds); setFormMode('none'); }}
+                              style={{
+                                width: cellSize,
+                                height: cellSize,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: 6,
+                                backgroundColor: isSelected ? colors.primary + '22' : 'transparent',
+                                borderWidth: isSelected ? 1.5 : 0,
+                                borderColor: isSelected ? colors.primary : 'transparent',
+                              }}
+                            >
+                              <View style={{
+                                width: cellSize * 0.62,
+                                height: cellSize * 0.62,
+                                borderRadius: cellSize * 0.31,
+                                backgroundColor: isToday ? colors.primary : 'transparent',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}>
+                                <Text style={{
+                                  fontSize: isMobile ? 12 : 13,
+                                  fontWeight: isToday ? '700' : curr ? '500' : '400',
+                                  color: isToday ? colors.textInverse : curr ? colors.text : colors.textFaint,
+                                }}>
+                                  {date.getDate()}
+                                </Text>
+                              </View>
+
+                              {count > 0 && (
+                                <View style={{
+                                  position: 'absolute', top: 3, right: 3,
+                                  minWidth: 14, height: 14, borderRadius: 7,
+                                  backgroundColor: colors.criticalBorder,
+                                  alignItems: 'center', justifyContent: 'center', paddingHorizontal: 2,
+                                }}>
+                                  <Text style={{ fontSize: 9, fontWeight: '700', color: colors.textInverse }}>
+                                    {count > 9 ? '9+' : count}
+                                  </Text>
+                                </View>
+                              )}
+
+                              {count > 0 && (
+                                <View style={{ flexDirection: 'row', gap: 2, position: 'absolute', bottom: 3 }}>
+                                  {dayEvts.slice(0, 3).map((de, di) => {
+                                    const type = de.kind === 'calendar' ? de.event.eventType
+                                      : de.kind === 'task' ? 'TASK' : 'SEMESTER';
+                                    return (
+                                      <View key={di} style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: EVENT_TYPE_META[type]?.color ?? '#3b82f6' }} />
+                                    );
+                                  })}
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Mobile-only: divider + date header + events + legend below grid */}
+                {isMobile && (
+                  <>
+                    <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 14 }} />
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
+                        {new Date(selectedDate + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                      </Text>
+                      {formMode === 'none' && (
+                        <TouchableOpacity
+                          onPress={() => openAdd(selectedDate)}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.primary + '1a', borderWidth: 1, borderColor: colors.primary + '40' }}
+                        >
+                          <Ionicons name="add" size={16} color={colors.primary} />
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>Add</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {formMode === 'none' && (
+                      selectedEvents.length === 0 ? (
+                        <Text style={{ fontSize: 13, color: colors.textFaint, textAlign: 'center', paddingVertical: 16 }}>No events scheduled</Text>
+                      ) : (
+                        <View>{selectedEvents.map((e, i) => renderEventItem(e, i))}</View>
+                      )
+                    )}
+
+                    {(formMode === 'add' || formMode === 'edit') && renderForm()}
+
+                    {formMode === 'none' && (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+                        {Object.entries(EVENT_TYPE_META).map(([key, meta]) => (
+                          <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: meta.color }} />
+                            <Text style={{ fontSize: 10, color: colors.textFaint }}>{meta.label}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+
+              {/* ── Desktop-only: vertical divider + right events panel ─────── */}
+              {!isMobile && (
+                <>
+                  <View style={{ width: 1, backgroundColor: colors.border, alignSelf: 'stretch' }} />
+
+                  <View style={{ flex: 1, padding: 18 }}>
+                    {/* Date header + Add button */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>
+                        {new Date(selectedDate + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+                      </Text>
+                      {formMode === 'none' && (
+                        <TouchableOpacity
+                          onPress={() => openAdd(selectedDate)}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.primary + '1a', borderWidth: 1, borderColor: colors.primary + '40' }}
+                        >
+                          <Ionicons name="add" size={16} color={colors.primary} />
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>Add</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* Event list */}
+                    {formMode === 'none' && (
+                      selectedEvents.length === 0 ? (
+                        <Text style={{ fontSize: 13, color: colors.textFaint, textAlign: 'center', paddingVertical: 16 }}>No events scheduled</Text>
+                      ) : (
+                        <View>{selectedEvents.map((e, i) => renderEventItem(e, i))}</View>
+                      )
+                    )}
+
+                    {/* Form */}
+                    {(formMode === 'add' || formMode === 'edit') && renderForm()}
+
+                    {/* Legend */}
+                    {formMode === 'none' && (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+                        {Object.entries(EVENT_TYPE_META).map(([key, meta]) => (
+                          <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: meta.color }} />
+                            <Text style={{ fontSize: 10, color: colors.textFaint }}>{meta.label}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                </>
               )}
+
             </View>
           </ScrollView>
         </Pressable>

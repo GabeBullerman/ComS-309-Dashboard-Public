@@ -23,7 +23,9 @@
       "package": "com.gabebullerman1.instructordashboard"
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "themeColor": "#C8102E",
+      "backgroundColor": "#C8102E"
     },
     "extra": {
       "eas": {
