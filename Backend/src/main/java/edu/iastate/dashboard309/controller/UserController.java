@@ -150,7 +150,9 @@ public class UserController {
         user.setInitials(initials.toString());
 
         // Hash password
-        user.setPassword(passwordEncoder.encode(request.password()));
+        if (request.password() != null) {
+            user.setPassword(passwordEncoder.encode(request.password()));
+        }
         System.out.println(request.role());
         for(String roleName : request.role()){
             Role role = roleRepository.findByRoleName(roleName)
@@ -177,7 +179,9 @@ public class UserController {
             user.setNetid(request.netid());
         }
         if (request.password() != null) {
+            if (request.password() != null) {
             user.setPassword(passwordEncoder.encode(request.password()));
+        }
         }
         if (request.role() != null) {
             user.getRole().clear();
