@@ -21,7 +21,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { TeamMember } from '../types/Teams';
 import { getTeam, updateTeamInfo, addStudentToTeam, removeStudentFromTeam, getTeams } from '../api/teams';
 import { getSemesterStartDate } from '../api/settings';
-import { setUserProjectRole, getCurrentUser, getUsersByRole, getUserByNetid } from '../api/users';
+import { setUserProjectRole, getCurrentUser, getUsersByRole, getUserByNetid, createUser } from '../api/users';
 import { UserSummary } from '../utils/auth';
 import MemberComments from '../components/Comments';
 import MemberAvatar from '../components/MemberAvatar';
@@ -130,7 +130,13 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   const [allStudents, setAllStudents] = useState<UserSummary[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [netidLookupResult, setNetidLookupResult] = useState<UserSummary | null>(null);
+  const [netidNotFound, setNetidNotFound] = useState(false);
   const [addingId, setAddingId] = useState<number | null>(null);
+  const [createMode, setCreateMode] = useState(false);
+  const [createFirstName, setCreateFirstName] = useState('');
+  const [createLastName, setCreateLastName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<number | null>(null);
   // Tracks members removed this session so they stay findable in the add modal
   const removedMembersRef = useRef<TeamMember[]>([]);
@@ -330,8 +336,24 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     return name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || 'NA';
   };
 
+  const closeAddMemberModal = () => {
+    setShowAddMemberModal(false);
+    setAddMemberSearch('');
+    setNetidLookupResult(null);
+    setNetidNotFound(false);
+    setCreateMode(false);
+    setCreateFirstName('');
+    setCreateLastName('');
+    setCreateError(null);
+  };
+
   const openAddMemberModal = async () => {
     setShowAddMemberModal(true);
+    setNetidNotFound(false);
+    setCreateMode(false);
+    setCreateFirstName('');
+    setCreateLastName('');
+    setCreateError(null);
     setStudentsLoading(true);
     try {
       // Fetch all students by role (works across all TAs) and all teams in parallel.
@@ -393,15 +415,22 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   // the role endpoint, like gbulle after being removed from all teams.
   useEffect(() => {
     if (!showAddMemberModal) return;
+    setCreateMode(false);
+    setCreateFirstName('');
+    setCreateLastName('');
+    setCreateError(null);
     const q = addMemberSearch.trim().toLowerCase();
     if (!q || q.includes(' ') || q.length < 3) {
       setNetidLookupResult(null);
+      setNetidNotFound(false);
       return;
     }
+    setNetidNotFound(false);
     const timer = setTimeout(async () => {
       const found = await getUserByNetid(q);
       if (found && found.netid) {
         setNetidLookupResult(found);
+        setNetidNotFound(false);
         // Also merge into allStudents so they persist after the search is cleared
         setAllStudents(prev => {
           const exists = prev.some(s => s.netid === found.netid);
@@ -410,10 +439,42 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         });
       } else {
         setNetidLookupResult(null);
+        setNetidNotFound(true);
       }
     }, 400);
     return () => clearTimeout(timer);
   }, [addMemberSearch, showAddMemberModal]);
+
+  const handleCreateAndAdd = async () => {
+    if (!createFirstName.trim() || !createLastName.trim() || !team.id) return;
+    const netid = addMemberSearch.trim().toLowerCase();
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const created = await createUser({
+        netid,
+        name: `${createFirstName.trim()} ${createLastName.trim()}`,
+        role: ['STUDENT'],
+      });
+      if (created?.id) {
+        await addStudentToTeam(team.id, created.id);
+        setTeamMembers(prev => [...prev, {
+          id: created.id,
+          name: created.name || netid,
+          netid: created.netid,
+          initials: toInitials(created.name || netid),
+          color: '',
+          photo: '',
+          demoResults: [],
+        }]);
+        closeAddMemberModal();
+      }
+    } catch (err: any) {
+      setCreateError(err?.response?.data?.message || err?.message || 'Failed to create student.');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const handleAddMember = async (student: UserSummary) => {
     if (!team.id || !student.id) return;
@@ -962,13 +1023,13 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         visible={showAddMemberModal}
         transparent
         animationType="fade"
-        onRequestClose={() => { setShowAddMemberModal(false); setAddMemberSearch(''); setNetidLookupResult(null); }}
+        onRequestClose={closeAddMemberModal}
       >
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, backgroundColor: colors.overlay }}>
           <View style={{ backgroundColor: colors.surface, borderRadius: 16, width: '100%', maxWidth: 480, maxHeight: '80%' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.border }}>
               <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>Add Member</Text>
-              <TouchableOpacity onPress={() => { setShowAddMemberModal(false); setAddMemberSearch(''); setNetidLookupResult(null); }}>
+              <TouchableOpacity onPress={closeAddMemberModal}>
                 <Ionicons name="close" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
@@ -993,13 +1054,57 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
             ) : (
               <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, gap: 6 }}>
                 {availableStudents.length === 0 ? (
-                  <Text style={{ textAlign: 'center', color: colors.textFaint, paddingVertical: 24, fontSize: 14 }}>
-                    {addMemberSearch
-                      ? addMemberSearch.trim().length >= 3 && !addMemberSearch.includes(' ')
-                        ? 'No students found. Looking up NetID...'
-                        : 'No students match your search.'
-                      : 'No unassigned students available.'}
-                  </Text>
+                  <>
+                    <Text style={{ textAlign: 'center', color: colors.textFaint, paddingVertical: 16, fontSize: 14 }}>
+                      {netidNotFound
+                        ? `No account found for "${addMemberSearch.trim()}".`
+                        : addMemberSearch
+                          ? addMemberSearch.trim().length >= 3 && !addMemberSearch.includes(' ')
+                            ? 'No students found. Looking up NetID...'
+                            : 'No students match your search.'
+                          : 'No unassigned students available.'}
+                    </Text>
+                    {netidNotFound && !createMode && (
+                      <TouchableOpacity
+                        onPress={() => setCreateMode(true)}
+                        style={{ alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: colors.primary }}
+                      >
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>+ Create new student account</Text>
+                      </TouchableOpacity>
+                    )}
+                    {netidNotFound && createMode && (
+                      <View style={{ gap: 10, marginTop: 4 }}>
+                        <TextInput
+                          value={createFirstName}
+                          onChangeText={setCreateFirstName}
+                          placeholder="First name"
+                          placeholderTextColor={colors.textFaint}
+                          autoCorrect={false}
+                          style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg }}
+                        />
+                        <TextInput
+                          value={createLastName}
+                          onChangeText={setCreateLastName}
+                          placeholder="Last name"
+                          placeholderTextColor={colors.textFaint}
+                          autoCorrect={false}
+                          style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg }}
+                        />
+                        {!!createError && (
+                          <Text style={{ fontSize: 12, color: colors.criticalBorder, textAlign: 'center' }}>{createError}</Text>
+                        )}
+                        <TouchableOpacity
+                          onPress={handleCreateAndAdd}
+                          disabled={creating || !createFirstName.trim() || !createLastName.trim()}
+                          style={{ backgroundColor: creating || !createFirstName.trim() || !createLastName.trim() ? colors.border : colors.primary, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}
+                        >
+                          {creating
+                            ? <ActivityIndicator size="small" color={colors.textInverse} />
+                            : <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textInverse }}>Create & Add</Text>}
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </>
                 ) : (
                   availableStudents.map((s) => (
                     <View key={s.netid ?? s.id} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: colors.border }}>
