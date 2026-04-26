@@ -44,7 +44,7 @@ export default function TaskAssignmentScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [recipientType, setRecipientType] = useState<RecipientType>('specific-ta');
+  const [recipientType, setRecipientType] = useState<RecipientType>('ta');
   const [selectedHTANetids, setSelectedHTANetids] = useState<Set<string>>(new Set());
   const [selectedTANetids, setSelectedTANetids] = useState<Set<string>>(new Set());
   const [selectedTeamIds, setSelectedTeamIds] = useState<Set<number>>(new Set());

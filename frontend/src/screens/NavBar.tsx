@@ -18,11 +18,11 @@ import StudentListScreen from "./StudentListScreen";
 import StaffChatScreen from "./StaffChatScreen";
 import { getUnreadCount } from "../api/chat";
 import { sendHeartbeat } from "../api/activity";
-type Props = NativeStackScreenProps<RootStackParamList, 'DashboardScreen'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'NavBar'>;
 
 const ACTIVE_SCREEN_KEY = 'dashboard_active_screen';
 
-export default function DashboardScreen({route}: Props) {
+export default function NavBar({route}: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [activeScreen, setActiveScreen] = useState("Teams");
@@ -115,7 +115,7 @@ export default function DashboardScreen({route}: Props) {
       case "Staff Manager": return <StaffManagerScreen userRole={role} />;
       case "Staff Chat":  return <StaffChatScreen myNetid={netid} myName={displayName} userRole={role} onUnreadChange={setChatUnread} />;
       case "Upload":       return <UploadScreen userRole={role} />;
-      case "Tasks":        return <AssignmentsScreen />;
+      case "Tasks":        return <AssignmentsScreen userRole={role} />;
       case "Profile":      return <ProfileScreen userRole={role} onLogout={isMobile ? route.params.onLogout : undefined} />;
       case "At-Risk Students": return <AtRiskStudentsScreen userRole={route.params.userRole} />;
       default:             return <TeamsScreen userRole={route.params.userRole} />;

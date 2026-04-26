@@ -10,7 +10,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginPage from './src/screens/LoginPage';
 import TAManager from "./src/screens/TAManager";
 import UploadScreen from "./src/screens/UploadScreen";
-import DashboardScreen from "./src/screens/DashboardScreen";
+import NavBar from "./src/screens/NavBar";
 import TeamDetailScreen from "./src/screens/TeamDetail";
 import { logout as apiLogout, getToken } from './src/utils/auth';
 import axiosInstance, { setForceLogoutHandler, apiBaseUrl } from './src/api/client';
@@ -42,7 +42,7 @@ export type RootStackParamList = {
   Courses: undefined;
   Upload: undefined;
   Login: { onLogin: (email: string, role?: string) => void };
-  DashboardScreen: { userRole: UserRole; onLogout: () => void };
+  NavBar: { userRole: UserRole; onLogout: () => void };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -218,7 +218,7 @@ function AppInner() {
           </Stack.Screen>
         ) : (
           <>
-            <Stack.Screen name="DashboardScreen" component={DashboardScreen} options={{ headerShown: false, title: 'Dashboard' }} initialParams={{ userRole, onLogout: handleLogout }} />
+            <Stack.Screen name="NavBar" component={NavBar} options={{ headerShown: false, title: 'Dashboard' }} initialParams={{ userRole, onLogout: handleLogout }} />
             <Stack.Screen name="TAManager" options={{ headerShown: false }}>
               {(props) => <TAManager {...props} userRole={userRole} />}
             </Stack.Screen>

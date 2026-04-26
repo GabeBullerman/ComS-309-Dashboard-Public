@@ -4,14 +4,17 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
+  TextInput,
   ActivityIndicator,
+  Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { normalizeRole, UserSummary } from '../utils/auth';
 import { getCurrentUser, getUserByNetid } from '../api/users';
 import { getTasksAssignedTo, updateTaskStatus, TaskApiResponse, TaskStatus } from '../api/tasks';
-import { getAnnouncements, Announcement } from '../api/announcements';
+import { getAnnouncements, createAnnouncement, Announcement } from '../api/announcements';
 
 const roleLabel = (role?: string): string => {
   switch (normalizeRole(role)) {
@@ -41,8 +44,13 @@ const getDateLabel = (dueDate?: string): { label: string; type: DateLabelType } 
   return { label: `Due ${dateOnly}`, type: 'normal' };
 };
 
-export default function AssignmentsScreen() {
+interface Props {
+  userRole?: string;
+}
+
+export default function AssignmentsScreen({ userRole }: Props) {
   const { colors } = useTheme();
+  const isStaff = userRole === 'TA' || userRole === 'HTA' || userRole === 'Instructor';
   const [netid, setNetid] = useState<string | null>(null);
   const [, setRole] = useState<string>('Student');
   const [myTasks, setMyTasks] = useState<TaskApiResponse[]>([]);
@@ -52,10 +60,29 @@ export default function AssignmentsScreen() {
   const [assignerMap, setAssignerMap] = useState<Record<string, UserSummary>>({});
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [announcementsExpanded, setAnnouncementsExpanded] = useState(true);
+  const [showAnnounceForm, setShowAnnounceForm] = useState(false);
+  const [announcementText, setAnnouncementText] = useState('');
+  const [postingAnnouncement, setPostingAnnouncement] = useState(false);
 
   useEffect(() => {
     getAnnouncements().then(setAnnouncements).catch(() => {});
   }, []);
+
+  const handlePostAnnouncement = async () => {
+    if (!announcementText.trim()) return;
+    setPostingAnnouncement(true);
+    try {
+      const created = await createAnnouncement(announcementText.trim());
+      setAnnouncements(prev => [created, ...prev]);
+      setAnnouncementText('');
+      setShowAnnounceForm(false);
+    } catch {
+      if (Platform.OS === 'web') window.alert('Failed to post announcement.');
+      else Alert.alert('Error', 'Failed to post announcement.');
+    } finally {
+      setPostingAnnouncement(false);
+    }
+  };
 
   useEffect(() => {
     getCurrentUser().then((user) => {
@@ -137,31 +164,70 @@ export default function AssignmentsScreen() {
       <Text style={{ color: colors.textMuted, marginBottom: 16 }}>{netid}</Text>
 
       {/* Announcements */}
-      {announcements.length > 0 && (
-        <View style={{ marginBottom: 16, borderWidth: 1, borderColor: colors.warningBorder, borderRadius: 10, overflow: 'hidden' }}>
+      <View style={{ marginBottom: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
           <TouchableOpacity
             onPress={() => setAnnouncementsExpanded(e => !e)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: colors.warningBg }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
           >
-            <Ionicons name="megaphone-outline" size={16} color={colors.warningText} />
-            <Text style={{ flex: 1, fontSize: 13, fontWeight: '700', color: colors.warningText }}>
-              Announcements ({announcements.length})
+            <Ionicons name="megaphone-outline" size={15} color={colors.textSecondary} />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>
+              Announcements{announcements.length > 0 ? ` (${announcements.length})` : ''}
             </Text>
-            <Ionicons name={announcementsExpanded ? 'chevron-up' : 'chevron-down'} size={14} color={colors.warningText} />
+            <Ionicons name={announcementsExpanded ? 'chevron-up' : 'chevron-down'} size={13} color={colors.textFaint} />
           </TouchableOpacity>
-          {announcementsExpanded && announcements.map((a, i) => (
-            <View
-              key={a.id}
-              style={{ paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.warningBorder, backgroundColor: colors.surface }}
+          {isStaff && (
+            <TouchableOpacity
+              onPress={() => { setShowAnnounceForm(v => !v); setAnnouncementText(''); }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: showAnnounceForm ? colors.borderLight : colors.primary }}
             >
-              <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20 }}>{a.message}</Text>
-              <Text style={{ fontSize: 11, color: colors.textFaint, marginTop: 4 }}>
-                {a.createdByName ?? a.createdByNetid} · {a.createdAt ? new Date(a.createdAt).toLocaleDateString() : ''}
+              <Ionicons name={showAnnounceForm ? 'close' : 'add'} size={13} color={showAnnounceForm ? colors.textSecondary : colors.textInverse} />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: showAnnounceForm ? colors.textSecondary : colors.textInverse }}>
+                {showAnnounceForm ? 'Cancel' : 'Post'}
               </Text>
-            </View>
-          ))}
+            </TouchableOpacity>
+          )}
         </View>
-      )}
+
+        {isStaff && showAnnounceForm && (
+          <View style={{ backgroundColor: colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.warningBorder, marginBottom: 8 }}>
+            <TextInput
+              value={announcementText}
+              onChangeText={setAnnouncementText}
+              placeholder="Write an announcement visible to all users..."
+              placeholderTextColor={colors.textFaint}
+              multiline
+              style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg, minHeight: 72, textAlignVertical: 'top', marginBottom: 8 }}
+            />
+            <TouchableOpacity
+              onPress={handlePostAnnouncement}
+              disabled={postingAnnouncement || !announcementText.trim()}
+              style={{ borderRadius: 8, paddingVertical: 9, alignItems: 'center', backgroundColor: announcementText.trim() ? colors.warningBg : colors.borderLight, borderWidth: 1, borderColor: announcementText.trim() ? colors.warningBorder : colors.border }}
+            >
+              {postingAnnouncement
+                ? <ActivityIndicator size="small" color={colors.warningText} />
+                : <Text style={{ fontSize: 13, fontWeight: '600', color: announcementText.trim() ? colors.warningText : colors.textFaint }}>Post Announcement</Text>}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {announcementsExpanded && (
+          announcements.length > 0 ? (
+            <View style={{ borderWidth: 1, borderColor: colors.warningBorder, borderRadius: 10, overflow: 'hidden' }}>
+              {announcements.map((a, i) => (
+                <View key={a.id} style={{ paddingHorizontal: 14, paddingVertical: 10, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: colors.warningBorder, backgroundColor: colors.surface }}>
+                  <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20 }}>{a.message}</Text>
+                  <Text style={{ fontSize: 11, color: colors.textFaint, marginTop: 4 }}>
+                    {a.createdByName ?? a.createdByNetid} · {a.createdAt ? new Date(a.createdAt).toLocaleDateString() : ''}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={{ fontSize: 12, color: colors.textFaint, fontStyle: 'italic' }}>No active announcements.</Text>
+          )
+        )}
+      </View>
 
       {/* Filters */}
       <View style={{ flexDirection: 'row', marginBottom: 16, gap: 8 }}>
