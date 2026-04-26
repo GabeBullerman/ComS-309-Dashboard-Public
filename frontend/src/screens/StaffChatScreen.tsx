@@ -8,7 +8,7 @@ import {
   ChatMessage, ChannelMeta, CHANNELS,
   getMessages, sendMessage, editMessage, deleteMessage,
   markRead, getAllUnreadCounts, getChannels, updateChannel,
-  sendTyping, getTyping,
+  sendTyping, getTyping, toggleReaction,
 } from '../api/chat';
 import { getUsersByRole } from '../api/users';
 import { UserRole, UserSummary } from '../utils/auth';
@@ -19,6 +19,7 @@ import ActivityStatusBadge from '../components/ActivityStatusBadge';
 
 const POLL_MS = 5000;
 const ROLES = ['everyone', 'TA', 'HTA', 'Instructor'];
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🎉'];
 
 const EMOJI_CATEGORIES = [
   {
@@ -70,6 +71,32 @@ function ColorAvatar({ name, size = 36, status }: { name: string; size?: number;
   );
 }
 
+function FormattedSegment({ text, baseStyle }: { text: string; baseStyle: object }) {
+  const regex = /(\*\*[\s\S]+?\*\*|\*[\s\S]+?\*|__[\s\S]+?__)/g;
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let i = 0;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(<Text key={i++} style={baseStyle}>{text.slice(lastIndex, match.index)}</Text>);
+    }
+    const full = match[1];
+    if (full.startsWith('**') && full.endsWith('**')) {
+      nodes.push(<Text key={i++} style={{ ...(baseStyle as any), fontWeight: '700' }}>{full.slice(2, -2)}</Text>);
+    } else if (full.startsWith('__') && full.endsWith('__')) {
+      nodes.push(<Text key={i++} style={{ ...(baseStyle as any), textDecorationLine: 'underline' }}>{full.slice(2, -2)}</Text>);
+    } else {
+      nodes.push(<Text key={i++} style={{ ...(baseStyle as any), fontStyle: 'italic' }}>{full.slice(1, -1)}</Text>);
+    }
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    nodes.push(<Text key={i++} style={baseStyle}>{text.slice(lastIndex)}</Text>);
+  }
+  return <>{nodes}</>;
+}
+
 function MessageContent({ content, mentionedNetids, mentionedRoles, myNetid, staffMap, colors }: {
   content: string;
   mentionedNetids: string[];
@@ -78,11 +105,14 @@ function MessageContent({ content, mentionedNetids, mentionedRoles, myNetid, sta
   staffMap: Map<string, string>;
   colors: ColorPalette;
 }) {
+  const baseStyle = { fontSize: 14, color: colors.text, lineHeight: 20 };
   const parts = content.split(/(@\w+)/g);
   return (
     <Text style={{ fontSize: 14, color: colors.text, lineHeight: 20, flexWrap: 'wrap' }}>
       {parts.map((part, i) => {
-        if (!part.startsWith('@')) return <Text key={i}>{part}</Text>;
+        if (!part.startsWith('@')) {
+          return <FormattedSegment key={i} text={part} baseStyle={baseStyle} />;
+        }
         const handle = part.slice(1);
         const isRole = mentionedRoles.includes(handle) || ROLES.includes(handle);
         const isUser = mentionedNetids.includes(handle) || staffMap.has(handle);
@@ -140,6 +170,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [selectedMsgId, setSelectedMsgId] = useState<number | null>(null);
   const [activityStatuses, setActivityStatuses] = useState<Record<string, ActivityStatus>>({});
+  const [reactingToId, setReactingToId] = useState<number | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
   const isAtBottomRef = useRef(true);
@@ -147,6 +178,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
   const inputRef = useRef<TextInput>(null);
   const activeChannelRef = useRef(activeChannel);
   const lastTypingSentRef = useRef<number>(0);
+  const inputSelectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
   useEffect(() => { activeChannelRef.current = activeChannel; }, [activeChannel]);
 
   const staffMap = useMemo(
@@ -230,7 +262,8 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
         let changed = false;
         for (const m of latest) {
           const existing = mapRef.current.get(m.id);
-          if (!existing || existing.content !== m.content || existing.edited !== m.edited) {
+          if (!existing || existing.content !== m.content || existing.edited !== m.edited ||
+              JSON.stringify(existing.reactions) !== JSON.stringify(m.reactions)) {
             mapRef.current.set(m.id, m);
             changed = true;
           }
@@ -385,6 +418,41 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
     setInputText(msg.content);
     inputRef.current?.focus();
   };
+
+  const handleToggleReaction = async (msgId: number, emoji: string) => {
+    setReactingToId(null);
+    try {
+      const updated = await toggleReaction(msgId, emoji);
+      mapRef.current.set(updated.id, updated);
+      applyMap();
+    } catch {}
+  };
+
+  const insertFormatting = useCallback((mark: string) => {
+    const { start, end } = inputSelectionRef.current;
+    if (Platform.OS === 'web') {
+      const el = (inputRef.current as any)?._node
+        ?? (inputRef.current as any)?.getElement?.()
+        ?? (inputRef.current as any)?._inputRef?.current;
+      if (el && typeof el.selectionStart === 'number') {
+        const s = el.selectionStart as number;
+        const e = el.selectionEnd as number;
+        const before = inputText.slice(0, s);
+        const selected = inputText.slice(s, e);
+        const after = inputText.slice(e);
+        const newText = before + mark + selected + mark + after;
+        const newCursor = selected ? s + mark.length + selected.length + mark.length : s + mark.length;
+        setInputText(newText);
+        setTimeout(() => { el.focus(); el.setSelectionRange(newCursor, newCursor); }, 10);
+        return;
+      }
+    }
+    const before = inputText.slice(0, start);
+    const selected = inputText.slice(start, end);
+    const after = inputText.slice(end);
+    setInputText(before + mark + selected + mark + after);
+    inputRef.current?.focus();
+  }, [inputText]);
 
   // Group messages by date, collapse consecutive same-sender runs
   const grouped = useMemo(() => {
@@ -594,6 +662,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
               const isOwn = msg.senderNetid === myNetid;
               const displayName = msg.senderName || msg.senderNetid;
               const isMsgSelected = isMobile && selectedMsgId === msg.id;
+              const reactionEntries = Object.entries(msg.reactions ?? {});
 
               return (
                 <View key={`msg-${msg.id}`}>
@@ -659,10 +728,50 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
                         staffMap={staffMap}
                         colors={colors}
                       />
+
+                      {/* Reaction pills */}
+                      {reactionEntries.length > 0 && (
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                          {reactionEntries.map(([emoji, netids]) => {
+                            const iMine = netids.includes(myNetid);
+                            return (
+                              <TouchableOpacity
+                                key={emoji}
+                                onPress={() => handleToggleReaction(msg.id, emoji)}
+                                style={{
+                                  flexDirection: 'row', alignItems: 'center', gap: 3,
+                                  backgroundColor: iMine ? colors.ungradedBg : colors.borderLight,
+                                  borderRadius: 12, paddingHorizontal: 7, paddingVertical: 3,
+                                  borderWidth: 1, borderColor: iMine ? colors.ungradedBorder : colors.border,
+                                }}
+                              >
+                                <Text style={{ fontSize: 14 }}>{emoji}</Text>
+                                <Text style={{ fontSize: 11, fontWeight: '600', color: iMine ? colors.ungradedText : colors.textMuted }}>{netids.length}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      )}
                     </View>
 
                     {hoveredId === msg.id && !isMobile && (
-                      <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', paddingLeft: 8 }}>
+                      <View style={{ flexDirection: 'row', gap: 4, alignItems: 'flex-start', paddingLeft: 8, paddingTop: showHeader ? 2 : 0 }}>
+                        {/* Quick reaction picker */}
+                        {reactingToId === msg.id && (
+                          <View style={{ flexDirection: 'row', gap: 2, backgroundColor: colors.surface, borderRadius: 20, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 4, paddingVertical: 4, alignItems: 'center' }}>
+                            {QUICK_REACTIONS.map(emoji => (
+                              <TouchableOpacity key={emoji} onPress={() => handleToggleReaction(msg.id, emoji)} style={{ padding: 3 }}>
+                                <Text style={{ fontSize: 16 }}>{emoji}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        )}
+                        <TouchableOpacity
+                          onPress={() => setReactingToId(prev => prev === msg.id ? null : msg.id)}
+                          style={{ padding: 6, backgroundColor: colors.surface, borderRadius: 6, borderWidth: 1, borderColor: colors.border }}
+                        >
+                          <Ionicons name="happy-outline" size={15} color={colors.textMuted} />
+                        </TouchableOpacity>
                         <TouchableOpacity
                           onPress={() => { setReplyingTo(msg); setEditingMsg(null); inputRef.current?.focus(); }}
                           style={{ padding: 6, backgroundColor: colors.surface, borderRadius: 6, borderWidth: 1, borderColor: colors.border }}
@@ -819,7 +928,27 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
         ) : (
 
         /* Input bar */
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', padding: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, gap: 8 }}>
+        <View style={{ backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border }}>
+          {/* Formatting toolbar */}
+          <View style={{ flexDirection: 'row', gap: 2, paddingHorizontal: 12, paddingTop: 6 }}>
+            {([['**', 'B', '700'] as const, ['*', 'I', 'italic'] as const, ['__', 'U', 'underline'] as const]).map(([mark, label, style]) => (
+              <TouchableOpacity
+                key={label}
+                onPress={() => insertFormatting(mark)}
+                style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 5, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.borderLight }}
+              >
+                <Text style={{
+                  fontSize: 12, color: colors.textSecondary,
+                  fontWeight: style === '700' ? '700' : '400',
+                  fontStyle: style === 'italic' ? 'italic' : 'normal',
+                  textDecorationLine: style === 'underline' ? 'underline' : 'none',
+                }}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', padding: 12, paddingTop: 6, gap: 8 }}>
           <TouchableOpacity
             onPress={() => setShowEmojiPicker(v => !v)}
             style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: showEmojiPicker ? colors.borderLight : 'transparent', alignItems: 'center', justifyContent: 'center', marginBottom: 2 }}
@@ -833,6 +962,8 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
             placeholder={`Message ${activeDisplayName}... use @ to mention`}
             placeholderTextColor={colors.textFaint}
             multiline
+            spellCheck
+            onSelectionChange={(e) => { inputSelectionRef.current = e.nativeEvent.selection; }}
             onKeyPress={(e: any) => {
               if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
                 e.preventDefault();
@@ -851,6 +982,7 @@ export default function StaffChatScreen({ myNetid, myName: _myName, userRole, on
               : <Ionicons name={editingMsg ? 'checkmark' : 'send'} size={16} color={inputText.trim() ? colors.textInverse : colors.textFaint} />
             }
           </TouchableOpacity>
+          </View>
         </View>
         )}
 

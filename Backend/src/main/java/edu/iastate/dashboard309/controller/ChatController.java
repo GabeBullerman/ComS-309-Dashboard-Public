@@ -92,6 +92,16 @@ public class ChatController {
         chatService.deleteMessage(id, authentication.getName());
     }
 
+    public record ReactionRequest(@jakarta.validation.constraints.NotBlank String emoji) {}
+
+    @PostMapping("/messages/{id}/reactions")
+    public ChatMessageDto toggleReaction(@PathVariable Long id,
+                                         @Valid @RequestBody ReactionRequest req,
+                                         Authentication authentication) {
+        requireStaff(authentication);
+        return chatService.toggleReaction(id, req.emoji(), authentication.getName());
+    }
+
     public record UnreadResponse(long count) {}
 
     /** Total tag count across all channels — used by the nav badge. */
