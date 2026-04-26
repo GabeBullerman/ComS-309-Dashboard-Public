@@ -30,6 +30,20 @@ if (Platform.OS === "web") {
 if (Platform.OS === "web" && typeof document !== "undefined") {
   const vp = document.querySelector('meta[name="viewport"]');
   if (vp) vp.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
+
+  const setMeta = (name: string, content: string) => {
+    let m = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
+    if (!m) { m = document.createElement('meta'); m.name = name; document.head.appendChild(m); }
+    m.content = content;
+  };
+  setMeta('theme-color', '#C8102E');
+  setMeta('apple-mobile-web-app-capable', 'yes');
+  setMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+
+  // Fill the area outside the RN layout (home indicator, overscroll) with ISU red
+  // so it doesn't show as white on iOS PWA.
+  document.documentElement.style.backgroundColor = '#C8102E';
+  document.body.style.backgroundColor = '#C8102E';
 }
 
 // This is how you pass screen props to the screen since navigation doesn't support it directly

@@ -195,9 +195,10 @@ export default function NavBar({route}: Props) {
   );
 
   // ── Mobile layout: content + bottom tab bar ───────────────────────────────
-  const tabBarPaddingBottom = Platform.OS === 'android' ? 8 : Platform.OS === 'web' ? 0 : Math.max(insets.bottom, 16);
-  // On web the tab bar uses env(safe-area-inset-bottom) via CSS, so we add a generous fixed estimate for content padding
-  const TAB_BAR_HEIGHT = Platform.OS === 'web' ? 90 : (Platform.OS === 'android' ? 58 : 50) + tabBarPaddingBottom;
+  // On web (iOS PWA) the home indicator area is covered by the ISU red body background;
+  // insets.bottom often reports an inflated value that creates a huge gap, so use 0.
+  const tabBarPaddingBottom = Platform.OS === 'android' ? 8 : 0;
+  const TAB_BAR_HEIGHT = (Platform.OS === 'android' ? 58 : 62) + tabBarPaddingBottom;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -220,7 +221,7 @@ export default function NavBar({route}: Props) {
             flexDirection: 'row',
             backgroundColor: colors.navBg,
             paddingTop: 6,
-            paddingBottom: Platform.OS === 'web' ? ('env(safe-area-inset-bottom)' as unknown as number) : tabBarPaddingBottom,
+            paddingBottom: tabBarPaddingBottom,
             borderTopWidth: 1.5,
             borderTopColor: 'rgba(241,190,72,0.45)',
           }}>
