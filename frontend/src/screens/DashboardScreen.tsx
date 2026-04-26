@@ -198,12 +198,11 @@ export default function DashboardScreen({route}: Props) {
   );
 
   // ── Mobile layout: content + bottom tab bar ───────────────────────────────
-  const TAB_BAR_HEIGHT = 58 + (bottomInset > 0 ? bottomInset : (Platform.OS === 'ios' ? 14 : 0));
-
   // Top safe area height: Android uses StatusBar.currentHeight, iOS uses insets.top
   const topInset = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : insets.top;
   // Bottom safe area: home indicator on iOS
   const bottomInset = Platform.OS === 'ios' ? insets.bottom : 0;
+  const TAB_BAR_HEIGHT = 58 + (bottomInset > 0 ? bottomInset : (Platform.OS === 'ios' ? 14 : 0));
 
   if (isMobile) {
     return (
