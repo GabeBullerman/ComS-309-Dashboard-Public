@@ -112,13 +112,9 @@ export default function ProfileScreen({ userRole, onLogout }: Props) {
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>{displayName || '—'}</Text>
             <Text style={{ fontSize: 13, color: colors.textMuted }}>{netid || '—'}</Text>
-            <View style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ backgroundColor: colors.warningBg, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 2 }}>
+            <View style={{ marginTop: 4 }}>
+              <View style={{ backgroundColor: colors.warningBg, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 2, alignSelf: 'flex-start' }}>
                 <Text style={{ fontSize: 12, fontWeight: '600', color: colors.warningText }}>{userRole}</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <ActivityStatusBadge status="online" size={12} borderColor={colors.surface} />
-                <Text style={{ fontSize: 11, color: '#22c55e', fontWeight: '600' }}>Online</Text>
               </View>
             </View>
           </View>

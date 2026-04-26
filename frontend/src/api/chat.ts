@@ -20,6 +20,7 @@ export interface ChatMessage {
   createdAt: string;
   updatedAt: string | null;
   channelName: string;
+  reactions: Record<string, string[]>;
 }
 
 export const CHANNELS = [
@@ -96,4 +97,9 @@ export const sendTyping = async (channel: string): Promise<void> => {
 export const getTyping = async (channel: string): Promise<string[]> => {
   const res = await axiosInstance.get('/api/chat/typing', { params: { channel } });
   return res.data as string[];
+};
+
+export const toggleReaction = async (messageId: number, emoji: string): Promise<ChatMessage> => {
+  const res = await axiosInstance.post(`/api/chat/messages/${messageId}/reactions`, { emoji });
+  return res.data as ChatMessage;
 };

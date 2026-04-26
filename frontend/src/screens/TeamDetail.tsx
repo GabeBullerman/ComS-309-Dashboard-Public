@@ -17,6 +17,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../App';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TeamMember } from '../types/Teams';
 import { getTeam, updateTeamInfo, addStudentToTeam, removeStudentFromTeam, getTeams } from '../api/teams';
 import { getSemesterStartDate } from '../api/settings';
@@ -58,6 +59,7 @@ const PROJECT_ROLES: ProjectRole[] = ['Frontend', 'Backend'];
 export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps) {
   const { team, userRole } = route.params;
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const [authorNetid, setAuthorNetid] = useState<string | undefined>(undefined);
@@ -483,12 +485,14 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   ];
 
   const pad = isMobile ? 12 : 20;
-  const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+  const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : insets.top;
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.navBg }}>
+    <View style={{ height: statusBarHeight }} />
     <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background, paddingTop: statusBarHeight + (isMobile ? 12 : 24) }}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={{ paddingBottom: 40, paddingTop: isMobile ? 12 : 24 }}
     >
       {/* Header */}
       <View style={{ paddingHorizontal: pad, marginBottom: 4 }}>
@@ -1125,5 +1129,6 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         </TouchableOpacity>
       </Modal>
       </ScrollView>
+    </View>
   );
 }

@@ -1,4 +1,5 @@
 import { View, Text, TouchableOpacity, Image, Dimensions, StatusBar, Platform } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
 import TeamsScreen from "../screens/TeamsScreen";
 import StaffManagerScreen from "../screens/TAManager";
@@ -25,6 +26,7 @@ const ACTIVE_SCREEN_KEY = 'dashboard_active_screen';
 
 export default function DashboardScreen({route}: Props) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [activeScreen, setActiveScreen] = useState("Teams");
   const [displayName, setDisplayName] = useState("User");
   const [netid, setNetid] = useState("");
@@ -196,25 +198,29 @@ export default function DashboardScreen({route}: Props) {
   );
 
   // ── Mobile layout: content + bottom tab bar ───────────────────────────────
-  const TAB_BAR_HEIGHT = Platform.OS === 'android' ? 58 : 72;
+  const TAB_BAR_HEIGHT = 58 + (bottomInset > 0 ? bottomInset : (Platform.OS === 'ios' ? 14 : 0));
+
+  // Top safe area height: Android uses StatusBar.currentHeight, iOS uses insets.top
+  const topInset = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : insets.top;
+  // Bottom safe area: home indicator on iOS
+  const bottomInset = Platform.OS === 'ios' ? insets.bottom : 0;
 
   if (isMobile) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.background }}>
-        {Platform.OS === 'android' && (
-          <View style={{ height: StatusBar.currentHeight ?? 0, backgroundColor: colors.navBg }} />
-        )}
+      <View style={{ flex: 1, backgroundColor: colors.navBg }}>
+        {/* ISU Crimson status bar / unsafe area fill */}
+        <View style={{ height: topInset, backgroundColor: colors.navBg }} />
 
         {/* Screen content — padded so it doesn't hide behind the fixed tab bar */}
-        <View style={{ flex: 1, paddingBottom: TAB_BAR_HEIGHT }}>
+        <View style={{ flex: 1, backgroundColor: colors.background, paddingBottom: TAB_BAR_HEIGHT }}>
           {renderScreen()}
         </View>
 
-        {/* Floating calendar button — top right */}
+        {/* Floating calendar button — top right, below safe area */}
         <TouchableOpacity
           onPress={() => setCalendarVisible(true)}
           style={{
-            position: 'absolute', top: 14, right: 14,
+            position: 'absolute', top: topInset + 10, right: 14,
             width: 44, height: 44, borderRadius: 22,
             backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
             shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 6, elevation: 6,
@@ -225,7 +231,7 @@ export default function DashboardScreen({route}: Props) {
 
         <CalendarModal visible={calendarVisible} onClose={() => setCalendarVisible(false)} netid={netid} />
 
-        {/* Bottom tab bar */}
+        {/* Bottom tab bar — ISU Crimson extends into home indicator and rounded corner areas */}
         <View style={{
           position: 'absolute',
           bottom: 0,
@@ -234,7 +240,8 @@ export default function DashboardScreen({route}: Props) {
           flexDirection: 'row',
           backgroundColor: colors.navBg,
           paddingTop: 6,
-          paddingBottom: Platform.OS === 'android' ? 8 : 20,
+          paddingBottom: bottomInset > 0 ? bottomInset : (Platform.OS === 'android' ? 8 : 10),
+          paddingHorizontal: Math.max(insets.left, insets.right, 4),
           borderTopWidth: 1.5,
           borderTopColor: 'rgba(241,190,72,0.45)',
         }}>

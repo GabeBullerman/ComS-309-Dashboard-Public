@@ -5,9 +5,11 @@ import edu.iastate.dashboard309.dto.ChatMessageDto;
 import edu.iastate.dashboard309.model.ChatChannel;
 import edu.iastate.dashboard309.model.ChatMention;
 import edu.iastate.dashboard309.model.ChatMessage;
+import edu.iastate.dashboard309.model.ChatReaction;
 import edu.iastate.dashboard309.model.ChatRead;
 import edu.iastate.dashboard309.repository.ChatChannelRepository;
 import edu.iastate.dashboard309.repository.ChatMessageRepository;
+import edu.iastate.dashboard309.repository.ChatReactionRepository;
 import edu.iastate.dashboard309.repository.ChatReadRepository;
 import jakarta.annotation.PostConstruct;
 import org.springframework.data.domain.PageRequest;
@@ -28,12 +30,14 @@ public class ChatService {
     private final ChatMessageRepository messageRepo;
     private final ChatReadRepository readRepo;
     private final ChatChannelRepository channelRepo;
+    private final ChatReactionRepository reactionRepo;
 
     public ChatService(ChatMessageRepository messageRepo, ChatReadRepository readRepo,
-                       ChatChannelRepository channelRepo) {
+                       ChatChannelRepository channelRepo, ChatReactionRepository reactionRepo) {
         this.messageRepo = messageRepo;
         this.readRepo = readRepo;
         this.channelRepo = channelRepo;
+        this.reactionRepo = reactionRepo;
     }
 
     @PostConstruct
@@ -180,6 +184,28 @@ public class ChatService {
         }
     }
 
+    @Transactional
+    public ChatMessageDto toggleReaction(Long messageId, String emoji, String userNetid) {
+        ChatMessage msg = messageRepo.findById(messageId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Message not found"));
+        reactionRepo.findByMessage_IdAndEmojiAndUserNetid(messageId, emoji, userNetid)
+            .ifPresentOrElse(
+                existing -> {
+                    msg.getReactions().remove(existing);
+                    reactionRepo.delete(existing);
+                },
+                () -> {
+                    ChatReaction r = new ChatReaction();
+                    r.setMessage(msg);
+                    r.setEmoji(emoji);
+                    r.setUserNetid(userNetid);
+                    msg.getReactions().add(r);
+                    reactionRepo.save(r);
+                }
+            );
+        return toDto(msg);
+    }
+
     private ChatMessageDto toDto(ChatMessage msg) {
         List<String> netids = msg.getMentions().stream()
             .filter(m -> m.getMentionedNetid() != null)
@@ -195,10 +221,16 @@ public class ChatService {
             replyPreview = new ChatMessageDto.ReplyPreview(
                 r.getId(), r.getSenderNetid(), r.getSenderName(), r.getContent());
         }
+        Map<String, List<String>> reactions = msg.getReactions().stream()
+            .collect(Collectors.groupingBy(
+                ChatReaction::getEmoji,
+                Collectors.mapping(ChatReaction::getUserNetid, Collectors.toList())
+            ));
         return new ChatMessageDto(
             msg.getId(), msg.getSenderNetid(), msg.getSenderName(), msg.getContent(),
             replyToId, replyPreview, netids, roles,
-            msg.isEdited(), msg.getCreatedAt(), msg.getUpdatedAt(), msg.getChannelName()
+            msg.isEdited(), msg.getCreatedAt(), msg.getUpdatedAt(), msg.getChannelName(),
+            reactions
         );
     }
 }

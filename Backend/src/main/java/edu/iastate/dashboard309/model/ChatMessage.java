@@ -41,6 +41,9 @@ public class ChatMessage {
     @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ChatMention> mentions = new ArrayList<>();
 
+    @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<ChatReaction> reactions = new ArrayList<>();
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getSenderNetid() { return senderNetid; }
@@ -61,4 +64,6 @@ public class ChatMessage {
     public void setChannelName(String channelName) { this.channelName = channelName; }
     public List<ChatMention> getMentions() { return mentions; }
     public void setMentions(List<ChatMention> mentions) { this.mentions = mentions; }
+    public List<ChatReaction> getReactions() { return reactions; }
+    public void setReactions(List<ChatReaction> reactions) { this.reactions = reactions; }
 }

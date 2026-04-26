@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useTheme } from '../contexts/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from "App";
 import MemberAttendance from "@/components/MemberAttendance";
 import MemberComments from "@/components/Comments";
@@ -33,6 +34,7 @@ type TeamMemberDetailProps = NativeStackScreenProps<RootStackParamList, 'TeamMem
 
 export default function TeamProgressScreen({ navigation, route }: TeamMemberDetailProps) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const member = route.params?.member ?? null;
   const teamId = route.params?.teamId;
   const teamName = route.params?.teamName;
@@ -42,7 +44,7 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
 
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
-  const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+  const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : insets.top;
   const pad = isMobile ? 12 : 20;
 
   const INNER = isMobile ? 80 : 200;
@@ -100,9 +102,11 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
   };
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.navBg }}>
+    <View style={{ height: statusBarHeight }} />
     <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background, paddingTop: statusBarHeight + (isMobile ? 12 : 24) }}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={{ paddingBottom: 40, paddingTop: isMobile ? 12 : 24 }}
     >
       {/* Header */}
       <View style={{ paddingHorizontal: pad, marginBottom: 4 }}>
@@ -219,5 +223,6 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
         <MemberComments recipientNetid={member.netid} teamId={teamId} authorNetid={authorNetid} isStudent={isStudent} />
       </View>
     </ScrollView>
+    </View>
   );
 }
