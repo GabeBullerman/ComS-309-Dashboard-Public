@@ -207,28 +207,6 @@ public class ChatService {
         }
     }
 
-    @Transactional
-    public ChatMessageDto toggleReaction(Long messageId, String emoji, String userNetid) {
-        ChatMessage msg = messageRepo.findById(messageId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Message not found"));
-        reactionRepo.findByMessage_IdAndEmojiAndUserNetid(messageId, emoji, userNetid)
-            .ifPresentOrElse(
-                existing -> {
-                    msg.getReactions().remove(existing);
-                    reactionRepo.delete(existing);
-                },
-                () -> {
-                    ChatReaction r = new ChatReaction();
-                    r.setMessage(msg);
-                    r.setEmoji(emoji);
-                    r.setUserNetid(userNetid);
-                    msg.getReactions().add(r);
-                    reactionRepo.save(r);
-                }
-            );
-        return toDto(msg);
-    }
-
     private ChatMessageDto toDto(ChatMessage msg) {
         List<String> netids = msg.getMentions().stream()
             .filter(m -> m.getMentionedNetid() != null)
