@@ -185,7 +185,9 @@ public class UserController {
             user.setNetid(request.netid());
         }
         if (request.password() != null) {
+            if (request.password() != null) {
             user.setPassword(passwordEncoder.encode(request.password()));
+        }
         }
         if (request.role() != null) {
             user.getRole().clear();

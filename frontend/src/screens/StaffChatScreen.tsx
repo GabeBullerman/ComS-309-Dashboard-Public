@@ -193,7 +193,6 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
   );
   const applyMap = useCallback(() => setMessages(sortedMessages()), [sortedMessages]);
 
-  // Load staff for autocomplete + name display
   useEffect(() => {
     Promise.all([
       getUsersByRole('TA').catch(() => [] as UserSummary[]),
@@ -202,7 +201,6 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
     ]).then(([a, b, c]) => setStaff([...a, ...b, ...c]));
   }, []);
 
-  // Poll activity status of all staff
   useEffect(() => {
     const fetch = () => getActivityStatuses().then(setActivityStatuses).catch(() => {});
     fetch();
@@ -210,14 +208,12 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
     return () => clearInterval(id);
   }, []);
 
-  // Load channel metadata (names + descriptions)
   useEffect(() => {
     getChannels().then(list => {
       setChannelMeta(Object.fromEntries(list.map(c => [c.id, c])));
     }).catch(() => {});
   }, []);
 
-  // Load messages when channel changes
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -240,7 +236,6 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
     return () => { cancelled = true; };
   }, [activeChannel]);
 
-  // Scroll to bottom after initial load
   useEffect(() => {
     if (!loading) setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 150);
   }, [loading]);
@@ -254,7 +249,6 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
     } catch {}
   }, [onUnreadChange]);
 
-  // Poll for new messages and unread counts
   useEffect(() => {
     const poll = async () => {
       const ch = activeChannelRef.current;
@@ -263,8 +257,8 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
         let changed = false;
         for (const m of latest) {
           const existing = mapRef.current.get(m.id);
-          if (!existing || existing.content !== m.content || existing.edited !== m.edited ||
-              JSON.stringify(existing.reactions) !== JSON.stringify(m.reactions)) {
+          const reactionsChanged = JSON.stringify(existing?.reactions) !== JSON.stringify(m.reactions);
+          if (!existing || existing.content !== m.content || existing.edited !== m.edited || reactionsChanged) {
             mapRef.current.set(m.id, m);
             changed = true;
           }
@@ -295,7 +289,6 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
     } catch {} finally { setLoadingMore(false); }
   };
 
-  // Poll typing state every 2s
   useEffect(() => {
     const poll = async () => {
       try {
@@ -307,10 +300,8 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
     return () => clearInterval(id);
   }, []);
 
-  // @mention autocomplete — allow single spaces for "First Last" searches
   const handleTextChange = (text: string) => {
     setInputText(text);
-    // Throttle: send at most once per 3s while typing
     if (text.trim()) {
       const now = Date.now();
       if (now - lastTypingSentRef.current > 3000) {
@@ -321,7 +312,6 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
     const lastAt = text.lastIndexOf('@');
     if (lastAt !== -1) {
       const afterAt = text.slice(lastAt + 1);
-      // Stop at double-space (deliberate end), but allow single space for name search
       if (!afterAt.includes('  ') && !afterAt.startsWith(' ')) {
         setMentionQuery(afterAt.toLowerCase());
         return;
@@ -334,6 +324,34 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
     setInputText(prev => prev + emoji);
     inputRef.current?.focus();
   };
+
+  // Insert formatting markers at cursor position (web) or at tracked selection (native)
+  const insertFormatting = useCallback((mark: string) => {
+    const { start, end } = inputSelectionRef.current;
+    if (Platform.OS === 'web') {
+      const el = (inputRef.current as any)?._node
+        ?? (inputRef.current as any)?.getElement?.()
+        ?? (inputRef.current as any)?._inputRef?.current;
+      if (el && typeof el.selectionStart === 'number') {
+        const s = el.selectionStart as number;
+        const e = el.selectionEnd as number;
+        const before = inputText.slice(0, s);
+        const selected = inputText.slice(s, e);
+        const after = inputText.slice(e);
+        const newText = before + mark + selected + mark + after;
+        const newCursor = selected ? s + mark.length + selected.length + mark.length : s + mark.length;
+        setInputText(newText);
+        setTimeout(() => { el.focus(); el.setSelectionRange(newCursor, newCursor); }, 10);
+        return;
+      }
+    }
+    // Native fallback
+    const before = inputText.slice(0, start);
+    const selected = inputText.slice(start, end);
+    const after = inputText.slice(end);
+    setInputText(before + mark + selected + mark + after);
+    inputRef.current?.focus();
+  }, [inputText]);
 
   const mentionSuggestions = useMemo(() => {
     if (mentionQuery === null) return [];
@@ -663,7 +681,7 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
               const isOwn = msg.senderNetid === myNetid;
               const displayName = msg.senderName || msg.senderNetid;
               const isMsgSelected = isMobile && selectedMsgId === msg.id;
-              const reactionEntries = Object.entries(msg.reactions ?? {});
+              const reactionEntries = Object.entries(msg.reactions ?? {}).filter(([, netids]) => netids.length > 0);
 
               return (
                 <View key={`msg-${msg.id}`}>
@@ -868,7 +886,7 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
           </View>
         )}
 
-        {/* Mention autocomplete — scrollable */}
+        {/* Mention autocomplete */}
         {mentionSuggestions.length > 0 && (
           <View style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, marginHorizontal: 12, marginBottom: 4, maxHeight: 220, elevation: 6, shadowColor: colors.shadow, shadowOpacity: 0.12, shadowRadius: 6 }}>
             <ScrollView keyboardShouldPersistTaps="always" nestedScrollEnabled>
@@ -915,7 +933,6 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
         {/* Emoji picker panel */}
         {showEmojiPicker && (
           <View style={{ backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, paddingBottom: 4 }}>
-            {/* Category tabs */}
             <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.borderLight, paddingHorizontal: 8 }}>
               {EMOJI_CATEGORIES.map((cat, idx) => (
                 <TouchableOpacity
@@ -927,7 +944,6 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
                 </TouchableOpacity>
               ))}
             </View>
-            {/* Emoji grid */}
             <ScrollView horizontal={false} style={{ maxHeight: 150 }} contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', padding: 6 }} keyboardShouldPersistTaps="always">
               {EMOJI_CATEGORIES[emojiCategory].emojis.map(emoji => (
                 <TouchableOpacity key={emoji} onPress={() => insertEmoji(emoji)} style={{ padding: 5 }}>

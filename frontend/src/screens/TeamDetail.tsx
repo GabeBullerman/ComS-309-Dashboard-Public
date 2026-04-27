@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../App';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TeamMember } from '../types/Teams';
 import { getTeam, updateTeamInfo, addStudentToTeam, removeStudentFromTeam, getTeams } from '../api/teams';
 import { getSemesterStartDate } from '../api/settings';
@@ -59,6 +60,7 @@ const PROJECT_ROLES: ProjectRole[] = ['Frontend', 'Backend'];
 export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps) {
   const { team, userRole } = route.params;
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const [authorNetid, setAuthorNetid] = useState<string | undefined>(undefined);
@@ -362,7 +364,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       // getTeams() supplements with team-member data (id fields) for students who may
       // not appear via the role endpoint.
       const [roleResult, teamsResult] = await Promise.allSettled([
-        getUsersByRole('Student'),
+        getUsersByRole('STUDENT'),
         getTeams(),
       ]);
 
@@ -420,6 +422,9 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     setCreateLastName('');
     setCreateError(null);
     const q = addMemberSearch.trim().toLowerCase();
+    setNetidNotFound(false);
+    setCreateMode(false);
+    setCreateError(null);
     if (!q || q.includes(' ') || q.length < 3) {
       setNetidLookupResult(null);
       setNetidNotFound(false);
@@ -498,6 +503,38 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     }
   };
 
+  const handleCreateAndAdd = async () => {
+    const firstName = createFirstName.trim();
+    const lastName = createLastName.trim();
+    const netid = addMemberSearch.trim().toLowerCase();
+    if (!firstName || !lastName) { setCreateError('First and last name are required.'); return; }
+    if (!netid || netid.includes(' ')) { setCreateError('Enter a valid NetID in the search box.'); return; }
+    if (!team.id) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const newUser = await createUser({ netid, name: `${firstName} ${lastName}`, role: ['STUDENT'] });
+      const newMember: TeamMember = {
+        id: newUser.id,
+        name: newUser.name || netid,
+        netid: newUser.netid,
+        initials: toInitials(newUser.name || netid),
+        color: '',
+        photo: '',
+        demoResults: [],
+      };
+      if (newUser.id) {
+        await addStudentToTeam(team.id, newUser.id);
+        setTeamMembers(prev => [...prev, newMember]);
+      }
+      closeAddMemberModal();
+    } catch (e: any) {
+      setCreateError(e?.response?.data?.message ?? e?.message ?? 'Failed to create account.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const handleRemoveMember = async (member: TeamMember) => {
     if (!team.id || !member.id) return;
     const doRemove = async () => {
@@ -549,9 +586,11 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : insets.top;
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.navBg }}>
+    <View style={{ height: statusBarHeight }} />
     <ScrollView
-      style={{ flex: 1, backgroundColor: colors.background, paddingTop: statusBarHeight + (isMobile ? 12 : 24) }}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={{ paddingBottom: 40, paddingTop: isMobile ? 12 : 24 }}
     >
       {/* Header */}
       <View style={{ paddingHorizontal: pad, marginBottom: 4 }}>
@@ -1054,33 +1093,31 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
             ) : (
               <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, gap: 6 }}>
                 {availableStudents.length === 0 ? (
-                  <>
-                    <Text style={{ textAlign: 'center', color: colors.textFaint, paddingVertical: 16, fontSize: 14 }}>
-                      {netidNotFound
-                        ? `No account found for "${addMemberSearch.trim()}".`
-                        : addMemberSearch
-                          ? addMemberSearch.trim().length >= 3 && !addMemberSearch.includes(' ')
-                            ? 'No students found. Looking up NetID...'
-                            : 'No students match your search.'
-                          : 'No unassigned students available.'}
-                    </Text>
-                    {netidNotFound && !createMode && (
-                      <TouchableOpacity
-                        onPress={() => setCreateMode(true)}
-                        style={{ alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: colors.primary }}
-                      >
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>+ Create new student account</Text>
-                      </TouchableOpacity>
-                    )}
-                    {netidNotFound && createMode && (
-                      <View style={{ gap: 10, marginTop: 4 }}>
+                  <View style={{ paddingVertical: 16 }}>
+                    {netidNotFound && !createMode ? (
+                      <>
+                        <Text style={{ textAlign: 'center', color: colors.textFaint, fontSize: 14, marginBottom: 12 }}>
+                          No account found for &quot;{addMemberSearch.trim()}&quot;.
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => setCreateMode(true)}
+                          style={{ alignSelf: 'center', backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 8 }}
+                        >
+                          <Text style={{ color: colors.textInverse, fontWeight: '600', fontSize: 14 }}>Create new student account</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : createMode ? (
+                      <View style={{ gap: 10 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary }}>
+                          New student account — NetID: {addMemberSearch.trim()}
+                        </Text>
                         <TextInput
                           value={createFirstName}
                           onChangeText={setCreateFirstName}
                           placeholder="First name"
                           placeholderTextColor={colors.textFaint}
                           autoCorrect={false}
-                          style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg }}
+                          style={{ backgroundColor: colors.inputBg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, color: colors.text, borderWidth: 1, borderColor: colors.inputBorder }}
                         />
                         <TextInput
                           value={createLastName}
@@ -1088,23 +1125,34 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
                           placeholder="Last name"
                           placeholderTextColor={colors.textFaint}
                           autoCorrect={false}
-                          style={{ borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, color: colors.text, backgroundColor: colors.inputBg }}
+                          style={{ backgroundColor: colors.inputBg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14, color: colors.text, borderWidth: 1, borderColor: colors.inputBorder }}
                         />
                         {!!createError && (
-                          <Text style={{ fontSize: 12, color: colors.criticalBorder, textAlign: 'center' }}>{createError}</Text>
+                          <Text style={{ color: colors.criticalBorder, fontSize: 13 }}>{createError}</Text>
                         )}
                         <TouchableOpacity
                           onPress={handleCreateAndAdd}
-                          disabled={creating || !createFirstName.trim() || !createLastName.trim()}
-                          style={{ backgroundColor: creating || !createFirstName.trim() || !createLastName.trim() ? colors.border : colors.primary, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}
+                          disabled={creating}
+                          style={{ backgroundColor: creating ? colors.border : colors.primary, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}
                         >
                           {creating
                             ? <ActivityIndicator size="small" color={colors.textInverse} />
-                            : <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textInverse }}>Create & Add</Text>}
+                            : <Text style={{ color: colors.textInverse, fontWeight: '600', fontSize: 14 }}>Create &amp; Add to Team</Text>}
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setCreateMode(false)}>
+                          <Text style={{ textAlign: 'center', color: colors.textMuted, fontSize: 13 }}>Cancel</Text>
                         </TouchableOpacity>
                       </View>
+                    ) : (
+                      <Text style={{ textAlign: 'center', color: colors.textFaint, fontSize: 14 }}>
+                        {addMemberSearch
+                          ? addMemberSearch.trim().length >= 3 && !addMemberSearch.includes(' ')
+                            ? 'Looking up NetID...'
+                            : 'No students match your search.'
+                          : 'No unassigned students available.'}
+                      </Text>
                     )}
-                  </>
+                  </View>
                 ) : (
                   availableStudents.map((s) => (
                     <View key={s.netid ?? s.id} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: colors.border }}>
@@ -1243,5 +1291,6 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
         </TouchableOpacity>
       </Modal>
       </ScrollView>
+    </View>
   );
 }
