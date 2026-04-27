@@ -18,7 +18,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../../App';
 import { useTheme } from '../contexts/ThemeContext';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TeamMember } from '../types/Teams';
 import { getTeam, updateTeamInfo, addStudentToTeam, removeStudentFromTeam, getTeams } from '../api/teams';
 import { getSemesterStartDate } from '../api/settings';
@@ -450,37 +449,6 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
     return () => clearTimeout(timer);
   }, [addMemberSearch, showAddMemberModal]);
 
-  const handleCreateAndAdd = async () => {
-    if (!createFirstName.trim() || !createLastName.trim() || !team.id) return;
-    const netid = addMemberSearch.trim().toLowerCase();
-    setCreating(true);
-    setCreateError(null);
-    try {
-      const created = await createUser({
-        netid,
-        name: `${createFirstName.trim()} ${createLastName.trim()}`,
-        role: ['STUDENT'],
-      });
-      if (created?.id) {
-        await addStudentToTeam(team.id, created.id);
-        setTeamMembers(prev => [...prev, {
-          id: created.id,
-          name: created.name || netid,
-          netid: created.netid,
-          initials: toInitials(created.name || netid),
-          color: '',
-          photo: '',
-          demoResults: [],
-        }]);
-        closeAddMemberModal();
-      }
-    } catch (err: any) {
-      setCreateError(err?.response?.data?.message || err?.message || 'Failed to create student.');
-    } finally {
-      setCreating(false);
-    }
-  };
-
   const handleAddMember = async (student: UserSummary) => {
     if (!team.id || !student.id) return;
     setAddingId(student.id);
@@ -582,7 +550,6 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
   ];
 
   const pad = isMobile ? 12 : 20;
-  const insets = useSafeAreaInsets();
   const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : insets.top;
 
   return (

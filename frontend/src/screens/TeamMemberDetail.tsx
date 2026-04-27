@@ -44,7 +44,6 @@ export default function TeamProgressScreen({ navigation, route }: TeamMemberDeta
 
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
-  const insets = useSafeAreaInsets();
   const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : insets.top;
   const pad = isMobile ? 12 : 20;
 

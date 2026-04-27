@@ -18,6 +18,7 @@ import StudentListScreen from "./StudentListScreen";
 import StaffChatScreen from "./StaffChatScreen";
 import { getUnreadCount } from "../api/chat";
 import { sendHeartbeat } from "../api/activity";
+import CalendarModal from "../components/CalendarModal";
 type Props = NativeStackScreenProps<RootStackParamList, 'NavBar'>;
 
 const ACTIVE_SCREEN_KEY = 'dashboard_active_screen';
@@ -32,6 +33,7 @@ export default function NavBar({route}: Props) {
   const screenWidth = Dimensions.get("window").width;
   const isMobile = screenWidth < 768;
   const role = route.params.userRole;
+  const [calendarVisible, setCalendarVisible] = useState(false);
 
   // Heartbeat — keeps this user's activity status current
   useEffect(() => {
@@ -211,6 +213,23 @@ export default function NavBar({route}: Props) {
           <View style={{ flex: 1, paddingBottom: TAB_BAR_HEIGHT }}>
             {renderScreen()}
           </View>
+
+          {/* Floating calendar button — top right, below safe area */}
+          <TouchableOpacity
+            onPress={() => setCalendarVisible(true)}
+            style={{
+              position: 'absolute',
+              top: (Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : insets.top) + 10,
+              right: 14,
+              width: 44, height: 44, borderRadius: 22,
+              backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
+              shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 6, elevation: 6,
+            }}
+          >
+            <Ionicons name="calendar-outline" size={22} color={colors.textInverse} />
+          </TouchableOpacity>
+
+          <CalendarModal visible={calendarVisible} onClose={() => setCalendarVisible(false)} netid={netid} />
 
           {/* Bottom tab bar */}
           <View style={{

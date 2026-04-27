@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, Alert, Platform, KeyboardAvoidingView, useWindowDimensions,
@@ -447,31 +447,7 @@ export default function StaffChatScreen({ myNetid, myName, userRole, onUnreadCha
     } catch {}
   };
 
-  const insertFormatting = useCallback((mark: string) => {
-    const { start, end } = inputSelectionRef.current;
-    if (Platform.OS === 'web') {
-      const el = (inputRef.current as any)?._node
-        ?? (inputRef.current as any)?.getElement?.()
-        ?? (inputRef.current as any)?._inputRef?.current;
-      if (el && typeof el.selectionStart === 'number') {
-        const s = el.selectionStart as number;
-        const e = el.selectionEnd as number;
-        const before = inputText.slice(0, s);
-        const selected = inputText.slice(s, e);
-        const after = inputText.slice(e);
-        const newText = before + mark + selected + mark + after;
-        const newCursor = selected ? s + mark.length + selected.length + mark.length : s + mark.length;
-        setInputText(newText);
-        setTimeout(() => { el.focus(); el.setSelectionRange(newCursor, newCursor); }, 10);
-        return;
-      }
-    }
-    const before = inputText.slice(0, start);
-    const selected = inputText.slice(start, end);
-    const after = inputText.slice(end);
-    setInputText(before + mark + selected + mark + after);
-    inputRef.current?.focus();
-  }, [inputText]);
+
 
   // Group messages by date, collapse consecutive same-sender runs
   const grouped = useMemo(() => {
