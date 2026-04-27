@@ -363,7 +363,7 @@ export default function TeamDetailsScreen({ navigation, route }: TeamDetailProps
       // getTeams() supplements with team-member data (id fields) for students who may
       // not appear via the role endpoint.
       const [roleResult, teamsResult] = await Promise.allSettled([
-        getUsersByRole('Student'),
+        getUsersByRole('STUDENT'),
         getTeams(),
       ]);
 
