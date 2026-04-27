@@ -45,7 +45,7 @@ export const saveGitLabTokenToBackend = async (token: string): Promise<void> => 
   await axiosInstance.put('/api/users/self/gitlab-token', { gitlabToken: token.trim() });
 };
 
-export const createUser = async (data: { netid: string; name: string; password: string; role: string[] }): Promise<UserSummary> => {
+export const createUser = async (data: { netid: string; name: string; password?: string; role: string[] }): Promise<UserSummary> => {
   const res = await axiosInstance.post('/api/users', data);
   return res.data;
 };

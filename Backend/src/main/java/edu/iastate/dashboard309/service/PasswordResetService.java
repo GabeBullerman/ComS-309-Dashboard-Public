@@ -51,13 +51,14 @@ public class PasswordResetService {
         SimpleMailMessage msg = new SimpleMailMessage();
         msg.setFrom(fromAddress);
         msg.setTo(to);
-        msg.setSubject("Your temporary dashboard password");
+        msg.setSubject("Your Course Dashboard password");
         msg.setText(
             "Hi " + (user.getName() != null ? user.getName() : netid) + ",\n\n" +
             "Your temporary password for the Course Dashboard is:\n\n" +
             "    " + tempPassword + "\n\n" +
-            "Log in at the dashboard and go to Profile → Change Password to set a new one.\n\n" +
-            "If you didn't request this, you can ignore this email.\n"
+            "You can also sign in with Google using your @iastate.edu account.\n\n" +
+            "Once logged in, go to Profile → Change Password to set a permanent one.\n\n" +
+            "If you weren't expecting this email, you can ignore it.\n"
         );
 
         try {

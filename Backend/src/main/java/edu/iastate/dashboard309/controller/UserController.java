@@ -9,6 +9,7 @@ import edu.iastate.dashboard309.model.User;
 import edu.iastate.dashboard309.repository.RefreshTokenRepository;
 import edu.iastate.dashboard309.repository.RoleRepository;
 import edu.iastate.dashboard309.repository.UserRepository;
+import edu.iastate.dashboard309.service.PasswordResetService;
 import edu.iastate.dashboard309.service.TeamService;
 import edu.iastate.dashboard309.service.UserService;
 import jakarta.validation.Valid;
@@ -51,17 +52,20 @@ public class UserController {
     private final RoleRepository roleRepository;
     private final UserService userService;
     private final TeamService teamService;
+    private final PasswordResetService passwordResetService;
 
     public UserController(UserRepository userRepository,
                           RoleRepository roleRepository,
                           UserService userService,
-                          TeamService teamService, 
-                          PasswordEncoder passwordEncoder) {
+                          TeamService teamService,
+                          PasswordEncoder passwordEncoder,
+                          PasswordResetService passwordResetService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userService = userService;
         this.teamService = teamService;
         this.passwordEncoder = passwordEncoder;
+        this.passwordResetService = passwordResetService;
     }
 
     @GetMapping
@@ -161,6 +165,14 @@ public class UserController {
         }
 
         userRepository.save(user);
+
+        if (request.password() == null) {
+            try {
+                passwordResetService.sendTemporaryPassword(user.getNetid());
+            } catch (Exception e) {
+                // account is created; email failure is non-fatal
+            }
+        }
 
         return userService.getUserById(user.getId());
     }
